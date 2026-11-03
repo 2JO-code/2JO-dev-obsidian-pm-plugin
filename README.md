@@ -1,0 +1,1 @@
+# 2JO-dev-obsidian-pm-plugin

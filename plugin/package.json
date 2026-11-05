@@ -1,0 +1,35 @@
+{
+	"name": "obsidian-project-manager",
+	"version": "0.1.0",
+	"description": "複数プロジェクトを横断して進捗とメンバー負荷を可視化するObsidianプラグイン",
+	"main": "main.js",
+	"type": "module",
+	"scripts": {
+		"dev": "npm run readme && node esbuild.config.mjs",
+		"build": "npm run readme && tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
+		"readme": "node scripts/readme-text.mjs",
+		"deploy": "npm run build && node scripts/deploy.mjs",
+		"dummy": "node scripts/generate-dummy.mjs",
+		"dummy:clean": "node scripts/generate-dummy.mjs --clean",
+		"version": "node version-bump.mjs",
+		"lint": "eslint .",
+		"test": "vitest run --passWithNoTests",
+		"test:watch": "vitest"
+	},
+	"keywords": [],
+	"license": "0-BSD",
+	"devDependencies": {
+		"@eslint/js": "^9.39.4",
+		"@types/node": "^22.15.17",
+		"esbuild": "0.25.5",
+		"eslint": "^9.39.4",
+		"eslint-plugin-obsidianmd": "^0.4.0",
+		"globals": "^17.6.0",
+		"jiti": "^2.6.1",
+		"obsidian": "latest",
+		"typescript": "^5.8.3",
+		"typescript-eslint": "^8.59.1",
+		"vite": "^7.3.7",
+		"vitest": "^4.1.12"
+	}
+}

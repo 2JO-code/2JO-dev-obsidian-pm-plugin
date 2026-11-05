@@ -1,0 +1,7 @@
+# 開発者の手元だけで使う検査ツール（ScanCode など。docs/LIBRARIES.md 7章）
+.tools/
+# ScanCode の検査結果（うっかりリポジトリの中に出したとき）
+scan.json
+
+# 個人の Claude Code 設定
+.claude/settings.local.json

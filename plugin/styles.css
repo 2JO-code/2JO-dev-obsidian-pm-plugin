@@ -1,0 +1,1566 @@
+.pm-settings-warning {
+	border: 1px solid var(--background-modifier-error);
+	border-radius: var(--radius-m);
+	padding: var(--size-4-2) var(--size-4-3);
+	margin-bottom: var(--size-4-4);
+	color: var(--color-red);
+}
+
+.pm-impact-list li {
+	margin-bottom: var(--size-4-1);
+}
+
+.pm-setting-wide {
+	width: 24em;
+}
+
+/* 設定画面の開閉できるグループ。見出しを押すと開閉し、中身は左の線で入れ子を示す（設計書 9章） */
+.pm-setting-group > summary {
+	list-style: none;
+	cursor: var(--cursor-link);
+}
+
+.pm-setting-group > summary::-webkit-details-marker {
+	display: none;
+}
+
+.pm-setting-group > summary:hover .pm-toggle {
+	color: var(--text-normal);
+}
+
+.pm-setting-group-body {
+	margin-left: 0.75em;
+	padding-left: calc(0.75em + var(--size-4-1));
+	border-left: 1px solid var(--background-modifier-border);
+}
+
+/* 罫線の色。表・ガント・グラフで共通（UI_STYLE_GUIDE 4章） */
+body {
+	--pm-grid-color: rgba(var(--mono-rgb-100), 0.08);
+}
+
+/* 小さな印の土台。形は1つで、状態の印（枠＋薄い背景）と数・分類の印（背景だけ）に分ける（UI_STYLE_GUIDE 5章） */
+.pm-mark {
+	display: inline-block;
+	padding: 0 var(--size-4-2);
+	border: 1px solid transparent;
+	border-radius: var(--radius-s);
+	color: var(--text-normal);
+	font-size: var(--font-ui-smaller);
+	font-weight: var(--font-normal);
+	line-height: 1.5;
+	white-space: nowrap;
+}
+
+.pm-mark.is-tinted {
+	border-color: color-mix(in srgb, var(--pm-mark-color, var(--text-muted)) 55%, transparent);
+	background: color-mix(in srgb, var(--pm-mark-color, var(--text-muted)) 14%, transparent);
+}
+
+.pm-mark.is-plain {
+	background: var(--background-modifier-hover);
+}
+
+/* 種類（プロジェクト・エピック・タスク）の色の印。色は設定（設計書 9.1） */
+.pm-kind-mark {
+	display: inline-block;
+	flex: none;
+	width: 8px;
+	height: 8px;
+	margin-right: var(--size-4-1);
+	border-radius: 50%;
+	vertical-align: middle;
+}
+
+.pm-kind-mark.is-project {
+	background: var(--pm-color-project);
+}
+
+.pm-kind-mark.is-epic {
+	background: var(--pm-color-epic);
+}
+
+.pm-kind-mark.is-task {
+	background: var(--pm-color-task);
+}
+
+/* 休日の種類の印（設計書 9.1）と、メンバー状況の休日稼働の印（9.3）。会社休日・休日稼働＝橙、個人休日＝紫、土日＝灰 */
+.pm-holiday-mark,
+.pm-load-holiday-mark {
+	--pm-mark-color: var(--color-orange);
+	margin-left: var(--size-2-2);
+}
+
+.pm-holiday-mark.is-personal {
+	--pm-mark-color: var(--color-purple);
+}
+
+.pm-holiday-mark.is-weekend {
+	--pm-mark-color: var(--text-muted);
+}
+
+/* 警告の種類ごとの色（設計書 9.1）。重いものから赤・橙・黄、そのほかは紫 */
+.pm-badges {
+	display: inline-flex;
+	flex-wrap: wrap;
+	gap: var(--size-2-2);
+}
+
+.pm-badge {
+	--pm-mark-color: var(--color-purple);
+}
+
+.pm-badge.is-overdue {
+	--pm-mark-color: var(--color-red);
+}
+
+.pm-badge.is-overdueRisk {
+	--pm-mark-color: var(--color-orange);
+}
+
+.pm-badge.is-overEstimate {
+	--pm-mark-color: var(--color-yellow);
+}
+
+.pm-view-loading {
+	color: var(--text-muted);
+	padding: var(--size-4-4);
+}
+
+.pm-view-empty {
+	color: var(--text-muted);
+	padding: var(--size-4-4) 0;
+}
+
+.pm-text-error {
+	color: var(--color-red);
+}
+
+.pm-text-faint {
+	color: var(--text-faint);
+}
+
+.pm-text-warning {
+	color: var(--color-orange);
+}
+
+/* 行全体の文字色（タスクの行の薄い色など）より、セルの印の色を優先する */
+.pm-table td.pm-text-error {
+	color: var(--color-red);
+}
+
+.pm-table td.pm-text-warning {
+	color: var(--color-orange);
+}
+
+.pm-table td.pm-text-faint {
+	color: var(--text-faint);
+}
+
+/* 罫線はセルごとに持たせる（collapse にすると、上に固定した見出しの上の線が残って下の行が透ける） */
+.pm-table {
+	width: 100%;
+	border-collapse: separate;
+	border-spacing: 0;
+	font-size: var(--font-ui-small);
+}
+
+.pm-table th,
+.pm-table td {
+	padding: var(--size-4-1) var(--size-4-2);
+	white-space: nowrap;
+}
+
+/* 罫線（設計書 9.1）。ビューの「罫線を表示」（.pm-grid-lines）で出し入れする。線が二重にならないよう、各セルは右と下だけ。左端の列は左、見出しの1段目は上も引く */
+.pm-grid-lines .pm-table th,
+.pm-grid-lines .pm-table td {
+	border-right: 1px solid var(--pm-grid-color);
+	border-bottom: 1px solid var(--pm-grid-color);
+}
+
+.pm-grid-lines .pm-table tr > :first-child {
+	border-left: 1px solid var(--pm-grid-color);
+}
+
+.pm-grid-lines .pm-table thead tr:first-child th {
+	border-top: 1px solid var(--pm-grid-color);
+}
+
+.pm-table th {
+	position: sticky;
+	top: 0;
+	z-index: 2;
+	background: var(--background-primary);
+	color: var(--text-muted);
+	font-weight: var(--font-semibold);
+}
+
+.pm-table th.is-sortable {
+	cursor: var(--cursor-link);
+}
+
+.pm-table th.is-sorted {
+	color: var(--text-normal);
+}
+
+.pm-table td {
+	text-align: left;
+}
+
+/* 期間の2つのセルは1つに見せる（間の罫線と余白を消す。設計書 9.1） */
+.pm-table td.pm-period-start {
+	padding-right: 0;
+}
+
+.pm-grid-lines .pm-table td.pm-period-start {
+	border-right: none;
+}
+
+.pm-table .is-numeric {
+	text-align: right;
+}
+
+/* 見出しはすべて中央。数値の列の右寄せより優先する（設計書 9.1） */
+.pm-table th,
+.pm-table th.is-numeric {
+	text-align: center;
+}
+
+.pm-table tr.is-clickable {
+	cursor: var(--cursor-link);
+}
+
+.pm-table tr.is-clickable:hover {
+	background: var(--background-modifier-hover);
+}
+
+.pm-table-group td {
+	padding-top: var(--size-4-3);
+	background: var(--background-secondary);
+	font-weight: var(--font-semibold);
+}
+
+/* 節の見出しの行（見出しと、その節だけの切り替え・ボタンを並べる） */
+.pm-section-head {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--size-4-2) var(--size-4-4);
+	margin-bottom: var(--size-4-2);
+	font-size: var(--font-ui-small);
+}
+
+.pm-task-list-more {
+	margin-top: var(--size-4-3);
+}
+
+/* 絞り込みを上に固定し、表だけをスクロールさせる（設計書 9.1） */
+.view-content.pm-view-fill {
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+}
+
+/* シェル（設計書 9.1）：見出し → 絞り込み → 表示の設定（左）・操作（右） → 凡例・注意。中身の無い欄は出さない */
+.pm-view-controls {
+	flex: none;
+	margin-bottom: var(--size-4-2);
+	padding-bottom: var(--size-4-2);
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.pm-shell-header {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: var(--size-4-1) var(--size-4-3);
+	margin-bottom: var(--size-4-2);
+}
+
+.pm-shell-title {
+	font-size: var(--font-ui-large);
+	font-weight: var(--font-semibold);
+}
+
+.pm-shell-description {
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+}
+
+.pm-shell-summary {
+	margin-left: auto;
+	font-size: var(--font-ui-small);
+	font-weight: var(--font-semibold);
+}
+
+.pm-shell-filters {
+	margin-bottom: var(--size-4-2);
+}
+
+.pm-shell-bar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--size-4-2) var(--size-4-4);
+	font-size: var(--font-ui-small);
+}
+
+.pm-shell-settings {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--size-4-2) var(--size-4-3);
+}
+
+.pm-shell-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--size-4-2);
+	margin-left: auto;
+}
+
+.pm-shell-notes {
+	margin-top: var(--size-4-2);
+}
+
+.pm-shell-summary:empty,
+.pm-shell-filters:empty,
+.pm-shell-settings:empty,
+.pm-shell-actions:empty,
+.pm-shell-notes:empty,
+.pm-shell-bar:not(:has(> :not(:empty))) {
+	display: none;
+}
+
+.pm-view-body {
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow: auto;
+}
+
+.pm-section {
+	margin-bottom: var(--size-4-6);
+}
+
+.pm-section h3,
+.pm-section h4 {
+	margin: 0 0 var(--size-4-2);
+}
+
+.pm-summary {
+	display: grid;
+	grid-template-columns: max-content 1fr;
+	gap: var(--size-4-1) var(--size-4-4);
+	font-size: var(--font-ui-small);
+}
+
+.pm-summary-label {
+	color: var(--text-muted);
+}
+
+.pm-row-button {
+	padding: 0 var(--size-4-2);
+	height: auto;
+	font-size: var(--font-ui-smaller);
+}
+
+/* 押せるものは2通り：名前のリンクと、絞り込み・移動のリンク（UI_STYLE_GUIDE 6章） */
+.pm-link {
+	color: var(--text-accent);
+}
+
+.pm-link:hover {
+	text-decoration: underline;
+}
+
+.pm-action-link {
+	cursor: var(--cursor-link);
+}
+
+.pm-action-link:hover {
+	color: var(--text-accent);
+	text-decoration: underline;
+}
+
+/* 印をリンクにしたとき（警告の印）。色と下線は中の印に付ける */
+.pm-action-link:hover .pm-mark {
+	color: var(--text-accent);
+	text-decoration: underline;
+}
+
+/* 開閉の印。押せる印は、押しやすいよう幅を取り、マウスを乗せると色を変える（設計書 9.1） */
+.pm-toggle {
+	display: inline-block;
+	width: 1.5em;
+	color: var(--text-muted);
+	text-align: center;
+}
+
+.pm-toggle.is-button {
+	cursor: var(--cursor-link);
+	border-radius: var(--radius-s);
+}
+
+.pm-toggle.is-button:hover {
+	color: var(--text-normal);
+	background: var(--background-modifier-hover);
+}
+
+/* 凡例（色や印の意味）。メンバー状況・ガント・グラフで共通 */
+.pm-legend {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--size-4-2) var(--size-4-3);
+	font-size: var(--font-ui-small);
+	color: var(--text-muted);
+}
+
+.pm-legend .pm-load-cell {
+	padding: 0 var(--size-4-2);
+}
+
+/* 表やグラフに添える小さな注意書き */
+.pm-note {
+	margin-top: var(--size-4-2);
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+}
+
+/* 進捗率の横棒（設計書 9.1）。長さは --pm-ratio で受け取る */
+.pm-progress {
+	--pm-progress-width: 60px;
+	--pm-progress-height: 6px;
+	display: inline-flex;
+	align-items: center;
+	gap: var(--size-4-2);
+}
+
+/* 表の中では、棒を左端にそろえ、％は同じ幅の欄に右寄せ、件数はその後ろに左寄せ（棒・％・「（」の位置をそろえる。設計書 9.1） */
+td .pm-progress {
+	display: flex;
+}
+
+td .pm-progress-text {
+	display: flex;
+	flex: 1;
+	text-align: left;
+}
+
+td .pm-progress-pct {
+	flex: none;
+	min-width: 4.5ch;
+	text-align: right;
+}
+
+.pm-progress-track {
+	flex: none;
+	width: var(--pm-progress-width);
+	height: var(--pm-progress-height);
+	border-radius: var(--radius-s);
+	background: var(--background-modifier-border);
+	overflow: hidden;
+}
+
+.pm-progress-fill {
+	width: var(--pm-ratio);
+	height: 100%;
+	border-radius: var(--radius-s);
+	background: var(--interactive-accent);
+}
+
+.pm-progress-text {
+	font-variant-numeric: tabular-nums;
+}
+
+.pm-wbs-project td {
+	background: var(--background-secondary);
+	font-weight: var(--font-semibold);
+}
+
+.pm-wbs-epic td {
+	font-weight: var(--font-semibold);
+}
+
+.pm-wbs-number {
+	white-space: nowrap;
+}
+
+.pm-wbs-table td.pm-wbs-indent-1 {
+	padding-left: var(--size-4-5);
+}
+
+.pm-wbs-table td.pm-wbs-indent-2 {
+	padding-left: var(--size-4-9);
+}
+
+.pm-wbs-task td {
+	color: var(--text-muted);
+}
+
+.pm-wbs-task td.pm-wbs-indent-2 {
+	color: var(--text-normal);
+}
+
+/* 列はいちばん長い列と同じ高さにそろえる。短い列のカードが途切れても、見出しが上に残るようにする（設計書 9.6） */
+.pm-kanban {
+	display: flex;
+	align-items: stretch;
+	gap: var(--size-4-3);
+	padding-bottom: var(--size-4-3);
+}
+
+/* 列そのものは透明で、背景は見出しとカードの欄に塗る（カードのあるところまで） */
+.pm-kanban-column {
+	flex: 0 0 var(--pm-kanban-col, 260px);
+	border-radius: var(--radius-m);
+}
+
+.pm-kanban-cards {
+	padding: 0 var(--size-4-2) var(--size-4-2);
+	border-radius: 0 0 var(--radius-m) var(--radius-m);
+	background: var(--background-secondary);
+}
+
+.pm-kanban-cards:empty {
+	display: none;
+}
+
+/* 列の見出し（ステータス）は、下にスクロールしても上に残す（設計書 9.6）。背景を塗り、下を流れるカードを隠す */
+.pm-kanban-head {
+	position: sticky;
+	top: 0;
+	z-index: 1;
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-1);
+	padding: var(--size-4-2);
+	border-radius: var(--radius-m) var(--radius-m) 0 0;
+	background: var(--background-secondary);
+	font-weight: var(--font-semibold);
+	white-space: nowrap;
+	cursor: var(--cursor-link);
+}
+
+/* カードの無い列・たたんだ列は、見出しだけの角の丸い箱にする */
+.pm-kanban-column.is-collapsed .pm-kanban-head,
+.pm-kanban-head:has(+ .pm-kanban-cards:empty) {
+	border-radius: var(--radius-m);
+}
+
+.pm-kanban-count {
+	margin-left: auto;
+}
+
+.pm-kanban-card {
+	margin-bottom: var(--size-4-2);
+	padding: var(--size-4-2);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	background: var(--background-primary);
+	font-size: var(--font-ui-small);
+	cursor: var(--cursor-link);
+}
+
+.pm-kanban-card:hover {
+	border-color: var(--interactive-accent);
+}
+
+.pm-kanban-title {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: var(--size-4-1);
+	font-weight: var(--font-semibold);
+}
+
+.pm-kanban-meta {
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+}
+
+.pm-kanban-more {
+	width: 100%;
+}
+
+.pm-kanban-card.is-dragging {
+	opacity: 0.4;
+}
+
+.pm-kanban-column.is-drop-target {
+	outline: 2px dashed var(--interactive-accent);
+	outline-offset: -2px;
+}
+
+.pm-task-sub td {
+	color: var(--text-muted);
+}
+
+.pm-task-sub td.pm-task-sub-title {
+	padding-left: var(--size-4-6);
+	color: var(--text-normal);
+}
+
+/* 見出しが2段なので上に固定しない */
+.pm-allocation-table th {
+	position: static;
+}
+
+.pm-allocation-table .pm-month-start {
+	border-left: 1px solid var(--background-modifier-border);
+}
+
+/* 横に長い表で、メンバー名の列を左に固定する */
+.pm-load-table .pm-load-member {
+	position: sticky;
+	left: 0;
+	z-index: 1;
+	background: var(--background-primary);
+}
+
+.pm-load-table th.pm-load-member {
+	z-index: 3;
+}
+
+.pm-load-table th.is-today {
+	color: var(--text-accent);
+}
+
+.pm-load-table th.is-holiday {
+	color: var(--text-faint);
+}
+
+.pm-load-cell {
+	border-radius: var(--radius-s);
+}
+
+.pm-load-none {
+	color: var(--text-faint);
+}
+
+.pm-load-normal {
+	background: rgba(var(--color-green-rgb), 0.12);
+}
+
+.pm-load-caution {
+	background: rgba(var(--color-orange-rgb), 0.25);
+}
+
+.pm-load-warning {
+	background: rgba(var(--color-red-rgb), 0.3);
+	font-weight: var(--font-semibold);
+}
+
+.pm-filter-bar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--size-4-2) var(--size-4-4);
+	margin-bottom: var(--size-4-3);
+	padding: var(--size-4-2) var(--size-4-3);
+	border-radius: var(--radius-m);
+	background: var(--background-secondary);
+	font-size: var(--font-ui-small);
+}
+
+.pm-filter-field {
+	display: inline-flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--size-4-1);
+}
+
+.pm-filter-label {
+	color: var(--text-muted);
+	margin-right: var(--size-4-1);
+}
+
+.pm-filter-check input {
+	margin-right: var(--size-4-1);
+}
+
+.pm-filter-clear {
+	margin-left: auto;
+}
+
+.pm-health-group {
+	margin-bottom: var(--size-4-4);
+}
+
+.pm-health-file {
+	font-weight: var(--font-semibold);
+}
+
+.pm-health-type {
+	margin-right: var(--size-4-2);
+}
+
+.pm-health-path,
+.pm-health-hint {
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+}
+
+.pm-health-group ul {
+	margin: var(--size-4-1) 0 0;
+	padding-left: var(--size-4-5);
+}
+
+.pm-health-line {
+	color: var(--text-muted);
+	margin-right: var(--size-4-2);
+}
+
+.pm-health-group li .pm-row-button {
+	margin-left: var(--size-4-2);
+}
+
+.pm-worklog-day {
+	margin: 0 0 var(--size-4-2);
+	padding: var(--size-4-2) var(--size-4-3);
+	border-radius: var(--radius-m);
+	background: var(--background-secondary);
+	font-size: var(--font-ui-small);
+}
+
+.pm-worklog-day:empty {
+	display: none;
+}
+
+.pm-worklog-day ul {
+	margin: 0;
+	padding-left: var(--size-4-5);
+}
+
+.pm-worklog-day-empty {
+	color: var(--text-muted);
+}
+
+.pm-worklog-day-total {
+	margin-top: var(--size-4-1);
+	font-weight: var(--font-semibold);
+}
+
+.pm-worklog-day-title {
+	color: var(--text-muted);
+	margin-bottom: var(--size-4-1);
+}
+
+.pm-worklog-day li.is-target {
+	font-weight: var(--font-semibold);
+}
+
+.pm-worklog-day-mark {
+	margin-left: var(--size-4-2);
+	color: var(--text-accent);
+}
+
+/* 追加か書き換えかのお知らせ。書き換えは見落とさないよう色を付ける */
+.pm-worklog-mode {
+	margin: var(--size-4-2) 0;
+	padding: var(--size-4-2) var(--size-4-3);
+	border-radius: var(--radius-m);
+	border-left: 4px solid var(--interactive-accent);
+	background: var(--background-secondary);
+	font-size: var(--font-ui-small);
+}
+
+.pm-worklog-mode.is-update {
+	border-left-color: var(--color-orange);
+	background: rgba(var(--color-orange-rgb), 0.12);
+}
+
+.pm-worklog-mode-title {
+	font-weight: var(--font-semibold);
+}
+
+/* 本文の表（マイルストーン・工数配分）の編集画面（設計書 4.7）。入力欄はセルの幅いっぱい */
+.pm-table-edit-modal {
+	width: min(760px, 95vw);
+}
+
+.pm-table-edit {
+	width: 100%;
+	margin: var(--size-4-2) 0;
+}
+
+.pm-table-edit input,
+.pm-table-edit select {
+	width: 100%;
+}
+
+/* チェックリストの編集画面の1項目。チェックボックスと入力欄を横に並べる */
+.pm-checklist-item {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-2);
+}
+
+.pm-checklist-edit .pm-checklist-item input[type='checkbox'] {
+	flex: none;
+	width: var(--checkbox-size);
+	height: var(--checkbox-size);
+	margin: 0;
+	cursor: pointer;
+}
+
+.pm-checklist-edit .pm-checklist-item input[type='text'] {
+	flex: 1;
+}
+
+/* 完了した項目はノートのチェックリストと同じく薄く・取り消し線 */
+.pm-checklist-item.is-done input[type='text'] {
+	color: var(--text-faint);
+	text-decoration: line-through;
+}
+
+/* 工数配分のマス目（設計書 4.7）。月が多いと横に流し、メンバー名の列は左に固定する */
+.pm-allocation-matrix-modal {
+	width: min(1100px, 95vw);
+}
+
+.pm-allocation-matrix-wrap {
+	overflow-x: auto;
+}
+
+.pm-table-edit.pm-allocation-matrix {
+	width: auto;
+}
+
+.pm-allocation-matrix th {
+	position: static;
+}
+
+.pm-allocation-matrix .pm-allocation-matrix-member {
+	position: sticky;
+	left: 0;
+	z-index: 1;
+	background: var(--background-primary);
+	white-space: nowrap;
+}
+
+.pm-table-edit.pm-allocation-matrix input {
+	width: 6em;
+	text-align: right;
+}
+
+/* マスの下の参考の予定・実績 */
+.pm-allocation-matrix-ref {
+	font-size: var(--font-smallest);
+	color: var(--text-muted);
+	text-align: right;
+	white-space: nowrap;
+}
+
+.pm-allocation-matrix-ref.pm-text-error {
+	color: var(--text-error);
+}
+
+/* 押して別の画面で選ぶセル（作業ログのタスク）。長い名前は省略する */
+.pm-table-edit .pm-table-edit-pick {
+	width: 100%;
+	max-width: 18em;
+	justify-content: flex-start;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.pm-chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--size-4-1);
+	margin-top: var(--size-4-1);
+}
+
+.pm-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--size-4-1);
+}
+
+.pm-chip-remove {
+	cursor: var(--cursor-link);
+	color: var(--text-muted);
+}
+
+.pm-chip-remove:hover {
+	color: var(--color-red);
+}
+
+.pm-chip-empty {
+	color: var(--text-faint);
+}
+
+/* 工数の累積のグラフ（設計書 9.5）。系列の色は明暗それぞれで色覚の違いに配慮して確かめた2色 */
+.pm-burnup {
+	--pm-series-planned: #2a78d6;
+	--pm-series-actual: #eb6834;
+	max-width: 960px;
+}
+
+.theme-dark .pm-burnup {
+	--pm-series-planned: #3987e5;
+	--pm-series-actual: #d95926;
+}
+
+.pm-burnup-key {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--size-4-1);
+}
+
+.pm-burnup-swatch {
+	display: inline-block;
+	width: 16px;
+	height: 2px;
+	border-radius: 1px;
+}
+
+.pm-burnup-swatch.is-planned {
+	background: var(--pm-series-planned);
+}
+
+.pm-burnup-swatch.is-actual {
+	background: var(--pm-series-actual);
+}
+
+.pm-burnup-swatch.is-estimate {
+	background: var(--text-faint);
+}
+
+.pm-burnup-chart {
+	position: relative;
+}
+
+.pm-burnup-chart svg {
+	display: block;
+	width: 100%;
+	height: auto;
+	overflow: visible;
+}
+
+.pm-burnup-grid {
+	stroke: var(--pm-grid-color);
+	stroke-width: 1;
+}
+
+.pm-burnup-axis {
+	stroke: var(--background-modifier-border-hover);
+	stroke-width: 1;
+}
+
+.pm-burnup-tick {
+	fill: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	font-variant-numeric: tabular-nums;
+}
+
+.pm-burnup-label {
+	fill: var(--text-normal);
+	font-size: var(--font-ui-smaller);
+}
+
+.pm-burnup-estimate {
+	stroke: var(--text-faint);
+	stroke-width: 1;
+}
+
+.pm-burnup-today {
+	stroke: var(--text-muted);
+	stroke-width: 1;
+}
+
+/* プロジェクトの期間の線。今日の線（細く濃い）と見分けられるよう、太く薄い線にする */
+.pm-burnup-period {
+	stroke: var(--text-faint);
+	stroke-width: 2;
+	stroke-opacity: 0.6;
+}
+
+.pm-burnup-title {
+	margin: var(--size-4-4) 0 var(--size-4-1);
+}
+
+.pm-burnup-swatch.is-actual-dot {
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+	background: var(--pm-series-actual);
+}
+
+.pm-burnup-swatch.is-period {
+	width: 2px;
+	height: 12px;
+	background: var(--text-faint);
+}
+
+.pm-burnup-line {
+	fill: none;
+	stroke-width: 2;
+	stroke-linejoin: round;
+	stroke-linecap: round;
+}
+
+.pm-burnup-line.is-planned {
+	stroke: var(--pm-series-planned);
+}
+
+.pm-burnup-line.is-actual {
+	stroke: var(--pm-series-actual);
+}
+
+/* 点はまわりに背景色の輪を付け、線と重なっても見えるようにする */
+.pm-burnup-dot {
+	stroke: var(--background-primary);
+	stroke-width: 2;
+}
+
+.pm-burnup-dot.is-planned {
+	fill: var(--pm-series-planned);
+}
+
+.pm-burnup-dot.is-actual {
+	fill: var(--pm-series-actual);
+}
+
+.pm-burnup-dot.is-hidden,
+.pm-burnup-hover {
+	display: none;
+}
+
+.pm-burnup-hover.is-shown {
+	display: inline;
+}
+
+.pm-burnup-cross {
+	stroke: var(--text-faint);
+	stroke-width: 1;
+}
+
+.pm-burnup-hit {
+	fill: transparent;
+	cursor: crosshair;
+}
+
+.pm-burnup-tip {
+	display: none;
+	position: absolute;
+	top: 0;
+	left: var(--pm-x);
+	transform: translateX(12px);
+	padding: var(--size-4-1) var(--size-4-2);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	background: var(--background-primary);
+	box-shadow: var(--shadow-s);
+	font-size: var(--font-ui-small);
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+	pointer-events: none;
+}
+
+.pm-burnup-tip.is-left {
+	transform: translateX(calc(-100% - 12px));
+}
+
+.pm-burnup-tip.is-shown {
+	display: block;
+}
+
+.pm-burnup-tip-date {
+	color: var(--text-muted);
+}
+
+/* メンバーの負荷率の横棒グラフ（設計書 9.5）。棒の長さは --pm-w、印の位置は --pm-x、罫線の間隔は --pm-loadchart-step で受け取る */
+.pm-loadchart {
+	--pm-loadchart-row: 24px;
+	--pm-loadchart-bar: 14px;
+	--pm-loadchart-name: 10em;
+	--pm-loadchart-value: 9em;
+	max-width: 960px;
+}
+
+.pm-loadchart .pm-legend {
+	margin-bottom: var(--size-4-2);
+}
+
+.pm-loadchart-swatch {
+	display: inline-block;
+	width: 12px;
+	height: 12px;
+	border-radius: 2px;
+}
+
+.pm-loadchart-swatch.is-limit {
+	width: 2px;
+	border-radius: 0;
+	background: var(--text-normal);
+}
+
+.pm-loadchart-row {
+	display: grid;
+	grid-template-columns: var(--pm-loadchart-name) 1fr var(--pm-loadchart-value);
+	align-items: center;
+	height: var(--pm-loadchart-row);
+	font-size: var(--font-ui-small);
+}
+
+.pm-loadchart-row.is-clickable {
+	cursor: pointer;
+}
+
+.pm-loadchart-row.is-clickable:hover {
+	background: var(--background-modifier-hover);
+}
+
+/* 目盛りの行。下にスクロールしても上に残す */
+.pm-loadchart-axis {
+	position: sticky;
+	top: 0;
+	z-index: 2;
+	background: var(--background-primary);
+}
+
+.pm-loadchart-name {
+	padding-right: var(--size-4-2);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.pm-loadchart-track {
+	position: relative;
+	height: 100%;
+}
+
+.pm-loadchart-row:not(.pm-loadchart-axis) .pm-loadchart-track {
+	background-image: linear-gradient(to right, var(--pm-grid-color) 1px, transparent 1px);
+	background-size: var(--pm-loadchart-step) 100%;
+}
+
+/* 100% の線 */
+.pm-loadchart-row:not(.pm-loadchart-axis) .pm-loadchart-track::after {
+	content: '';
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: var(--pm-loadchart-100);
+	border-left: 1px solid var(--text-muted);
+}
+
+.pm-loadchart-tick {
+	position: absolute;
+	left: var(--pm-x);
+	top: 50%;
+	transform: translate(-50%, -50%);
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+}
+
+/* 棒は左の基準線から伸ばし、先の角だけ丸める */
+.pm-loadchart-bar {
+	position: absolute;
+	left: 0;
+	top: calc((var(--pm-loadchart-row) - var(--pm-loadchart-bar)) / 2);
+	width: var(--pm-w);
+	height: var(--pm-loadchart-bar);
+	border-radius: 0 4px 4px 0;
+}
+
+/* 色はメンバー状況のセルの塗り（.pm-load-*）と同じ3段 */
+.pm-loadchart-bar.is-normal,
+.pm-loadchart-swatch.is-normal {
+	background: rgba(var(--color-green-rgb), 0.12);
+}
+
+.pm-loadchart-bar.is-caution,
+.pm-loadchart-swatch.is-caution {
+	background: rgba(var(--color-orange-rgb), 0.25);
+}
+
+.pm-loadchart-bar.is-warning,
+.pm-loadchart-swatch.is-warning {
+	background: rgba(var(--color-red-rgb), 0.3);
+}
+
+/* その人の負荷許容率の印。棒と重なっても見えるよう背景色の縁を付ける */
+.pm-loadchart-limit {
+	position: absolute;
+	left: var(--pm-x);
+	top: 3px;
+	bottom: 3px;
+	width: 2px;
+	transform: translateX(-1px);
+	background: var(--text-normal);
+	box-shadow: 0 0 0 1px var(--background-primary);
+}
+
+.pm-loadchart-value {
+	display: flex;
+	align-items: center;
+	gap: var(--size-2-2);
+	padding-left: var(--size-4-2);
+	white-space: nowrap;
+}
+
+.pm-loadchart-rate {
+	min-width: 3.5em;
+	text-align: right;
+	font-variant-numeric: tabular-nums;
+}
+
+.pm-loadchart-level.is-caution {
+	--pm-mark-color: var(--color-orange);
+}
+
+.pm-loadchart-level.is-warning {
+	--pm-mark-color: var(--color-red);
+}
+
+.pm-loadchart-value .pm-load-holiday-mark {
+	margin-left: 0;
+}
+
+/* ガントチャート（設計書 9.8）。横の位置と幅は --pm-x・--pm-w、横軸の幅は --pm-gantt-width で受け取る */
+.pm-gantt {
+	--pm-gantt-label: 320px;
+	--pm-gantt-row: 28px;
+	--pm-gantt-cell: 22px;
+	--pm-gantt-head: calc(var(--pm-gantt-cell) * 2);
+	--pm-gantt-bar: 14px;
+	--pm-gantt-group-bar: 8px;
+	position: relative;
+	width: max-content;
+	font-size: var(--font-ui-small);
+}
+
+.pm-gantt-row,
+.pm-gantt-head {
+	display: flex;
+}
+
+.pm-gantt-label {
+	position: sticky;
+	left: 0;
+	z-index: 2;
+	flex: 0 0 var(--pm-gantt-label);
+	width: var(--pm-gantt-label);
+	height: var(--pm-gantt-row);
+	line-height: var(--pm-gantt-row);
+	padding: 0 var(--size-4-2);
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+	background: var(--background-primary);
+	border-right: 1px solid var(--background-modifier-border);
+}
+
+.pm-grid-lines .pm-gantt-label,
+.pm-grid-lines .pm-gantt-track {
+	border-bottom: 1px solid var(--pm-grid-color);
+}
+
+/* 期間の区切りの縦線。行の後ろに描く（設計書 9.8） */
+.pm-gantt-gridline {
+	position: absolute;
+	top: var(--pm-gantt-head);
+	bottom: 0;
+	left: calc(var(--pm-gantt-label) + var(--pm-x));
+	width: 1px;
+	background: var(--pm-grid-color);
+	pointer-events: none;
+}
+
+/* 休日の縦の帯。見出しの休日のマスと同じ色（設計書 9.8） */
+.pm-gantt-holiday {
+	position: absolute;
+	top: var(--pm-gantt-head);
+	bottom: 0;
+	left: calc(var(--pm-gantt-label) + var(--pm-x));
+	width: var(--pm-w);
+	background: var(--background-secondary);
+	pointer-events: none;
+}
+
+.pm-gantt-track {
+	position: relative;
+	flex: 0 0 var(--pm-gantt-width);
+	width: var(--pm-gantt-width);
+	height: var(--pm-gantt-row);
+}
+
+.pm-gantt-head {
+	position: sticky;
+	top: 0;
+	z-index: 3;
+	background: var(--background-primary);
+}
+
+.pm-gantt-head .pm-gantt-label,
+.pm-gantt-head .pm-gantt-track {
+	height: var(--pm-gantt-head);
+	font-weight: var(--font-semibold);
+}
+
+.pm-gantt-head .pm-gantt-label {
+	z-index: 4;
+	line-height: var(--pm-gantt-head);
+}
+
+.pm-gantt-cell {
+	position: absolute;
+	left: var(--pm-x);
+	width: var(--pm-w);
+	height: var(--pm-gantt-cell);
+	line-height: var(--pm-gantt-cell);
+	overflow: hidden;
+	white-space: nowrap;
+	text-align: center;
+	border-left: 1px solid var(--background-modifier-border);
+	color: var(--text-muted);
+}
+
+.pm-gantt-cell.is-month {
+	top: 0;
+}
+
+.pm-gantt-cell.is-period {
+	top: var(--pm-gantt-cell);
+}
+
+.pm-gantt-cell.is-today {
+	color: var(--text-accent);
+}
+
+.pm-gantt-cell.is-holiday {
+	background: var(--background-secondary);
+	color: var(--text-faint);
+}
+
+.pm-gantt-project .pm-gantt-label {
+	display: flex;
+	background: var(--background-secondary);
+}
+
+/* 後ろの縦線が透けて見えるよう、半透明にする */
+.pm-gantt-project .pm-gantt-track {
+	background: rgba(var(--mono-rgb-100), 0.04);
+}
+
+.pm-gantt-project .pm-gantt-label,
+.pm-gantt-project .pm-gantt-track {
+	font-weight: var(--font-semibold);
+}
+
+.pm-gantt-epic .pm-gantt-label {
+	display: flex;
+	padding-left: var(--size-4-5);
+	font-weight: var(--font-semibold);
+}
+
+.pm-gantt-task .pm-gantt-label {
+	display: flex;
+	padding-left: var(--size-4-12);
+}
+
+/* 長い表示名は省略し、後ろの依存の印とフォームのボタンは残す（設計書 9.8） */
+.pm-gantt-project .pm-gantt-title,
+.pm-gantt-epic .pm-gantt-title,
+.pm-gantt-task .pm-gantt-title {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+/* フォーム・＋エピックのボタンは表示名の欄の右端に置く（設計書 9.8） */
+.pm-gantt-label .pm-row-button {
+	flex: none;
+	align-self: center;
+	margin-left: auto;
+	line-height: normal;
+	font-weight: var(--font-normal);
+}
+
+/* ボタンが2つのときは並べて右端に置く */
+.pm-gantt-label .pm-row-button + .pm-row-button {
+	margin-left: var(--size-4-1);
+}
+
+.pm-gantt-bar {
+	position: absolute;
+	left: var(--pm-x);
+	width: var(--pm-w);
+	top: calc((var(--pm-gantt-row) - var(--pm-gantt-bar)) / 2);
+	height: var(--pm-gantt-bar);
+	border-radius: var(--radius-s);
+	background: var(--pm-bar-color, var(--pm-color-task, var(--interactive-accent)));
+}
+
+/* 棒の色は種類ごとの設定の色。遅れ・期限より後・完了の色が優先する（設計書 9.8） */
+.pm-gantt-project {
+	--pm-bar-color: var(--pm-color-project);
+}
+
+.pm-gantt-epic {
+	--pm-bar-color: var(--pm-color-epic);
+}
+
+/* 依存のあるタスク：左の丸＝先行あり、右の丸＝後続あり */
+.pm-gantt-bar.has-predecessor::before,
+.pm-gantt-bar.has-successor::after {
+	content: "";
+	position: absolute;
+	top: 50%;
+	width: 8px;
+	height: 8px;
+	border: 2px solid var(--text-normal);
+	border-radius: 50%;
+	background: var(--background-primary);
+	transform: translateY(-50%);
+}
+
+.pm-gantt-bar.has-predecessor::before {
+	left: -5px;
+}
+
+.pm-gantt-bar.has-successor::after {
+	right: -5px;
+}
+
+.pm-gantt-bar.is-legend.has-predecessor,
+.pm-gantt-bar.is-legend.has-successor {
+	position: relative;
+	margin: 0 6px;
+}
+
+.pm-gantt-dep-mark {
+	flex: none;
+	margin-left: var(--size-4-1);
+	color: var(--text-accent);
+}
+
+.pm-gantt-bar.is-group {
+	top: calc((var(--pm-gantt-row) - var(--pm-gantt-group-bar)) / 2);
+	height: var(--pm-gantt-group-bar);
+}
+
+.pm-gantt-bar.is-delayed {
+	background: var(--color-orange);
+}
+
+.pm-gantt-bar.is-late {
+	background: var(--color-red);
+}
+
+.pm-gantt-bar.is-done {
+	background: var(--background-modifier-border-hover);
+}
+
+.pm-gantt-bar.is-cut-start {
+	border-top-left-radius: 0;
+	border-bottom-left-radius: 0;
+}
+
+.pm-gantt-bar.is-cut-end {
+	border-top-right-radius: 0;
+	border-bottom-right-radius: 0;
+}
+
+.pm-gantt-bar.is-selected {
+	outline: 2px solid var(--text-normal);
+}
+
+.pm-gantt-bar.is-linked {
+	outline: 2px solid var(--text-accent);
+}
+
+.pm-gantt-bar.is-legend {
+	position: static;
+	display: inline-block;
+	width: auto;
+	height: auto;
+	padding: 0 var(--size-4-2);
+	color: var(--text-on-accent);
+	cursor: default;
+}
+
+.pm-gantt-bar.is-legend.is-done {
+	color: var(--text-normal);
+}
+
+.pm-gantt-due {
+	position: absolute;
+	left: var(--pm-x);
+	top: 3px;
+	bottom: 3px;
+	width: 2px;
+	transform: translateX(-1px);
+	background: var(--color-red);
+}
+
+.pm-gantt-milestone {
+	position: absolute;
+	left: var(--pm-x);
+	top: 0;
+	line-height: var(--pm-gantt-row);
+	transform: translateX(-50%);
+	color: var(--text-accent);
+}
+
+.pm-gantt-milestone.is-late {
+	color: var(--color-orange);
+}
+
+.pm-gantt-milestone.is-missed {
+	color: var(--color-red);
+}
+
+.pm-gantt-today {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: calc(var(--pm-gantt-label) + var(--pm-x));
+	z-index: 1;
+	width: 2px;
+	background: var(--color-green);
+	pointer-events: none;
+}
+
+.pm-gantt-none {
+	position: absolute;
+	left: var(--size-4-1);
+	line-height: var(--pm-gantt-row);
+	white-space: nowrap;
+	color: var(--text-faint);
+}
+
+.pm-gantt-links {
+	position: absolute;
+	top: 0;
+	left: 0;
+	z-index: 1;
+	overflow: visible;
+	pointer-events: none;
+}
+
+.pm-gantt-link {
+	fill: none;
+	stroke: var(--text-accent);
+	stroke-width: 1.5;
+}
+
+/* 文の長さで高さが変わらないよう1行に固定する（変わると棒の位置がずれて選びにくい） */
+.pm-gantt-link-note {
+	height: 1.5em;
+	line-height: 1.5em;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+
+.pm-gantt-links marker path {
+	fill: var(--text-accent);
+}

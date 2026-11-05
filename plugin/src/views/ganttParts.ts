@@ -103,8 +103,13 @@ export function milestoneMark(track: HTMLElement, scale: GanttScale, m: Mileston
 	mark.setAttr('aria-label', notes.join('\n'));
 }
 
-/** 依存の線（要件4.8c）。棒を指している間だけ、先行・後続との間に引く */
-export function dependencyLines(wrap: HTMLElement, tasks: readonly Task[], bars: Map<NoteId, HTMLElement>, note: HTMLElement): void {
+/** 依存の線（要件4.8c）。棒を指している間だけ、先行・後続との間に引く。戻り値で後から足した棒にも付けられる */
+export function dependencyLines(
+	wrap: HTMLElement,
+	tasks: readonly Task[],
+	bars: Map<NoteId, HTMLElement>,
+	note: HTMLElement,
+): (id: NoteId, bar: HTMLElement) => void {
 	const svg = document.createElementNS(SVG_NS, 'svg');
 	svg.classList.add('pm-gantt-links');
 	const marker = document.createElementNS(SVG_NS, 'marker');
@@ -165,10 +170,13 @@ export function dependencyLines(wrap: HTMLElement, tasks: readonly Task[], bars:
 		);
 	};
 
-	for (const [id, bar] of bars) {
+	const watch = (id: NoteId, bar: HTMLElement) => {
 		bar.addEventListener('mouseenter', () => show(id));
 		bar.addEventListener('mouseleave', () => show(undefined));
-	}
+	};
+	for (const [id, bar] of bars) watch(id, bar);
+	// 後から足した棒（エピックを開いたとき）に、線を出す仕掛けを付ける
+	return watch;
 }
 
 /** 横の位置と幅を CSS 変数で渡す（設計書 9.8） */

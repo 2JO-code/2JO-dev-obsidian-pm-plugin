@@ -10,6 +10,10 @@ import { VaultIndex } from './vaultIndex';
 const BATCH_SIZE = 200;
 /** 変更の通知をまとめる間隔（ミリ秒。設計書 3.3） */
 const NOTIFY_DELAY = 300;
+/** まとめて書く間、描き直しを止める上限（ミリ秒。書き終えてから数える。設計書 3.3） */
+const HOLD_LIMIT = 2000;
+/** 書いている最中の上限（ミリ秒） */
+const HOLD_LIMIT_WRITING = 10000;
 
 /** Vault を読んで索引を作り、変更に合わせて更新する。変更があると 'updated' を出す（設計書 3章） */
 export class VaultStore extends Events {
@@ -20,6 +24,10 @@ export class VaultStore extends Events {
 	/** 作り直し中に変わったファイル。最後に読み直す（設計書 3.2） */
 	private readonly changedWhileBuilding = new Set<string>();
 	private readonly notify = debounce(() => this.trigger('updated'), NOTIFY_DELAY);
+	/** まとめて書いたファイルのうち、まだ読み直していないもの（設計書 3.3） */
+	private readonly waiting = new Set<string>();
+	/** 描き直しを止めている間の、上限のタイマー */
+	private holdTimer: number | undefined;
 
 	constructor(
 		private readonly app: App,
@@ -31,6 +39,43 @@ export class VaultStore extends Events {
 	/** 戻り値は registerEvent に渡す */
 	onUpdated(callback: () => void): EventRef {
 		return this.on('updated', callback);
+	}
+
+	/**
+	 * 複数のノートをまとめて書く。書いたファイルをすべて読み直すまで描き直しを止め、最後に1回だけ知らせる（設計書 3.3）
+	 * @param paths 書き換えるファイル（中身が変わるものだけ）
+	 */
+	async writeMany(paths: readonly string[], write: () => Promise<void>): Promise<void> {
+		for (const path of paths) this.waiting.add(path);
+		this.startHold(HOLD_LIMIT_WRITING);
+		try {
+			await write();
+		} catch (e) {
+			this.release();
+			throw e;
+		}
+		// 読み直しの知らせは書き込みより後に届くので、もう少し待つ
+		if (this.holdTimer !== undefined) this.startHold(HOLD_LIMIT);
+	}
+
+	private startHold(limit: number): void {
+		window.clearTimeout(this.holdTimer);
+		this.holdTimer = window.setTimeout(() => this.release(), limit);
+	}
+
+	/** 描き直しの停止をやめて知らせる */
+	private release(): void {
+		window.clearTimeout(this.holdTimer);
+		this.holdTimer = undefined;
+		this.waiting.clear();
+		this.notify();
+	}
+
+	/** 変わったことを知らせる。まとめて書いている間は、全部読み直すまで待つ */
+	private changed(path?: string): void {
+		if (path !== undefined) this.waiting.delete(path);
+		if (this.holdTimer === undefined) this.notify();
+		else if (this.waiting.size === 0) this.release();
 	}
 
 	/** 索引を作り直す（起動時・手動の再読み込み） */
@@ -80,15 +125,15 @@ export class VaultStore extends Events {
 			}),
 			// ID の形でないファイルは索引に入れないが、警告一覧のために知らせる（設計書 8章）
 			vault.on('create', (file) => {
-				if (this.isStray(file.path)) this.notify();
+				if (this.isStray(file.path)) this.changed();
 			}),
 			vault.on('delete', (file) => {
 				this.remember(file.path);
 				if (this.index.getRecord(file.path)) {
 					this.index.delete(file.path);
-					this.notify();
+					this.changed();
 				} else if (this.isStray(file.path)) {
-					this.notify();
+					this.changed();
 				}
 			}),
 			vault.on('rename', (file, oldPath) => {
@@ -98,7 +143,7 @@ export class VaultStore extends Events {
 				if (file instanceof TFile && file.extension === 'md' && parseNoteId(file.basename)) {
 					void this.update(file);
 				} else if (wasIndexed || this.isStray(oldPath) || this.isStray(file.path)) {
-					this.notify();
+					this.changed();
 				}
 			}),
 		];
@@ -119,7 +164,7 @@ export class VaultStore extends Events {
 		if (this.ready && oldTitle !== undefined && newTitle !== undefined && newTitle !== oldTitle) {
 			this.trigger('title-changed', file, oldTitle);
 		}
-		this.notify();
+		this.changed(file.path);
 	}
 
 	private async addTo(index: VaultIndex, file: TFile, data?: string, cache?: CachedMetadata): Promise<void> {

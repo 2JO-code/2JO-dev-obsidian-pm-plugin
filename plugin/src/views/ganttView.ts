@@ -4,14 +4,15 @@ import { barBox, DEFAULT_GANTT, dependencyFlags, fitRange, ganttScale, markX, pa
 import { displayRange } from '../calc/memberStatus';
 import type { RowLabels, TaskRow } from '../calc/taskList';
 import { WARNING_LABELS } from '../calc/warnings';
-import { isOpen, parseToggled, toggledForAll, wbsKey, wbsTreeFor, type WbsProject } from '../calc/wbs';
+import { epicOrderOf, isOpen, parseToggled, toggledForAll, wbsKey, wbsTreeFor, type WbsProject } from '../calc/wbs';
+import { taskWbsLabel } from '../calc/wbsOrder';
 import type { PeriodUnit } from '../calc/workdays';
 import { openNewNoteModal } from '../commands/createNote';
 import { openEpicForm, openTaskForm } from '../commands/editTask';
 import type ProjectManagerPlugin from '../main';
 import type { NoteId } from '../model';
 import { projectLabel } from '../settings';
-import { rowButton, toggleMark } from './actions';
+import { rowButton, toggleMark, updateToggleMark } from './actions';
 import { kindMark } from './badges';
 import { warningCounts } from './format';
 import { PmView } from './baseView';
@@ -21,6 +22,7 @@ import { dependencyLines, dueMark, ganttBar, ganttHeader, LINK_HINT, milestoneMa
 import { noteLink } from './openNote';
 import { openView } from './openView';
 import { PROJECT_STATUS_VIEW_TYPE } from './projectStatusView';
+import { WbsDrag, type WbsDragGroup } from './wbsDrag';
 
 export const GANTT_VIEW_TYPE = 'pm-gantt';
 
@@ -45,6 +47,14 @@ export class GanttView extends PmView {
 	private options: GanttOptions = { ...DEFAULT_GANTT };
 	/** 初期の開閉と逆にした行のキー（`wbsKey`。WBS と同じ扱い） */
 	private toggled = new Set<string>();
+	/** 開いているエピックのタスクの行（キーは `wbsKey`）。開閉のときに足し引きする */
+	private readonly taskRowsOf = new Map<string, { row: HTMLElement; id: NoteId }[]>();
+	/** 表示しているタスクの棒（依存の線を引くため） */
+	private bars = new Map<NoteId, HTMLElement>();
+	/** 後から足した棒に依存の線の仕掛けを付ける（`dependencyLines` の戻り値） */
+	private watchBar: ((id: NoteId, bar: HTMLElement) => void) | undefined;
+	/** 行のドラッグで番号を入れ替える（WBS と同じ） */
+	private readonly drag = new WbsDrag(this.app, () => this.plugin.store);
 
 	getViewType(): string {
 		return GANTT_VIEW_TYPE;
@@ -59,7 +69,7 @@ export class GanttView extends PmView {
 	}
 
 	protected getDescription(): string {
-		return 'タスクの日程の棒グラフ（計算上の開始日〜終了日）。棒を指すと依存関係の線';
+		return 'タスクの日程の棒グラフ（計算上の開始日〜終了日）。棒を指すと依存関係の線。左の名前をドラッグすると番号を入れ替え';
 	}
 
 	getState(): Record<string, unknown> {
@@ -88,6 +98,29 @@ export class GanttView extends PmView {
 		else this.toggled.add(key);
 		this.app.workspace.requestSaveLayout();
 		this.redraw();
+	}
+
+	/**
+	 * エピックの開閉。全体は描き直さず、そのエピックのタスクの行だけを足す・消す（設計書 9.7・9.8）
+	 * @param render タスクの行を作る（末尾に作り、エピックの行の後ろへ動かす）
+	 */
+	private toggleEpic(key: string, epicRow: HTMLElement, render: () => { row: HTMLElement; id: NoteId }[]): void {
+		if (this.toggled.has(key)) this.toggled.delete(key);
+		else this.toggled.add(key);
+		this.app.workspace.requestSaveLayout();
+		const open = this.isOpen(key);
+		updateToggleMark(epicRow, open);
+		for (const { row, id } of this.taskRowsOf.get(key) ?? []) {
+			row.remove();
+			this.bars.delete(id);
+		}
+		const rows = open ? render() : [];
+		epicRow.after(...rows.map((r) => r.row));
+		for (const { id } of rows) {
+			const bar = this.bars.get(id);
+			if (bar) this.watchBar?.(id, bar);
+		}
+		this.taskRowsOf.set(key, rows);
 	}
 
 	private setAll(tree: WbsProject[], open: boolean): void {
@@ -160,7 +193,11 @@ export class GanttView extends PmView {
 
 		const scale = ganttScale(range, options.unit);
 		const wrap = body.createDiv({ cls: 'pm-gantt' });
-		wrap.setCssProps({ '--pm-gantt-width': `${scale.width}px` });
+		const wbsWidth = Math.max(0, ...tree.flatMap((p) => p.epics.flatMap((e) => e.tasks.map((t) => taskWbsLabel(e.row.epic?.wbs, t.task.wbs).length))));
+		wrap.setCssProps({
+			'--pm-gantt-wbs': wbsWidth > 0 ? `calc(${wbsWidth}ch + var(--size-4-2))` : '0px',
+			'--pm-gantt-width': `${scale.width}px`,
+		});
 		ganttHeader(wrap, scale, ctx);
 		// 休日の縦の帯（単位が日のとき）。行より先に置き、棒の後ろに描く
 		for (const p of scale.periods) {
@@ -174,6 +211,9 @@ export class GanttView extends PmView {
 		}
 
 		const bars = new Map<NoteId, HTMLElement>();
+		this.bars = bars;
+		this.watchBar = undefined;
+		this.taskRowsOf.clear();
 		const allTasks = ctx.index.tasks({ includeArchived: true });
 		const flags = options.showDependencies ? dependencyFlags(allTasks) : new Map<NoteId, { predecessor: boolean; successor: boolean }>();
 		for (const p of tree) {
@@ -191,11 +231,16 @@ export class GanttView extends PmView {
 			for (const m of p.status.milestones) milestoneMark(pr.track, scale, m);
 			if (!projectOpen) continue;
 
+			// エピックはプロジェクトの中で入れ替える（WBS と同じ。設計書 9.7）
+			const epicGroup: WbsDragGroup = { kind: 'epic', key: projectKey, order: epicOrderOf(p.status) };
 			for (const e of p.epics) {
 				const { epic } = e.row;
 				const key = wbsKey.epic(project.id, epic?.id);
 				const open = this.isOpen(key);
-				const er = this.row(wrap, 'pm-gantt-epic', open, e.tasks.length > 0, () => this.toggle(key));
+				const taskGroup: WbsDragGroup = { kind: 'task', key, order: e.order };
+				const renderTasks = () =>
+					e.tasks.map((t) => ({ row: this.taskRow(wrap, scale, t, bars, flags.get(t.task.id), epic?.wbs, taskGroup), id: t.task.id }));
+				const er = this.row(wrap, 'pm-gantt-epic', open, e.tasks.length > 0, () => this.toggleEpic(key, er.row, renderTasks));
 				const name = epic ? `${epic.wbs ? `${epic.wbs} ` : ''}${epic.title}` : '（エピックなし）';
 				const et = er.label.createSpan({ cls: 'pm-gantt-title', text: name });
 				if (epic) {
@@ -203,6 +248,7 @@ export class GanttView extends PmView {
 					et.addClass('pm-action-link');
 					noteLink(this.plugin, et, epic.path);
 					rowButton(er.label, 'フォーム', () => openEpicForm(this.plugin, epic.path));
+					this.drag.attach(er.row, epicGroup, epic.id, epic.title, er.label);
 				}
 				rowButton(er.label, '＋タスク', () => openNewNoteModal(this.plugin, 'task', { project: project.id, ...(epic ? { epic: epic.id } : {}) }));
 				if (e.row.span) {
@@ -210,21 +256,27 @@ export class GanttView extends PmView {
 					ganttBar(er.track, scale, name, info, true);
 				}
 				if (epic?.due) dueMark(er.track, scale, epic.due);
-				if (open) for (const t of e.tasks) this.taskRow(wrap, scale, t, bars, flags.get(t.task.id));
+				if (open) this.taskRowsOf.set(key, renderTasks());
 			}
 		}
 
 		const today = markX(scale, ctx.today);
 		if (today !== undefined) wrap.createDiv({ cls: 'pm-gantt-today', attr: { 'aria-label': `今日（${ctx.today}）` } }).setCssProps({ '--pm-x': `${today}px` });
-		dependencyLines(wrap, allTasks, bars, linkNote);
+		this.watchBar = dependencyLines(wrap, allTasks, bars, linkNote);
 	}
 
 	/** 1行。左に表示名（▶／▼ を押すと開閉）、右に棒を置く欄 */
-	private row(wrap: HTMLElement, cls: string, open: boolean, hasChildren: boolean, onToggle?: () => void): { label: HTMLElement; track: HTMLElement } {
+	private row(
+		wrap: HTMLElement,
+		cls: string,
+		open: boolean,
+		hasChildren: boolean,
+		onToggle?: () => void,
+	): { row: HTMLElement; label: HTMLElement; track: HTMLElement } {
 		const row = wrap.createDiv({ cls: `pm-gantt-row ${cls}` });
 		const label = row.createDiv({ cls: 'pm-gantt-label' });
 		if (onToggle) toggleMark(label, open, hasChildren, onToggle);
-		return { label, track: row.createDiv({ cls: 'pm-gantt-track' }) };
+		return { row, label, track: row.createDiv({ cls: 'pm-gantt-track' }) };
 	}
 
 	private taskRow(
@@ -233,10 +285,16 @@ export class GanttView extends PmView {
 		row: TaskRow,
 		bars: Map<NoteId, HTMLElement>,
 		dep: { predecessor: boolean; successor: boolean } | undefined,
-	): void {
+		epicWbs: string | undefined,
+		group: WbsDragGroup,
+	): HTMLElement {
 		const { task } = row;
 		const r = this.row(wrap, 'pm-gantt-task', false, false);
-		const title = r.label.createSpan({ cls: 'pm-gantt-title pm-action-link', text: task.title });
+		this.drag.attach(r.row, group, task.id, task.title, r.label);
+		// 番号は幅をそろえた欄に入れ、けたが違っても名前の頭をそろえる（設計書 9.8）
+		const title = r.label.createSpan({ cls: 'pm-gantt-title pm-action-link' });
+		title.createSpan({ cls: 'pm-gantt-wbs', text: taskWbsLabel(epicWbs, task.wbs) });
+		title.appendText(task.title);
 		kindMark(title, 'task');
 		title.setAttr('aria-label', `ノートを開く（${row.status}${row.assignees.length > 0 ? `／${row.assignees.map((m) => m.title).join('、')}` : ''}）`);
 		noteLink(this.plugin, title, task.path);
@@ -248,7 +306,7 @@ export class GanttView extends PmView {
 		const s = row.schedule;
 		if (!s) {
 			r.track.createSpan({ cls: 'pm-gantt-none', text: '日程を計算できません（日付が無い、先行タスクの日程が出せない、または依存関係が循環しています）' });
-			return;
+			return r.row;
 		}
 		const info: BarInfo = {
 			start: s.start,
@@ -259,10 +317,11 @@ export class GanttView extends PmView {
 		};
 		const extra = warningCounts(row.warnings).map(([kind]) => WARNING_LABELS[kind]).join('・');
 		const bar = ganttBar(r.track, scale, task.title, info, false, extra, depText);
-		if (!bar) return;
+		if (!bar) return r.row;
 		if (dep?.predecessor) bar.addClass('has-predecessor');
 		if (dep?.successor) bar.addClass('has-successor');
 		bars.set(task.id, bar);
 		bar.dataset.task = task.id;
+		return r.row;
 	}
 }

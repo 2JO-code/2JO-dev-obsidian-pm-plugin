@@ -37,14 +37,14 @@ describe('planNewNote', () => {
 
 	it('タスク：プロジェクトとエピックをリンクで持ち、ステータスはタスク用の先頭', () => {
 		const plan = planNewNote(
-			{ kind: 'task', title: 'モデリング', project: 'PJT-1', epic: 'EPIC-1' },
+			{ kind: 'task', title: 'モデリング', project: 'PJT-1', epic: 'EPIC-1', wbs: '3' },
 			statuses,
 			folders,
 			none,
 			fixedId,
 		);
 		expect(plan.path).toBe('Tasks/TASK-ID.md');
-		expect(plan.frontmatter).toMatchObject({ project: '[[PJT-1]]', epic: '[[EPIC-1]]', status: '未着手' });
+		expect(plan.frontmatter).toMatchObject({ project: '[[PJT-1]]', epic: '[[EPIC-1]]', wbs: '3', status: '未着手' });
 		expect(plan.body).toBe('');
 	});
 
@@ -57,6 +57,7 @@ describe('planNewNote', () => {
 			project: '[[PJT-1]]',
 			status: '未着手',
 			epic: null,
+			wbs: null,
 			assignees: [],
 			estimate: null,
 			depends_on: [],

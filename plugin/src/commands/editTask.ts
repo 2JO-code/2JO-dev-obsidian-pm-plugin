@@ -20,10 +20,6 @@ function isNoteFile(file: unknown, type: NoteType): file is TFile {
 
 /** タスクのノートか */
 export const isTaskFile = (file: unknown): file is TFile => isNoteFile(file, 'task');
-/** エピックのノートか */
-export const isEpicFile = (file: unknown): file is TFile => isNoteFile(file, 'epic');
-/** プロジェクトのノートか */
-export const isProjectFile = (file: unknown): file is TFile => isNoteFile(file, 'project');
 /** メンバーのノートか（作業ログは除く） */
 export const isMemberFile = (file: unknown): file is TFile => isNoteFile(file, 'user');
 
@@ -141,6 +137,7 @@ export function openTaskForm(plugin: ProjectManagerPlugin, target: TFile | strin
 		projects: index.projects(),
 		epics: index.epics(),
 		tasks: index.tasks(),
+		numbered: index.tasks({ includeArchived: true }),
 		members: index.members(),
 		statuses: plugin.config.statuses.task,
 		displayName: plugin.personal.projectDisplayName,

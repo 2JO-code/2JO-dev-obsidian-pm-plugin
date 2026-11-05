@@ -502,6 +502,22 @@ td .pm-progress-pct {
 	color: var(--text-normal);
 }
 
+/* 行のドラッグで番号を入れ替える（WBS・ガント・プロジェクト状況。設計書 9.7）。落とす位置を行の上か下の線で示す */
+.pm-table tr.is-dragging td,
+.pm-gantt-row.is-dragging > * {
+	opacity: 0.4;
+}
+
+.pm-table tr.is-drop-before td,
+.pm-gantt-row.is-drop-before > * {
+	box-shadow: inset 0 2px 0 var(--interactive-accent);
+}
+
+.pm-table tr.is-drop-after td,
+.pm-gantt-row.is-drop-after > * {
+	box-shadow: inset 0 -2px 0 var(--interactive-accent);
+}
+
 /* 列はいちばん長い列と同じ高さにそろえる。短い列のカードが途切れても、見出しが上に残るようにする（設計書 9.6） */
 .pm-kanban {
 	display: flex;
@@ -1373,6 +1389,13 @@ td .pm-progress-pct {
 	min-width: 0;
 	overflow: hidden;
 	text-overflow: ellipsis;
+}
+
+/* タスクの番号の欄。いちばん長い番号の幅にそろえ、名前の頭をそろえる（設計書 9.8） */
+.pm-gantt-wbs {
+	display: inline-block;
+	min-width: var(--pm-gantt-wbs);
+	font-variant-numeric: tabular-nums;
 }
 
 /* フォーム・＋エピックのボタンは表示名の欄の右端に置く（設計書 9.8） */

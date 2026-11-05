@@ -10,6 +10,7 @@ export const FRONTMATTER_KEYS = {
 		'aliases',
 		'project',
 		'epic',
+		'wbs',
 		'status',
 		'assignees',
 		'estimate',

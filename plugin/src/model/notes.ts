@@ -52,6 +52,8 @@ export interface Task extends TitledNote {
 	type: 'task';
 	project: NoteId;
 	epic?: NoteId;
+	/** エピック内の連番（例：`3`）。表示は「エピックの WBS.連番」（設計書 11.17） */
+	wbs?: string;
 	status: string;
 	assignees: NoteId[];
 	/** 見積工数(h)。0.25刻み */

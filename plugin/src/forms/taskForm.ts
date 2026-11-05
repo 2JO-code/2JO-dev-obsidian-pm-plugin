@@ -3,11 +3,16 @@ import type { NoteId, StatusDef } from '../model';
 import type { FrontmatterUpdate } from '../write/frontmatter';
 import { date, keepFrames, link, links, linkValue, text, warnUnreadable } from './formValues';
 
+/** タスクの WBS 番号（エピック内の連番）の形。1以上の整数 */
+const TASK_WBS = /^[1-9]\d*$/;
+
 /** タスクの入力補助フォームの値。入力欄の文字列のまま持つ。読めないリンクは元の文字列のまま（設計書 4.5） */
 export interface TaskForm {
 	title: string;
 	project: NoteId;
 	epic: NoteId;
+	/** エピック内の連番 */
+	wbs: string;
 	status: string;
 	assignees: NoteId[];
 	estimate: string;
@@ -24,6 +29,7 @@ export function taskFormFromFrontmatter(fm: Record<string, unknown>): TaskForm {
 		title: text(fm.title),
 		project: link(fm.project, 'project'),
 		epic: link(fm.epic, 'epic'),
+		wbs: text(fm.wbs),
 		status: text(fm.status),
 		assignees: links(fm.assignees, 'user'),
 		estimate: text(fm.estimate),
@@ -64,6 +70,8 @@ export function taskFormToUpdate(form: TaskForm, statuses: readonly StatusDef[],
 	if (!status) errors.push('ステータスを選んでください');
 	if (form.dependsOn.includes(selfId)) errors.push('先行タスクに自分自身は選べません');
 
+	const wbs = form.wbs.trim();
+	if (wbs !== '' && !TASK_WBS.test(wbs)) errors.push('WBS番号は1以上の整数で入力してください');
 	const estimate = number(form.estimate, '見積工数', 0.25, errors);
 	const lagDays = number(form.lagDays, '相対日数', 1, errors);
 	const durationDays = number(form.durationDays, '所要日数', 1, errors);
@@ -86,6 +94,8 @@ export function taskFormToUpdate(form: TaskForm, statuses: readonly StatusDef[],
 		aliases: [title],
 		project: form.project ? linkValue(form.project, 'project') : undefined,
 		epic: form.epic ? linkValue(form.epic, 'epic') : undefined,
+		// 数に見える値も文字列で書く（設計書 4.1）
+		wbs: TASK_WBS.test(wbs) ? wbs : undefined,
 		status: status?.name ?? form.status,
 		assignees: form.assignees.length > 0 ? unique(form.assignees).map((v) => linkValue(v, 'user')) : undefined,
 		estimate,

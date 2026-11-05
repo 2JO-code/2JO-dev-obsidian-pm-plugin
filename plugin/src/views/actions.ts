@@ -36,6 +36,13 @@ export function toggleMark(parent: HTMLElement, open: boolean, hasChildren: bool
 	return mark;
 }
 
+/** 行の中の開閉の印（▶／▼）を書き換える（行を作り直さずに開閉するとき。設計書 9.7） */
+export function updateToggleMark(row: HTMLElement, open: boolean): void {
+	const mark = row.querySelector<HTMLElement>('.pm-toggle');
+	mark?.setText(open ? '▼' : '▶');
+	mark?.setAttr('aria-label', open ? 'たたむ' : '開く');
+}
+
 /** タスクの進捗のセル。押すとチェックリストの編集画面を開く（行のクリックとは別に動く。設計書 9.1） */
 export function subtaskCell(tr: HTMLElement, progress: TaskProgress, subtasks: SubtaskCount, onClick: () => void): HTMLElement {
 	const td = tr.createEl('td', { cls: 'is-numeric' });

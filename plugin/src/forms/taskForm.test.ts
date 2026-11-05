@@ -15,6 +15,7 @@ const form = (overrides: Partial<TaskForm> = {}): TaskForm => ({
 	title: 'モデリング',
 	project: PJT,
 	epic: '',
+	wbs: '',
 	status: '未着手',
 	assignees: [],
 	estimate: '',
@@ -33,6 +34,7 @@ describe('taskFormFromFrontmatter', () => {
 				title: 'モデリング',
 				project: `[[${PJT}]]`,
 				epic: `[[${EPIC}|名前]]`,
+				wbs: 3,
 				status: '進行中',
 				assignees: [`[[${USER}]]`],
 				estimate: 7.5,
@@ -40,7 +42,7 @@ describe('taskFormFromFrontmatter', () => {
 				start: '2026-11-04',
 			}),
 		).toEqual(
-			form({ epic: EPIC, status: '進行中', assignees: [USER], estimate: '7.5', dependsOn: [TASK], start: '2026-11-04' }),
+			form({ epic: EPIC, wbs: '3', status: '進行中', assignees: [USER], estimate: '7.5', dependsOn: [TASK], start: '2026-11-04' }),
 		);
 	});
 
@@ -60,7 +62,7 @@ describe('taskFormFromFrontmatter', () => {
 describe('taskFormToUpdate', () => {
 	it('入力を frontmatter の変更内容にする。空欄の任意項目は空の枠（リストは []、ほかは null）', () => {
 		const { errors, update } = taskFormToUpdate(
-			form({ epic: EPIC, assignees: [USER, USER], estimate: '7.5', start: '2026-11-04', due: '2026-11-10' }),
+			form({ epic: EPIC, wbs: ' 12 ', assignees: [USER, USER], estimate: '7.5', start: '2026-11-04', due: '2026-11-10' }),
 			statuses,
 			SELF,
 		);
@@ -71,6 +73,7 @@ describe('taskFormToUpdate', () => {
 			aliases: ['モデリング'],
 			project: `[[${PJT}]]`,
 			epic: `[[${EPIC}]]`,
+			wbs: '12',
 			status: '未着手',
 			assignees: [`[[${USER}]]`],
 			estimate: 7.5,
@@ -91,6 +94,7 @@ describe('taskFormToUpdate', () => {
 			aliases: ['モデリング'],
 			project: `[[${PJT}]]`,
 			epic: null,
+			wbs: null,
 			status: '未着手',
 			assignees: [],
 			estimate: null,
@@ -110,7 +114,7 @@ describe('taskFormToUpdate', () => {
 
 	it('入力の誤りを返す', () => {
 		const { errors } = taskFormToUpdate(
-			form({ title: ' ', project: '', status: '謎', estimate: '0.3', lagDays: '1.5', due: '2026-02-30', dependsOn: [SELF] }),
+			form({ title: ' ', project: '', status: '謎', wbs: '0', estimate: '0.3', lagDays: '1.5', due: '2026-02-30', dependsOn: [SELF] }),
 			statuses,
 			SELF,
 		);
@@ -119,6 +123,7 @@ describe('taskFormToUpdate', () => {
 			'プロジェクトを選んでください',
 			'ステータスを選んでください',
 			'先行タスクに自分自身は選べません',
+			'WBS番号は1以上の整数で入力してください',
 			'見積工数は0以上で0.25刻みの数値で入力してください',
 			'相対日数は0以上の整数で入力してください',
 			'期限日の日付が正しくありません',

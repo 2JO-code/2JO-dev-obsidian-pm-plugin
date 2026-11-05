@@ -138,6 +138,7 @@ export function buildNote(src: NoteSource): NoteRecord | null {
 				dependsOn: c.links('depends_on', 'task'),
 				...optional({
 					epic: c.link('epic', 'epic'),
+					wbs: c.string('wbs', true),
 					estimate: c.number('estimate', { step: 0.25 }),
 					lagDays: c.number('lag_days', { step: 1 }),
 					start: c.date('start'),

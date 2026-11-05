@@ -1,14 +1,17 @@
-import type { NoteId, Project } from '../model';
+import type { Epic, NoteId, Project, Task } from '../model';
 import { compareNumeric } from './compare';
 import type { CalcContext } from './context';
 import { filterProjects, filterTasks, type ViewFilter } from './filter';
 import { projectStatus, type EpicRow, type ProjectStatus } from './projectStatus';
 import { sortTaskRows, taskRows, type RowLabels, type TaskRow } from './taskList';
+import { sortByWbs, type Numbered } from './wbsOrder';
 
 export interface WbsEpic {
 	row: EpicRow;
-	/** 表示するタスク（絞り込み済み）。計算上の開始日の順 */
+	/** 表示するタスク（絞り込み済み）。番号順、番号の無いものは計算上の開始日の順で後ろ */
 	tasks: TaskRow[];
+	/** エピックの全タスク（絞り込まない）。tasks と同じ順。ドラッグでの振り直しに使う */
+	order: Numbered[];
 }
 
 export interface WbsProject {
@@ -17,7 +20,7 @@ export interface WbsProject {
 }
 
 /**
- * WBS の階層（要件4.8b、設計書 11.12）。進捗・工数・期間は絞り込みに関係なくエピック・プロジェクト全体で出す。
+ * WBS の階層（要件4.8b、設計書 11.12）。タスクは番号順（設計書 11.17）。進捗・工数・期間は絞り込みに関係なくエピック・プロジェクト全体で出す。
  * @param visible 担当者・ステータスで絞り込んだタスクのID。undefined なら絞り込みなし。
  *   絞り込んでいるときは、表示するタスクの無いエピックを出さない
  */
@@ -32,14 +35,25 @@ export function wbsTree(
 		const status = projectStatus(ctx, project);
 		const epics = status.epics
 			.map((row) => {
-				const shown = visible ? row.tasks.filter((t) => visible.has(t.id)) : row.tasks;
-				const rows = sortTaskRows(taskRows(ctx, shown), 'start', false, labels, statusOrder);
-				return { row, tasks: rows };
+				const all = wbsTaskRows(ctx, row.tasks, labels, statusOrder);
+				const rows = visible ? all.filter((r) => visible.has(r.task.id)) : all;
+				return { row, tasks: rows, order: numberedOf(all.map((r) => r.task)) };
 			})
 			.filter((e) => !visible || e.tasks.length > 0);
 		return { status, epics };
 	});
 }
+
+/** タスクの行を WBS 番号順に。番号の無いものは計算上の開始日の順で後ろ（設計書 11.17） */
+export function wbsTaskRows(ctx: CalcContext, tasks: readonly Task[], labels: RowLabels, statusOrder: readonly string[]): TaskRow[] {
+	return sortByWbs(sortTaskRows(taskRows(ctx, tasks), 'start', false, labels, statusOrder), (r) => r.task.wbs);
+}
+
+/** ドラッグでの振り直しに渡す、ID と番号の並び */
+export const numberedOf = (notes: readonly (Epic | Task)[]): Numbered[] => notes.map((n) => ({ id: n.id, ...(n.wbs ? { wbs: n.wbs } : {}) }));
+
+/** プロジェクトのエピックの並び（エピックなしを除く）。エピックのドラッグに使う */
+export const epicOrderOf = (status: ProjectStatus): Numbered[] => numberedOf(status.epics.flatMap(({ epic }) => (epic ? [epic] : [])));
 
 /**
  * 絞り込みに合う WBS の階層（WBS とガントで共通。設計書 9.7・9.8）。

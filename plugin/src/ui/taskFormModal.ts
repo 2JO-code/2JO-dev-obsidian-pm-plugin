@@ -1,5 +1,6 @@
 import { type App, Setting, type TFile } from 'obsidian';
 import { compareJa } from '../calc/compare';
+import { nextTaskWbsIn } from '../calc/wbsOrder';
 import { missingLabel } from '../forms/formValues';
 import { taskFormToUpdate, type TaskForm } from '../forms/taskForm';
 import type { Epic, Member, NoteId, NoteType, Project, StatusDef, Task } from '../model';
@@ -15,6 +16,8 @@ export interface TaskFormModalOptions {
 	projects: Project[];
 	epics: Epic[];
 	tasks: Task[];
+	/** 番号を付けるときに見る全タスク（アーカイブ内も含む） */
+	numbered: Task[];
 	members: Member[];
 	statuses: StatusDef[];
 	displayName: ProjectDisplayName;
@@ -58,14 +61,27 @@ export class TaskFormModal extends FormModal {
 				form.project = v;
 				// 別プロジェクトのエピックは外す
 				if (!options.epics.some((e) => e.id === form.epic && e.project === v)) form.epic = '';
+				this.renumber();
 				this.render();
 			});
 		});
 
 		new Setting(contentEl).setName('エピック').setDesc('任意').addDropdown((d) => {
 			epicOptions(d, options.epics, form.project, form.epic, form.project ? 'なし' : '先にプロジェクトを選んでください');
-			d.setDisabled(!form.project).onChange((v) => (form.epic = v));
+			d.setDisabled(!form.project).onChange((v) => {
+				form.epic = v;
+				this.renumber();
+				this.render();
+			});
 		});
+
+		this.numberSetting(
+			'WBS番号',
+			'エピック内の連番（1以上の整数）。ビューの行のドラッグでも入れ替えられます',
+			form.wbs,
+			(v) => (form.wbs = v),
+			1,
+		);
 
 		statusSetting(contentEl, options.statuses, form.status, (v) => (form.status = v));
 
@@ -137,16 +153,22 @@ export class TaskFormModal extends FormModal {
 		});
 	}
 
-	private numberSetting(name: string, desc: string, value: string, onChange: (v: string) => void): void {
+	private numberSetting(name: string, desc: string, value: string, onChange: (v: string) => void, min = 0): void {
 		new Setting(this.contentEl)
 			.setName(name)
 			.setDesc(desc)
 			.addText((t) => {
 				t.inputEl.type = 'number';
 				t.inputEl.step = '1';
-				t.inputEl.min = '0';
+				t.inputEl.min = String(min);
 				t.setValue(value).onChange(onChange);
 			});
+	}
+
+	/** 移った先のプロジェクト・エピックの続きの番号にする（設計書 11.17） */
+	private renumber(): void {
+		const { form, options } = this;
+		form.wbs = nextTaskWbsIn(options.numbered, form.project, form.epic, options.taskId);
 	}
 
 	private async save(): Promise<void> {

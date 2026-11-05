@@ -2,6 +2,7 @@ import { Notice, normalizePath } from 'obsidian';
 import type { IdKind } from '../id';
 import type ProjectManagerPlugin from '../main';
 import { NewNoteModal, type NewNoteModalOptions } from '../ui/newNoteModal';
+import { nextTaskWbsIn } from '../calc/wbsOrder';
 import { createNoteFile } from '../write/frontmatterFile';
 import { planNewNote, type NewNoteInput } from './newNote';
 import { storeReady } from './ready';
@@ -42,6 +43,10 @@ export function openNewNoteModal(plugin: ProjectManagerPlugin, kind: IdKind, ini
 /** ノートを作り、作ったことを通知する。ノートは開かない（設計書 4.4） */
 async function createNote(plugin: ProjectManagerPlugin, input: NewNoteInput): Promise<void> {
 	const { app, settings, store } = plugin;
+	if (input.kind === 'task') {
+		// 同じエピックのタスクの続きの番号を付ける（設計書 11.17）
+		input = { ...input, wbs: nextTaskWbsIn(store.index.tasks({ includeArchived: true }), input.project, input.epic) };
+	}
 	const plan = planNewNote(input, plugin.config.statuses, settings.folders, (id) => store.index.hasId(id));
 	const path = normalizePath(plan.path);
 	const { frontmatterWritten } = await createNoteFile(app, path, plan.body, input.kind, plan.frontmatter);

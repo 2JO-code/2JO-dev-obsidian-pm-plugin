@@ -10,11 +10,13 @@ import { openWorklogModal } from '../commands/worklog';
 import { findStatus } from '../config/status';
 import { EMPTY_FILTER, type ViewFilter } from '../calc/filter';
 import { cellKey, projectStatus, type ProjectStatus } from '../calc/projectStatus';
-import { sortTaskRows, taskRows, type RowLabels, type TaskRow } from '../calc/taskList';
+import type { RowLabels, TaskRow } from '../calc/taskList';
+import { epicOrderOf, numberedOf, wbsKey, wbsTaskRows } from '../calc/wbs';
+import { taskWbsLabel } from '../calc/wbsOrder';
 import type ProjectManagerPlugin from '../main';
 import type { NoteId } from '../model';
 import { projectLabel } from '../settings';
-import { actionButtons, rowButton, subtaskCell, toggleMark } from './actions';
+import { actionButtons, rowButton, subtaskCell, toggleMark, updateToggleMark } from './actions';
 import { ARCHIVE_VIEW_TYPE } from './archiveView';
 import { dateCell, kindMark, periodText, progressBar, taskWarningCell } from './badges';
 import { PmView } from './baseView';
@@ -26,6 +28,7 @@ import { noteLink, openNote } from './openNote';
 import { openView } from './openView';
 import { TASK_LIST_VIEW_TYPE } from './taskListView';
 import { warningLink } from './warningLink';
+import { WbsDrag, type WbsDragGroup } from './wbsDrag';
 
 export const PROJECT_STATUS_VIEW_TYPE = 'pm-project-status';
 
@@ -45,6 +48,8 @@ export class ProjectStatusView extends PmView {
 	private projectId: NoteId | undefined;
 	/** タスクを開いているエピック（「エピックなし」は空文字）。保存しない */
 	private expanded = new Set<string>();
+	/** 行のドラッグで番号を入れ替える（WBS と同じ） */
+	private readonly drag = new WbsDrag(this.app, () => this.plugin.store);
 
 	getViewType(): string {
 		return PROJECT_STATUS_VIEW_TYPE;
@@ -188,7 +193,10 @@ export class ProjectStatusView extends PmView {
 			section.createDiv({ cls: 'pm-view-empty', text: 'エピック・タスクはありません' });
 			return;
 		}
-		section.createDiv({ cls: 'pm-note', text: '▶／▼ を押すとタスクを開閉します。タイトルをクリックするとノートを開きます' });
+		section.createDiv({
+			cls: 'pm-note',
+			text: '▶／▼ を押すとタスクを開閉します。タイトルをクリックするとノートを開きます。行をドラッグすると番号を入れ替えます',
+		});
 		const table = section.createEl('table', { cls: 'pm-table' });
 		header(
 			table,
@@ -199,16 +207,30 @@ export class ProjectStatusView extends PmView {
 		const mode = this.plugin.personal.projectDisplayName;
 		const labels: RowLabels = { project: (p) => projectLabel(p, mode) };
 		const statusOrder = ctx.statuses.task.map((d) => d.name);
+		const project = s.project.id;
+		// エピック・タスクの入れ替えは WBS と同じ（設計書 9.7）
+		const epicGroup: WbsDragGroup = { kind: 'epic', key: wbsKey.project(project), order: epicOrderOf(s) };
 
 		for (const r of s.epics) {
 			const { epic } = r;
 			const key = epic?.id ?? '';
 			const open = this.expanded.has(key);
 			const tr = body.createEl('tr', { cls: 'pm-epic-row' });
+			// 開閉は表全体を描き直さず、タスクの行だけを足す・消す（設計書 9.4）
+			let taskRows: HTMLElement[] = [];
+			const renderTasks = () => {
+				const rows = wbsTaskRows(ctx, r.tasks, labels, statusOrder);
+				const taskGroup: WbsDragGroup = { kind: 'task', key: wbsKey.epic(project, epic?.id), order: numberedOf(rows.map((t) => t.task)) };
+				return rows.map((row) => this.drawTaskRow(body, row, ctx.calendar, epic?.wbs, taskGroup));
+			};
 			toggleMark(tr.createEl('td'), open, r.tasks.length > 0, () => {
-				if (open) this.expanded.delete(key);
-				else this.expanded.add(key);
-				this.redraw();
+				const opening = !this.expanded.has(key);
+				if (opening) this.expanded.add(key);
+				else this.expanded.delete(key);
+				updateToggleMark(tr, opening);
+				for (const row of taskRows) row.remove();
+				taskRows = opening ? renderTasks() : [];
+				tr.after(...taskRows);
 			});
 			tr.createEl('td', { text: epic?.wbs ?? '' });
 			const title = tr.createEl('td', { text: epic ? epic.title : '（エピックなし）' });
@@ -216,6 +238,7 @@ export class ProjectStatusView extends PmView {
 				kindMark(title, 'epic');
 				title.addClass('pm-link');
 				noteLink(this.plugin, title, epic.path);
+				this.drag.attach(tr, epicGroup, epic.id, epic.title);
 			}
 			this.statusCell(tr, 'task', epic?.status ?? '');
 			// 担当者の列はエピックの担当者（タスクの件数は進捗の欄にある。設計書 9.4）
@@ -228,7 +251,6 @@ export class ProjectStatusView extends PmView {
 			scheduleCells(tr, ctx.calendar, { ...(r.span ? { schedule: r.span } : {}), task: { ...(epic?.due ? { due: epic.due } : {}) } }, r.category, owner);
 			dateCell(tr, ctx.calendar, epic?.start, owner);
 			dateCell(tr, ctx.calendar, epic?.due, owner);
-			const project = s.project.id;
 			warningLink(this.app, tr.createEl('td'), r.warnings, { project, ...(epic ? { epic: epic.id } : {}) });
 			const buttons = tr.createEl('td');
 			if (epic) {
@@ -236,20 +258,18 @@ export class ProjectStatusView extends PmView {
 			}
 			rowButton(buttons, '＋タスク', () => openNewNoteModal(this.plugin, 'task', { project, ...(epic ? { epic: epic.id } : {}) }));
 
-			if (open) {
-				const rows = sortTaskRows(taskRows(ctx, r.tasks), 'due', false, labels, statusOrder);
-				for (const row of rows) this.drawTaskRow(body, row, ctx.calendar);
-			}
+			if (open) taskRows = renderTasks();
 		}
 	}
 
-	/** エピックの下に出すタスクの行。クリックでノートを開く */
-	private drawTaskRow(body: HTMLElement, row: TaskRow, calendar: WorkCalendar): void {
+	/** エピックの下に出すタスクの行。クリックでノートを開く。番号はエピックの WBS.連番 */
+	private drawTaskRow(body: HTMLElement, row: TaskRow, calendar: WorkCalendar, epicWbs: string | undefined, group: WbsDragGroup): HTMLElement {
 		const { task } = row;
 		const tr = body.createEl('tr', { cls: 'is-clickable pm-task-sub' });
 		noteLink(this.plugin, tr, task.path);
+		this.drag.attach(tr, group, task.id, task.title);
 		tr.createEl('td');
-		tr.createEl('td');
+		tr.createEl('td', { text: taskWbsLabel(epicWbs, task.wbs) });
 		kindMark(tr.createEl('td', { cls: 'pm-task-sub-title', text: task.title }), 'task');
 		this.statusCell(tr, 'task', row.status);
 		tr.createEl('td', { text: row.assignees.map((m) => m.title).join('、') });
@@ -264,6 +284,7 @@ export class ProjectStatusView extends PmView {
 		const buttons = tr.createEl('td');
 		rowButton(buttons, 'フォーム', () => openTaskForm(this.plugin, task.path));
 		rowButton(buttons, '＋工数', () => openWorklogModal(this.plugin, task));
+		return tr;
 	}
 
 

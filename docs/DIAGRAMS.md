@@ -51,6 +51,7 @@ classDiagram
 		+watch() EventRef[]
 		+onUpdated(callback)
 		+onTitleChanged(callback)
+		+writeMany(paths, write)
 	}
 	class VaultIndex {
 		+version: number
@@ -155,6 +156,7 @@ classDiagram
 	class Task {
 		+project: NoteId
 		+epic?: NoteId
+		+wbs?: string
 		+status: string
 		+assignees: NoteId[]
 		+estimate?: number
@@ -270,6 +272,7 @@ classDiagram
   - 中身は `draw(el, ctx)` だけを書く。描き直しのきっかけと枠（シェル）は `PmView` が受け持つ
 - 保存して閉じる入力画面は `FormModal` を継ぐ（設計書 4.5, 4.6）
   - 中身は `render()` を書き、保存は `submit(check, write)` に任せる
+- WBS・ガント・プロジェクト状況は `WbsDrag` を1つずつ持ち、行のドラッグで番号を書き換える（設計書 9.7）
 
 ```mermaid
 classDiagram
@@ -312,6 +315,10 @@ classDiagram
 	PmView <|-- GanttView
 	PmView <|-- ArchiveView
 	PmView <|-- HealthView
+	WbsView *-- WbsDrag : 行のドラッグで番号を入れ替え
+	GanttView *-- WbsDrag
+	ProjectStatusView *-- WbsDrag
+	WbsDrag ..> VaultStore : writeMany でまとめて書く
 
 	Modal <|-- FormModal
 	FormModal <|-- TaskFormModal

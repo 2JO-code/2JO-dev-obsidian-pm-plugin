@@ -29,6 +29,21 @@ describe('wbsTree', () => {
 		expect(shape()).toEqual([[PJT, [['E2', ['T3']], ['E1', ['T2', 'T1']], ['-', ['T4']]]]]);
 	});
 
+	it('タスクは番号順で、番号の無いものは開始日の順で後ろ。order は絞り込まない全タスク', () => {
+		const numbered = indexOf([
+			project(PJT),
+			epic('E1', { wbs: '1' }),
+			task('A', { epic: 'E1', start: '2026-11-02' }),
+			task('B', { epic: 'E1', start: '2026-11-03', wbs: '2' }),
+			task('C', { epic: 'E1', start: '2026-11-04', wbs: '1' }),
+			task('D', { epic: 'E1', start: '2026-10-28' }),
+		]);
+		const c = buildContext(numbered, statuses, defaultCalendar(), '2026-10-01');
+		const e1 = wbsTree(c, numbered.projects(), new Set(['A', 'B']), labels, order)[0]?.epics[0];
+		expect(e1?.tasks.map((t) => t.task.id)).toEqual(['B', 'A']);
+		expect(e1?.order).toEqual([{ id: 'C', wbs: '1' }, { id: 'B', wbs: '2' }, { id: 'D' }, { id: 'A' }]);
+	});
+
 	it('絞り込むと表示するタスクの無いエピックを出さない。進捗はエピック全体のまま', () => {
 		const visible = new Set(['T1']);
 		expect(shape(visible)).toEqual([[PJT, [['E1', ['T1']]]]]);

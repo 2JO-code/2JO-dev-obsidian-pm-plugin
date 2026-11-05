@@ -3,7 +3,8 @@ import type { CalcContext } from '../calc/context';
 import type { WorkCalendar } from '../calc/workdays';
 import type { Status } from '../calc/projectStatus';
 import type { RowLabels, TaskRow } from '../calc/taskList';
-import { isOpen, parseToggled, toggledForAll, wbsKey, wbsTreeFor, type WbsProject } from '../calc/wbs';
+import { epicOrderOf, isOpen, parseToggled, toggledForAll, wbsKey, wbsTreeFor, type WbsProject } from '../calc/wbs';
+import { taskWbsLabel } from '../calc/wbsOrder';
 import { openNewNoteModal } from '../commands/createNote';
 import { openChecklistEditor } from '../commands/editChecklist';
 import { openEpicForm, openTaskForm } from '../commands/editTask';
@@ -11,7 +12,7 @@ import type ProjectManagerPlugin from '../main';
 import { findStatus } from '../config/status';
 import type { IsoDate, NoteId, StatusCategory, StatusSets } from '../model';
 import { projectLabel } from '../settings';
-import { actionButtons, cellLink, rowButton, subtaskCell, toggleMark } from './actions';
+import { actionButtons, cellLink, rowButton, subtaskCell, toggleMark, updateToggleMark } from './actions';
 import { dateCell, kindMark, progressBar, taskWarningCell } from './badges';
 import { PmView } from './baseView';
 import { memberChoices, projectChoices, statusChoices } from './choices';
@@ -22,6 +23,7 @@ import { openView } from './openView';
 import { PROJECT_STATUS_VIEW_TYPE } from './projectStatusView';
 import { dueCell, scheduleCells } from './scheduleCells';
 import { warningLink } from './warningLink';
+import { WbsDrag, type WbsDragGroup } from './wbsDrag';
 
 export const WBS_VIEW_TYPE = 'pm-wbs';
 
@@ -42,6 +44,10 @@ export function registerWbsView(plugin: ProjectManagerPlugin): void {
 export class WbsView extends PmView {
 	/** 初期の開閉と逆にした行のキー（`wbsKey`） */
 	private toggled = new Set<string>();
+	/** 開いているエピックのタスクの行（キーは `wbsKey`）。開閉のときに足し引きする */
+	private readonly taskRowsOf = new Map<string, HTMLElement[]>();
+	/** 行のドラッグで番号を入れ替える */
+	private readonly drag = new WbsDrag(this.app, () => this.plugin.store);
 
 	getViewType(): string {
 		return WBS_VIEW_TYPE;
@@ -56,7 +62,7 @@ export class WbsView extends PmView {
 	}
 
 	protected getDescription(): string {
-		return 'プロジェクト → エピック → タスクの階層と計算上の日程。▶／▼ を押すと開閉';
+		return 'プロジェクト → エピック → タスクの階層と計算上の日程。▶／▼ を押すと開閉。エピック・タスクの行をドラッグすると番号を入れ替え';
 	}
 
 	getState(): Record<string, unknown> {
@@ -78,6 +84,22 @@ export class WbsView extends PmView {
 		else this.toggled.add(key);
 		this.app.workspace.requestSaveLayout();
 		this.redraw();
+	}
+
+	/**
+	 * エピックの開閉。表全体は描き直さず、そのエピックのタスクの行だけを足す・消す（設計書 9.7）
+	 * @param render タスクの行を作る（表の末尾に作り、エピックの行の後ろへ動かす）
+	 */
+	private toggleEpic(key: string, epicRow: HTMLElement, render: () => HTMLElement[]): void {
+		if (this.toggled.has(key)) this.toggled.delete(key);
+		else this.toggled.add(key);
+		this.app.workspace.requestSaveLayout();
+		const open = this.isOpen(key);
+		updateToggleMark(epicRow, open);
+		for (const row of this.taskRowsOf.get(key) ?? []) row.remove();
+		const rows = open ? render() : [];
+		epicRow.after(...rows);
+		this.taskRowsOf.set(key, rows);
 	}
 
 	/** すべて開く（open=true）か、すべて閉じる */
@@ -129,6 +151,7 @@ export class WbsView extends PmView {
 		const head = table.createEl('thead').createEl('tr');
 		COLUMNS.forEach((label, i) => head.createEl('th', { text: label, cls: NUMERIC.has(i) ? 'is-numeric' : '' }));
 		const tbody = table.createEl('tbody');
+		this.taskRowsOf.clear();
 
 		for (const p of tree) {
 			const { project } = p.status;
@@ -143,16 +166,22 @@ export class WbsView extends PmView {
 			rowButton(tr.createEl('td'), '＋エピック', () => openNewNoteModal(this.plugin, 'epic', { project: project.id }));
 			if (!projectOpen) continue;
 
+			// エピックはプロジェクトの中で入れ替える（絞り込みで隠れたエピックも含めて振り直す）
+			const epicGroup: WbsDragGroup = { kind: 'epic', key: projectKey, order: epicOrderOf(p.status) };
+
 			for (const e of p.epics) {
 				const { epic } = e.row;
 				const key = wbsKey.epic(project.id, epic?.id);
 				const open = this.isOpen(key);
-				const er = this.groupRow(tbody, 'pm-wbs-epic', open, e.tasks.length > 0, () => this.toggle(key), epic?.wbs ?? '');
+				const taskGroup: WbsDragGroup = { kind: 'task', key, order: e.order };
+				const renderTasks = () => e.tasks.map((t) => this.taskRow(tbody, t, ctx.calendar, epic?.wbs, taskGroup));
+				const er = this.groupRow(tbody, 'pm-wbs-epic', open, e.tasks.length > 0, () => this.toggleEpic(key, er, renderTasks), epic?.wbs ?? '');
 				const et = er.createEl('td', { cls: 'pm-wbs-indent-1', text: epic ? epic.title : '（エピックなし）' });
 				if (epic) {
 					kindMark(et, 'epic');
 					et.addClass('pm-link');
 					noteLink(this.plugin, et, epic.path);
+					this.drag.attach(er, epicGroup, epic.id, epic.title);
 				}
 				this.statusCells(er, 'task', epic?.status ?? '', epic?.owner, e.row, epic?.due, e.row.category, {
 					project: project.id,
@@ -163,7 +192,7 @@ export class WbsView extends PmView {
 					rowButton(buttons, 'フォーム', () => openEpicForm(this.plugin, epic.path));
 				}
 				rowButton(buttons, '＋タスク', () => openNewNoteModal(this.plugin, 'task', { project: project.id, ...(epic ? { epic: epic.id } : {}) }));
-				if (open) for (const t of e.tasks) this.taskRow(tbody, t, ctx.calendar);
+				if (open) this.taskRowsOf.set(key, renderTasks());
 			}
 		}
 	}
@@ -200,11 +229,13 @@ export class WbsView extends PmView {
 		warningLink(this.app, tr.createEl('td'), s.warnings, target, () => void openView(this.app, PROJECT_STATUS_VIEW_TYPE, { project: target.project }));
 	}
 
-	private taskRow(tbody: HTMLElement, row: TaskRow, calendar: WorkCalendar): void {
+	/** タスクの行。番号はエピックの WBS.連番（設計書 11.17） */
+	private taskRow(tbody: HTMLElement, row: TaskRow, calendar: WorkCalendar, epicWbs: string | undefined, group: WbsDragGroup): HTMLElement {
 		const { task } = row;
 		const tr = tbody.createEl('tr', { cls: 'is-clickable pm-wbs-task' });
 		noteLink(this.plugin, tr, task.path);
-		tr.createEl('td');
+		this.drag.attach(tr, group, task.id, task.title);
+		tr.createEl('td', { cls: 'pm-wbs-number', text: taskWbsLabel(epicWbs, task.wbs) });
 		kindMark(tr.createEl('td', { cls: 'pm-wbs-indent-2', text: task.title }), 'task');
 		this.statusCell(tr, 'task', row.status);
 		tr.createEl('td', { text: row.assignees.map((m) => m.title).join('、') });
@@ -214,5 +245,6 @@ export class WbsView extends PmView {
 		tr.createEl('td', { cls: 'is-numeric', text: hoursText(task.estimate) });
 		taskWarningCell(tr, row.warnings);
 		rowButton(tr.createEl('td'), 'フォーム', () => openTaskForm(this.plugin, task.path));
+		return tr;
 	}
 }

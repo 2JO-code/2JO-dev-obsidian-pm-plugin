@@ -9,7 +9,7 @@ import { emptyTable } from '../write/markdownTable';
 export type NewNoteInput =
 	| { kind: 'project'; title: string; caseId: string; officialName: string }
 	| { kind: 'epic'; title: string; project: NoteId; wbs: string }
-	| { kind: 'task'; title: string; project: NoteId; epic?: NoteId }
+	| { kind: 'task'; title: string; project: NoteId; epic?: NoteId; wbs?: string }
 	| { kind: 'user'; title: string };
 
 /** 作成するノートの中身 */
@@ -70,6 +70,7 @@ export function planNewNote(
 			if (!input.project) throw new Error('プロジェクトを選んでください');
 			frontmatter = { ...base, project: toLink(input.project), status: firstStatus('task') };
 			if (input.epic) frontmatter.epic = toLink(input.epic);
+			if (input.wbs) frontmatter.wbs = input.wbs;
 			break;
 		case 'user':
 			frontmatter = {

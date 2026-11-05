@@ -83,7 +83,9 @@ Obsidian 上で、複数プロジェクト横断の進捗・メンバー負荷�
   - ルート：CLAUDE.md（ルートにないと読み込まれない）、`.claude/`、`.gitignore`
   - `.tools/`：開発者の手元だけで使う検査ツール（Git に入れない。LIBRARIES.md 7章）
 - 段階1〜4はすべて実装済み。そのあとの改善と進み具合は TASKS.md・HISTORY.md
-- **ソースは Git で管理する**（2026-11-04 時点で `git init` はまだ）
+- **ソースは Git で管理し、GitHub（公開）に置く**
+  - https://github.com/2JO-code/2JO-dev-obsidian-pm-plugin （ブランチ `main`）
+  - コミット・push はユーザーが Git Bash で行う。こちらは手順だけ示す
   - 文書に出てくる SVN は、すべて**本番Vaultの共有**の話（要件 2章）で、ソースの管理とは別
 - このリポジトリに Vault は含めない（要件 7.1）
   - 開発用Vault：同じ階層の `D:\project\dev-projectmanager-plugin-vault`（環境変数 `OBSIDIAN_VAULT` で変更可）

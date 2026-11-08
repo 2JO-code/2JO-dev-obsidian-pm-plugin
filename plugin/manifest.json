@@ -1,7 +1,7 @@
 {
 	"id": "project-manager",
 	"name": "Project Manager",
-	"version": "0.1.0",
+	"version": "0.2.0",
 	"minAppVersion": "1.8.7",
 	"description": "複数プロジェクトを横断して進捗とメンバー負荷を可視化するプロジェクト管理プラグイン",
 	"author": "",

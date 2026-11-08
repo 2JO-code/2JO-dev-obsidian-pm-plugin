@@ -1599,6 +1599,15 @@ ID の形でないファイル（`strayFiles.ts`）：
   - `npm run dev`・`npm run build` の最初に走る（9章「使い方のノート」）
   - 作ったファイルも Git に入れる（取り出した直後でも、ビルドせずに型チェック・補完が通るように）
   - README を直したときは、このファイルの差分も一緒にコミットする
+- `package.mjs`：配布用のパッケージを `plugin/release/` に作る（`npm run package`）
+  - `<id>/` に `main.js`・`manifest.json`・`styles.css` を集め、`<id>-<版>.zip` にする
+  - zip の中は `<id>/` フォルダごと。`.obsidian/plugins/` に展開すれば動くようにするため
+  - `data.json` は入れない。全員共通の設定は配る先の Vault に SVN で置くため（要件 6章）
+  - Windows では標準の `tar.exe` で作る。`Compress-Archive` はパスの区切りが `\` になるため
+  - `release/` は Git に入れず、lint の対象からも外す
+- 版を上げるときは `npm version <版> --no-git-tag-version` を使う
+  - `version-bump.mjs` が `manifest.json`・`versions.json` も同じ版に書き換える
+  - `--no-git-tag-version` を付けるのは、コミットとタグ付けをユーザーが行うため
 
 ---
 

@@ -101,6 +101,8 @@ npm install
 npm run dev      # esbuild watch。ビルド成功のたびに開発用Vaultへ自動コピー（scripts/deploy.mjs）
 npm run build    # README を TS に変換（npm run readme）し、tsc -noEmit で型チェック後、本番ビルド（minify）
 npm run deploy   # 本番ビルドして開発用Vaultへコピー
+npm run package  # 本番ビルドして配布用の release/project-manager-<版>.zip を作る（設計書 12章）
+npm version 0.3.0 --no-git-tag-version   # 版を上げる（manifest.json・versions.json も更新）
 npm run lint     # eslint + eslint-plugin-obsidianmd
 npm test         # Vitest で src/**/*.test.ts を1回実行
 npm run test:watch                    # 変更を監視して再実行

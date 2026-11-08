@@ -1,6 +1,6 @@
 {
 	"name": "obsidian-project-manager",
-	"version": "0.1.0",
+	"version": "0.2.0",
 	"description": "複数プロジェクトを横断して進捗とメンバー負荷を可視化するObsidianプラグイン",
 	"main": "main.js",
 	"type": "module",
@@ -9,6 +9,7 @@
 		"build": "npm run readme && tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
 		"readme": "node scripts/readme-text.mjs",
 		"deploy": "npm run build && node scripts/deploy.mjs",
+		"package": "npm run build && node scripts/package.mjs",
 		"dummy": "node scripts/generate-dummy.mjs",
 		"dummy:clean": "node scripts/generate-dummy.mjs --clean",
 		"version": "node version-bump.mjs",

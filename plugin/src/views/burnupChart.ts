@@ -1,7 +1,7 @@
 import { monthTicks, niceTicks, type Burnup, type BurnupPoint, type ProgressPlan } from '../calc/burnup';
-import { daysBetween } from '../calc/dates';
+import { daysBetween, monthDayText as md } from '../calc/dates';
 import type { IsoDate } from '../model';
-import { hoursText } from './format';
+import { hoursText } from '../calc/format';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 /** 描く範囲（viewBox の座標）。右は線の端のラベルの分を空ける */
@@ -72,7 +72,6 @@ function frame(root: HTMLElement, o: FrameOptions) {
 	svg(el, 'line', { x1: M.left, x2: W - M.right, y1: M.top + plotH, y2: M.top + plotH }, 'pm-burnup-axis');
 
 	// プロジェクトの期間の線。ラベルは線の内側に付け、上の「今日」と重ねない
-	const md = (d: IsoDate) => `${Number(d.slice(5, 7))}/${Number(d.slice(8, 10))}`;
 	for (const [d, label, anchor] of [
 		[o.projectStart, '開始', 'start'],
 		[o.projectDue, '期限', 'end'],

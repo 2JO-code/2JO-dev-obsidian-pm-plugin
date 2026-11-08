@@ -1,34 +1,46 @@
 import type { ViewStateResult } from 'obsidian';
 import type { CalcContext } from '../calc/context';
-import type { WorkCalendar } from '../calc/workdays';
 import type { Status } from '../calc/projectStatus';
 import type { RowLabels, TaskRow } from '../calc/taskList';
-import { epicOrderOf, isOpen, parseToggled, toggledForAll, wbsKey, wbsTreeFor, type WbsProject } from '../calc/wbs';
-import { taskWbsLabel } from '../calc/wbsOrder';
+import { TreeToggle } from '../calc/treeToggle';
+import { epicOrderOf, wbsKey, wbsTreeFor } from '../calc/wbs';
 import { openNewNoteModal } from '../commands/createNote';
-import { openChecklistEditor } from '../commands/editChecklist';
 import { openEpicForm, openTaskForm } from '../commands/editTask';
 import type ProjectManagerPlugin from '../main';
 import { findStatus } from '../config/status';
 import type { IsoDate, NoteId, StatusCategory, StatusSets } from '../model';
 import { projectLabel } from '../settings';
-import { actionButtons, cellLink, rowButton, subtaskCell, toggleMark, updateToggleMark } from './actions';
-import { dateCell, kindMark, progressBar, taskWarningCell } from './badges';
+import { actionButtons, cellLink, formClick, rowButton } from './actions';
+import { dateCell, kindMark, progressBar } from './badges';
 import { PmView } from './baseView';
+import { ChildRows } from './childRows';
 import { memberChoices, projectChoices, statusChoices } from './choices';
 import { renderFilterBar } from './filterBar';
-import { hoursText, membersOf, noteTitle } from './format';
-import { noteLink } from './openNote';
+import { hoursText, membersOf, noteTitle } from '../calc/format';
 import { openView } from './openView';
-import { PROJECT_STATUS_VIEW_TYPE } from './projectStatusView';
-import { dueCell, scheduleCells } from './scheduleCells';
+import { scheduleCells } from './scheduleCells';
+import { tableHeader } from '../ui/table';
+import { blankColumn, TASK_COLUMNS, taskCells, titleColumn, wbsColumn, type TaskCellEnv, type TaskColumn } from './taskColumns';
 import { warningLink } from './warningLink';
 import { WbsDrag, type WbsDragGroup } from './wbsDrag';
+import { field } from '../parse/values';
+import { PROJECT_STATUS_VIEW_TYPE, WBS_VIEW_TYPE } from './viewTypes';
+import { toggleMark } from '../ui/controls';
 
-export const WBS_VIEW_TYPE = 'pm-wbs';
-
-const COLUMNS = ['WBS', 'タイトル', 'ステータス', '担当者', '開始（計算）', '終了（計算）', '期限日', '進捗', '見積(h)', '警告', ''];
-const NUMERIC = new Set([7, 8]);
+/** タスクの行の列。プロジェクト・エピックの行も同じ見出しの下に並べる */
+const COLUMNS: TaskColumn[] = [
+	wbsColumn('pm-wbs-number'),
+	titleColumn('pm-wbs-indent-2'),
+	TASK_COLUMNS.status,
+	TASK_COLUMNS.assignees,
+	TASK_COLUMNS.start,
+	TASK_COLUMNS.end,
+	TASK_COLUMNS.due,
+	TASK_COLUMNS.progress,
+	TASK_COLUMNS.estimate,
+	TASK_COLUMNS.warnings,
+	blankColumn(),
+];
 
 /** WBS のビューと、開くコマンドを登録する */
 export function registerWbsView(plugin: ProjectManagerPlugin): void {
@@ -42,10 +54,10 @@ export function registerWbsView(plugin: ProjectManagerPlugin): void {
 
 /** WBS（プロジェクト → エピック → タスク。要件4.8b、設計書 9.7） */
 export class WbsView extends PmView {
-	/** 初期の開閉と逆にした行のキー（`wbsKey`） */
-	private toggled = new Set<string>();
-	/** 開いているエピックのタスクの行（キーは `wbsKey`）。開閉のときに足し引きする */
-	private readonly taskRowsOf = new Map<string, HTMLElement[]>();
+	/** 階層の開閉。変えたら状態の保存を頼む */
+	private readonly tree = new TreeToggle(() => this.app.workspace.requestSaveLayout());
+	/** 開いているエピックのタスクの行（キーは `wbsKey`） */
+	private readonly taskRows = new ChildRows();
 	/** 行のドラッグで番号を入れ替える */
 	private readonly drag = new WbsDrag(this.app, () => this.plugin.store);
 
@@ -66,47 +78,12 @@ export class WbsView extends PmView {
 	}
 
 	getState(): Record<string, unknown> {
-		return { ...super.getState(), wbs: { toggled: [...this.toggled] } };
+		return { ...super.getState(), wbs: { toggled: this.tree.saved() } };
 	}
 
 	async setState(state: unknown, result: ViewStateResult): Promise<void> {
-		const wbs = typeof state === 'object' && state !== null ? (state as { wbs?: { toggled?: unknown } }).wbs : undefined;
-		this.toggled = parseToggled(wbs?.toggled);
+		this.tree.load(field(field(state, 'wbs'), 'toggled'));
 		await super.setState(state, result);
-	}
-
-	private isOpen(key: string): boolean {
-		return isOpen(this.toggled, key);
-	}
-
-	private toggle(key: string): void {
-		if (this.toggled.has(key)) this.toggled.delete(key);
-		else this.toggled.add(key);
-		this.app.workspace.requestSaveLayout();
-		this.redraw();
-	}
-
-	/**
-	 * エピックの開閉。表全体は描き直さず、そのエピックのタスクの行だけを足す・消す（設計書 9.7）
-	 * @param render タスクの行を作る（表の末尾に作り、エピックの行の後ろへ動かす）
-	 */
-	private toggleEpic(key: string, epicRow: HTMLElement, render: () => HTMLElement[]): void {
-		if (this.toggled.has(key)) this.toggled.delete(key);
-		else this.toggled.add(key);
-		this.app.workspace.requestSaveLayout();
-		const open = this.isOpen(key);
-		updateToggleMark(epicRow, open);
-		for (const row of this.taskRowsOf.get(key) ?? []) row.remove();
-		const rows = open ? render() : [];
-		epicRow.after(...rows);
-		this.taskRowsOf.set(key, rows);
-	}
-
-	/** すべて開く（open=true）か、すべて閉じる */
-	private setAll(tree: WbsProject[], open: boolean): void {
-		this.toggled = toggledForAll(tree, open);
-		this.app.workspace.requestSaveLayout();
-		this.redraw();
 	}
 
 	protected draw(el: HTMLElement, ctx: CalcContext): void {
@@ -134,9 +111,15 @@ export class WbsView extends PmView {
 
 		summary.setText(`プロジェクト ${tree.length} 件`);
 		const expand = settings.createEl('button', { text: 'すべて開く' });
-		expand.addEventListener('click', () => this.setAll(tree, true));
+		expand.addEventListener('click', () => {
+			this.tree.setAll(tree, true);
+			this.redraw();
+		});
 		const collapse = settings.createEl('button', { text: 'すべて閉じる' });
-		collapse.addEventListener('click', () => this.setAll(tree, false));
+		collapse.addEventListener('click', () => {
+			this.tree.setAll(tree, false);
+			this.redraw();
+		});
 		actionButtons(actions, [{ text: '新しいプロジェクト', onClick: () => openNewNoteModal(this.plugin, 'project') }]);
 		if (narrowed) {
 			notes.createDiv({ cls: 'pm-note', text: '担当者・ステータスで絞り込み中。進捗・見積・期間はエピック・プロジェクト全体の値です' });
@@ -148,16 +131,18 @@ export class WbsView extends PmView {
 		}
 
 		const table = body.createEl('table', { cls: 'pm-table pm-wbs-table' });
-		const head = table.createEl('thead').createEl('tr');
-		COLUMNS.forEach((label, i) => head.createEl('th', { text: label, cls: NUMERIC.has(i) ? 'is-numeric' : '' }));
+		tableHeader(table, COLUMNS);
 		const tbody = table.createEl('tbody');
-		this.taskRowsOf.clear();
+		this.taskRows.clear();
 
 		for (const p of tree) {
 			const { project } = p.status;
 			const projectKey = wbsKey.project(project.id);
-			const projectOpen = this.isOpen(projectKey);
-			const tr = this.groupRow(tbody, 'pm-wbs-project', projectOpen, p.epics.length > 0, () => this.toggle(projectKey));
+			const projectOpen = this.tree.isOpen(projectKey);
+			const tr = this.groupRow(tbody, 'pm-wbs-project', projectOpen, p.epics.length > 0, () => {
+				this.tree.flip(projectKey);
+				this.redraw();
+			});
 			const title = tr.createEl('td', { text: labels.project(project) });
 			kindMark(title, 'project');
 			cellLink(title, () => void openView(this.app, PROJECT_STATUS_VIEW_TYPE, { project: project.id }));
@@ -172,27 +157,25 @@ export class WbsView extends PmView {
 			for (const e of p.epics) {
 				const { epic } = e.row;
 				const key = wbsKey.epic(project.id, epic?.id);
-				const open = this.isOpen(key);
+				const open = this.tree.isOpen(key);
 				const taskGroup: WbsDragGroup = { kind: 'task', key, order: e.order };
-				const renderTasks = () => e.tasks.map((t) => this.taskRow(tbody, t, ctx.calendar, epic?.wbs, taskGroup));
-				const er = this.groupRow(tbody, 'pm-wbs-epic', open, e.tasks.length > 0, () => this.toggleEpic(key, er, renderTasks), epic?.wbs ?? '');
+				const env = this.taskCellEnv(ctx, labels, epic?.wbs);
+				const renderTasks = () => e.tasks.map((t) => ({ row: this.taskRow(tbody, t, env, taskGroup) }));
+				// エピックの開閉は表全体を描き直さず、タスクの行だけを足す・消す（設計書 9.7）
+				const er = this.groupRow(tbody, 'pm-wbs-epic', open, e.tasks.length > 0, () => this.taskRows.replace(key, er, this.tree.flip(key), renderTasks), epic?.wbs ?? '');
 				const et = er.createEl('td', { cls: 'pm-wbs-indent-1', text: epic ? epic.title : '（エピックなし）' });
 				if (epic) {
 					kindMark(et, 'epic');
 					et.addClass('pm-link');
-					noteLink(this.plugin, et, epic.path);
+					formClick(et, () => openEpicForm(this.plugin, epic.path));
 					this.drag.attach(er, epicGroup, epic.id, epic.title);
 				}
 				this.statusCells(er, 'task', epic?.status ?? '', epic?.owner, e.row, epic?.due, e.row.category, {
 					project: project.id,
 					...(epic ? { epic: epic.id } : {}),
 				}, ctx);
-				const buttons = er.createEl('td');
-				if (epic) {
-					rowButton(buttons, 'フォーム', () => openEpicForm(this.plugin, epic.path));
-				}
-				rowButton(buttons, '＋タスク', () => openNewNoteModal(this.plugin, 'task', { project: project.id, ...(epic ? { epic: epic.id } : {}) }));
-				if (open) this.taskRowsOf.set(key, renderTasks());
+				rowButton(er.createEl('td'), '＋タスク', () => openNewNoteModal(this.plugin, 'task', { project: project.id, ...(epic ? { epic: epic.id } : {}) }));
+				if (open) this.taskRows.set(key, renderTasks());
 			}
 		}
 	}
@@ -230,21 +213,12 @@ export class WbsView extends PmView {
 	}
 
 	/** タスクの行。番号はエピックの WBS.連番（設計書 11.17） */
-	private taskRow(tbody: HTMLElement, row: TaskRow, calendar: WorkCalendar, epicWbs: string | undefined, group: WbsDragGroup): HTMLElement {
+	private taskRow(tbody: HTMLElement, row: TaskRow, env: TaskCellEnv, group: WbsDragGroup): HTMLElement {
 		const { task } = row;
 		const tr = tbody.createEl('tr', { cls: 'is-clickable pm-wbs-task' });
-		noteLink(this.plugin, tr, task.path);
+		formClick(tr, () => openTaskForm(this.plugin, task.path));
 		this.drag.attach(tr, group, task.id, task.title);
-		tr.createEl('td', { cls: 'pm-wbs-number', text: taskWbsLabel(epicWbs, task.wbs) });
-		kindMark(tr.createEl('td', { cls: 'pm-wbs-indent-2', text: task.title }), 'task');
-		this.statusCell(tr, 'task', row.status);
-		tr.createEl('td', { text: row.assignees.map((m) => m.title).join('、') });
-		scheduleCells(tr, calendar, row, row.category, row.assignees);
-		dueCell(tr, calendar, row);
-		subtaskCell(tr, row.progress, task.subtasks, () => void openChecklistEditor(this.plugin, task.path));
-		tr.createEl('td', { cls: 'is-numeric', text: hoursText(task.estimate) });
-		taskWarningCell(tr, row.warnings);
-		rowButton(tr.createEl('td'), 'フォーム', () => openTaskForm(this.plugin, task.path));
+		taskCells(tr, row, COLUMNS, env);
 		return tr;
 	}
 }

@@ -1,4 +1,5 @@
 /** プラグイン設定（全員共通）と個人の設定の型と既定値（設計書 6章） */
+import { isRecord } from './parse/values';
 
 /** ビューでのプロジェクト表示名に使う項目（要件3.5） */
 export type ProjectDisplayName = 'title' | 'case_id' | 'official_name';
@@ -17,11 +18,6 @@ export interface FolderSettings {
 	/** 共有設定（statuses.json, calendar.json） */
 	config: string;
 }
-
-/** ノートを開く場所（右枠＝ビューの隣の枠。設計書 9.1） */
-export type OpenNoteIn = 'right' | 'tab' | 'window';
-
-export const OPEN_NOTE_IN: readonly OpenNoteIn[] = ['right', 'tab', 'window'];
 
 /** 種類ごとの色（`#rrggbb`。設計書 6章） */
 export interface KindColors {
@@ -47,11 +43,19 @@ export interface PluginSettings {
 /** 個人の設定。この PC・この Vault だけに保存する */
 export interface PersonalSettings {
 	projectDisplayName: ProjectDisplayName;
-	openNoteIn: OpenNoteIn;
-	/** 左右に分けたときの左枠（ビュー）の幅（%） */
-	paneRatio: number;
 	/** HTMLレポートの出力先フォルダ（絶対パス。Vault の外も可）。空なら未設定 */
 	reportFolder: string;
+	/** プロジェクト状況の節の並び順と表示（概要は常に先頭なので含めない） */
+	projectSections: ProjectSectionSetting[];
+}
+
+/** プロジェクト状況の、並び替え・非表示にできる節 */
+export const PROJECT_SECTIONS = ['progress', 'milestones', 'epics', 'allocation'] as const;
+export type ProjectSection = (typeof PROJECT_SECTIONS)[number];
+
+export interface ProjectSectionSetting {
+	id: ProjectSection;
+	visible: boolean;
 }
 
 /** 要件3.3のフォルダ構成 */
@@ -80,19 +84,34 @@ export function cleanColor(value: unknown): string | undefined {
 
 export const DEFAULT_PERSONAL: PersonalSettings = {
 	projectDisplayName: 'title',
-	openNoteIn: 'right',
-	paneRatio: 60,
 	reportFolder: '',
+	projectSections: PROJECT_SECTIONS.map((id) => ({ id, visible: true })),
 };
 
-/** 左枠の幅（%）の範囲と刻み */
-export const PANE_RATIO = { min: 30, max: 80, step: 5 } as const;
+/** 保存された節の並びを整える。知らない節・重複は捨て、足りない節は末尾に表示ありで足す */
+export function cleanProjectSections(raw: unknown): ProjectSectionSetting[] {
+	const result: ProjectSectionSetting[] = [];
+	if (Array.isArray(raw)) {
+		for (const item of raw) {
+			if (!isRecord(item)) continue;
+			const id = oneOf(item.id, PROJECT_SECTIONS);
+			if (id && !result.some((s) => s.id === id)) result.push({ id, visible: item.visible !== false });
+		}
+	}
+	for (const id of PROJECT_SECTIONS) if (!result.some((s) => s.id === id)) result.push({ id, visible: true });
+	return result;
+}
 
-/** 左枠の幅を範囲内の刻みに丸める。数でなければ undefined */
-export function cleanPaneRatio(value: unknown): number | undefined {
-	if (typeof value !== 'number' || !Number.isFinite(value)) return undefined;
-	const stepped = Math.round(value / PANE_RATIO.step) * PANE_RATIO.step;
-	return Math.min(PANE_RATIO.max, Math.max(PANE_RATIO.min, stepped));
+/** 節を1つ上（-1）か下（+1）へ動かした並びを返す。端なら変えない */
+export function moveSection(sections: readonly ProjectSectionSetting[], index: number, delta: -1 | 1): ProjectSectionSetting[] {
+	const list = [...sections];
+	const to = index + delta;
+	const item = list[index];
+	const other = list[to];
+	if (!item || !other) return list;
+	list[index] = other;
+	list[to] = item;
+	return list;
 }
 
 /** フォルダパスを整える。使えないパスは null（設計書 6章） */
@@ -107,8 +126,6 @@ export function cleanFolderPath(value: string): string | null {
 	if (path === '' || path.split('/').includes('..')) return null;
 	return path;
 }
-
-const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 
 /** 候補のどれかと一致すればその値、そうでなければ undefined */
 export function oneOf<T extends string>(value: unknown, candidates: readonly T[]): T | undefined {
@@ -151,9 +168,8 @@ export function mergePersonal(raw: unknown, legacy?: unknown): PersonalSettings 
 	const data = isRecord(raw) ? raw : isRecord(legacy) ? legacy : {};
 	return {
 		projectDisplayName: oneOf(data.projectDisplayName, PROJECT_DISPLAY_NAMES) ?? DEFAULT_PERSONAL.projectDisplayName,
-		openNoteIn: oneOf(data.openNoteIn, OPEN_NOTE_IN) ?? DEFAULT_PERSONAL.openNoteIn,
-		paneRatio: cleanPaneRatio(data.paneRatio) ?? DEFAULT_PERSONAL.paneRatio,
 		reportFolder: typeof data.reportFolder === 'string' ? data.reportFolder.trim() : DEFAULT_PERSONAL.reportFolder,
+		projectSections: cleanProjectSections(data.projectSections),
 	};
 }
 

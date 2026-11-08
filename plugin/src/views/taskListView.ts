@@ -1,14 +1,11 @@
 import type { ViewStateResult } from 'obsidian';
 import { openNewNoteModal } from '../commands/createNote';
-import { openChecklistEditor } from '../commands/editChecklist';
 import { openTaskForm } from '../commands/editTask';
 import { openWorklogModal } from '../commands/worklog';
 import type { CalcContext } from '../calc/context';
 import { filterTasks } from '../calc/filter';
-import type { WorkCalendar } from '../calc/workdays';
 import {
 	DEFAULT_TASK_LIST,
-	epicLabel,
 	filterTaskRows,
 	groupTaskRows,
 	parseTaskListOptions,
@@ -17,41 +14,49 @@ import {
 	type TaskGroupBy,
 	type RowLabels,
 	type TaskListOptions,
-	type TaskRow,
 	type TaskSortKey,
 } from '../calc/taskList';
 import type ProjectManagerPlugin from '../main';
 import { projectLabel } from '../settings';
-import { actionButtons, subtaskCell } from './actions';
-import { kindMark, taskWarningCell } from './badges';
+import { actionButtons, formClick } from './actions';
 import { PmView } from './baseView';
-import { hoursText } from './format';
 import { memberChoices, projectChoices, statusChoices } from './choices';
 import { renderFilterBar, singleSelect } from './filterBar';
 import { taskFilterFields, withTaskFilter } from './taskFilters';
-import { noteClick, openNote } from './openNote';
 import { openView } from './openView';
-import { dueCell, scheduleCells } from './scheduleCells';
-
-export const TASK_LIST_VIEW_TYPE = 'pm-task-list';
+import { tableHeader } from '../ui/table';
+import { TASK_COLUMNS, taskCells, titleColumn, type TaskColumn } from './taskColumns';
+import { field } from '../parse/values';
+import { TASK_LIST_VIEW_TYPE } from './viewTypes';
 
 /** 一度に表示する行数（要件4.8） */
 const PAGE_SIZE = 100;
 
-const COLUMNS: { key: TaskSortKey; label: string; numeric?: boolean }[] = [
-	{ key: 'title', label: 'タイトル' },
-	{ key: 'project', label: 'プロジェクト' },
-	{ key: 'epic', label: 'エピック' },
-	{ key: 'status', label: 'ステータス' },
-	{ key: 'assignee', label: '担当者' },
-	{ key: 'start', label: '開始（計算）' },
-	{ key: 'end', label: '終了（計算）' },
-	{ key: 'due', label: '期限日' },
-	{ key: 'estimate', label: '見積(h)', numeric: true },
-	{ key: 'planned', label: '予定(h)', numeric: true },
-	{ key: 'actual', label: '実績(h)', numeric: true },
-	{ key: 'progress', label: '進捗', numeric: true },
-	{ key: 'warnings', label: '警告' },
+/** 列と、見出しのクリックで並べ替えるときのキー */
+const COLUMNS: (TaskColumn & { key: TaskSortKey })[] = [
+	{ key: 'title', ...titleColumn() },
+	{ key: 'project', ...TASK_COLUMNS.project },
+	{ key: 'epic', ...TASK_COLUMNS.epic },
+	{ key: 'status', ...TASK_COLUMNS.status },
+	{ key: 'assignee', ...TASK_COLUMNS.assignees },
+	{ key: 'start', ...TASK_COLUMNS.start },
+	{ key: 'end', ...TASK_COLUMNS.end },
+	{ key: 'due', ...TASK_COLUMNS.due },
+	{ key: 'planDelay', ...TASK_COLUMNS.planDelay },
+	{ key: 'estimate', ...TASK_COLUMNS.estimate },
+	{ key: 'planned', ...TASK_COLUMNS.planned },
+	{
+		key: 'actual',
+		...TASK_COLUMNS.actual,
+		// 見積を超えた実績は赤
+		cell: (tr, row, env) => {
+			const td = TASK_COLUMNS.actual.cell(tr, row, env);
+			if (row.warnings.some((w) => w.kind === 'overEstimate')) td.addClass('pm-text-error');
+			return td;
+		},
+	},
+	{ key: 'progress', ...TASK_COLUMNS.progress },
+	{ key: 'warnings', ...TASK_COLUMNS.warnings },
 ];
 
 const GROUP_CHOICES: { value: TaskGroupBy; label: string }[] = [
@@ -60,11 +65,6 @@ const GROUP_CHOICES: { value: TaskGroupBy; label: string }[] = [
 	{ value: 'epic', label: 'エピック' },
 	{ value: 'status', label: 'ステータス' },
 	{ value: 'assignee', label: '担当者' },
-];
-
-const CLICK_CHOICES: { value: 'note' | 'form'; label: string }[] = [
-	{ value: 'note', label: 'ノートを開く' },
-	{ value: 'form', label: '入力補助フォームで開く' },
 ];
 
 /** タスク一覧のビューと、開くコマンドを登録する */
@@ -96,7 +96,7 @@ export class TaskListView extends PmView {
 	}
 
 	protected getDescription(): string {
-		return 'タスクを表で一覧。絞り込み・並べ替え（列の見出しをクリック）・グループ分けができます';
+		return 'タスクを表で一覧。絞り込み・並べ替え（列の見出しをクリック）・グループ分けができます。行をクリックすると入力補助フォームを開きます';
 	}
 
 	getState(): Record<string, unknown> {
@@ -105,7 +105,7 @@ export class TaskListView extends PmView {
 
 	async setState(state: unknown, result: ViewStateResult): Promise<void> {
 		this.options = parseTaskListOptions(
-			typeof state === 'object' && state !== null ? (state as { taskList?: unknown }).taskList : undefined,
+			field(state, 'taskList'),
 		);
 		this.limit = PAGE_SIZE;
 		await super.setState(state, result);
@@ -142,8 +142,8 @@ export class TaskListView extends PmView {
 						this.setOptions({});
 					}),
 				onClear: () => {
-					const { groupBy, sort, desc, clickOpensForm } = this.options;
-					this.options = { ...DEFAULT_TASK_LIST, groupBy, sort, desc, clickOpensForm };
+					const { groupBy, sort, desc } = this.options;
+					this.options = { ...DEFAULT_TASK_LIST, groupBy, sort, desc };
 				},
 			},
 			(filter) => {
@@ -158,9 +158,6 @@ export class TaskListView extends PmView {
 
 		summary.setText(`タスク ${rows.length} 件`);
 		singleSelect(settings, 'グループ', options.groupBy, GROUP_CHOICES, (groupBy) => this.setOptions({ groupBy }));
-		singleSelect(settings, '行のクリックで', options.clickOpensForm ? 'form' : 'note', CLICK_CHOICES, (v) =>
-			this.setOptions({ clickOpensForm: v === 'form' }),
-		);
 		// 1つに絞り込んでいれば、作成画面でそれを選んでおく
 		const one = (ids: string[]) => (ids.length === 1 ? ids[0] : undefined);
 		const project = one(this.filter.projects);
@@ -179,10 +176,11 @@ export class TaskListView extends PmView {
 		}
 
 		const table = scroll.createEl('table', { cls: 'pm-table' });
-		const head = table.createEl('thead').createEl('tr');
-		for (const col of COLUMNS) {
-			const th = head.createEl('th', { text: col.label, cls: 'is-sortable' });
-			if (col.numeric) th.addClass('is-numeric');
+		const heads = tableHeader(table, COLUMNS);
+		for (const [i, col] of COLUMNS.entries()) {
+			const th = heads[i];
+			if (!th) continue;
+			th.addClass('is-sortable');
 			if (options.sort === col.key) {
 				th.addClass('is-sorted');
 				th.appendText(options.desc ? ' ▼' : ' ▲');
@@ -193,6 +191,7 @@ export class TaskListView extends PmView {
 		}
 
 		const body = table.createEl('tbody');
+		const env = this.taskCellEnv(ctx, labels);
 		let shown = 0;
 		let total = 0;
 		for (const group of groups) {
@@ -204,7 +203,9 @@ export class TaskListView extends PmView {
 			}
 			for (const row of group.rows) {
 				if (shown >= this.limit) break;
-				this.drawRow(body, row, labels, ctx.calendar);
+				const tr = body.createEl('tr', { cls: 'is-clickable' });
+				formClick(tr, () => openTaskForm(this.plugin, row.task.path));
+				taskCells(tr, row, COLUMNS, env);
 				shown++;
 			}
 		}
@@ -216,37 +217,5 @@ export class TaskListView extends PmView {
 				this.redraw();
 			});
 		}
-	}
-
-	private drawRow(body: HTMLElement, row: TaskRow, labels: RowLabels, calendar: WorkCalendar): void {
-		const { task } = row;
-		const tr = body.createEl('tr', { cls: 'is-clickable' });
-		noteClick(tr, (newTab) => this.openRow(row, newTab));
-
-		kindMark(tr.createEl('td', { text: task.title }), 'task');
-		tr.createEl('td', { text: row.project ? labels.project(row.project) : task.project });
-		tr.createEl('td', { text: row.epic ? epicLabel(row.epic) : (task.epic ?? '') });
-
-		this.statusCell(tr, 'task', row.status);
-
-		tr.createEl('td', { text: row.assignees.map((m) => m.title).join('、') });
-		scheduleCells(tr, calendar, row, row.category, row.assignees);
-
-		dueCell(tr, calendar, row);
-
-		const num = (value: number | undefined) => tr.createEl('td', { cls: 'is-numeric', text: hoursText(value) });
-		num(task.estimate);
-		num(row.hours.planned);
-		const actual = num(row.hours.actual);
-		if (row.warnings.some((w) => w.kind === 'overEstimate')) actual.addClass('pm-text-error');
-
-		subtaskCell(tr, row.progress, task.subtasks, () => void openChecklistEditor(this.plugin, task.path));
-
-		taskWarningCell(tr, row.warnings);
-	}
-
-	private openRow(row: TaskRow, newTab: boolean): void {
-		if (this.options.clickOpensForm) openTaskForm(this.plugin, row.task.path);
-		else void openNote(this.plugin, row.task.path, { newTab });
 	}
 }

@@ -1,9 +1,9 @@
 import { DropdownComponent } from 'obsidian';
-import { monthOfDate } from '../calc/dates';
 import type { WorkSummary } from '../calc/worklogSummary';
-import { allocationMatrix, allocationRows, milestoneEdits, milestoneRows, monthRange, type MilestoneRow } from '../forms/projectTables';
+import { allocationExtra, allocationMatrix } from '../forms/allocationMatrix';
+import { allocationRows, milestoneEdits, milestoneRows, type MilestoneRow } from '../forms/projectTables';
 import type ProjectManagerPlugin from '../main';
-import type { NoteId, YearMonth } from '../model';
+import type { NoteId } from '../model';
 import { TABLE_SPEC } from '../parse/bodyTables';
 import { AllocationMatrixModal } from '../ui/allocationMatrixModal';
 import { epicOptions, textCell } from '../ui/formParts';
@@ -52,24 +52,13 @@ export async function openAllocationEditor(plugin: ProjectManagerPlugin, project
 	if (!usable(table)) return;
 	const { index } = plugin.store;
 	const title = (id: string) => index.title(id);
-
-	// 期間の月・作業ログのある月×メンバー・責任者も並べる
 	const project = index.get(projectId);
-	const months: YearMonth[] = [];
-	const members: NoteId[] = [];
-	if (project?.type === 'project') {
-		if (project.start && project.due) months.push(...monthRange(monthOfDate(project.start), monthOfDate(project.due)));
-		if (project.manager) members.push(project.manager);
-	}
-	for (const key of summary.allocationKeys(projectId)) {
-		months.push(key.month);
-		members.push(key.member);
-	}
+	const extra = allocationExtra(project?.type === 'project' ? project : null, summary.allocationKeys(projectId));
 
 	new AllocationMatrixModal(plugin.app, {
 		file: src.file,
 		...table,
-		matrix: allocationMatrix(table.rows, { months, members }, title),
+		matrix: allocationMatrix(table.rows, extra, title),
 		members: index.members(),
 		hoursOf: (month, member) => summary.allocation(projectId, month, member),
 		title,

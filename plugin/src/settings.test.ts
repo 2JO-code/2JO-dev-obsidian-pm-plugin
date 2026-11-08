@@ -1,5 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { cleanColor, cleanFolderPath, cleanPaneRatio, DEFAULT_PERSONAL, DEFAULT_SETTINGS, mergePersonal, mergeSettings, projectLabel, reportFolderProblem } from './settings';
+import {
+	cleanColor,
+	cleanFolderPath,
+	cleanProjectSections,
+	DEFAULT_PERSONAL,
+	DEFAULT_SETTINGS,
+	mergePersonal,
+	mergeSettings,
+	moveSection,
+	projectLabel,
+	reportFolderProblem,
+} from './settings';
 
 describe('projectLabel', () => {
 	const p = { title: '新製品CG', caseId: '0123', officialName: '' };
@@ -73,40 +84,49 @@ describe('reportFolderProblem', () => {
 	});
 });
 
-describe('cleanPaneRatio', () => {
-	it('30〜80% の 5% 刻みに丸める', () => {
-		expect(cleanPaneRatio(62)).toBe(60);
-		expect(cleanPaneRatio(63)).toBe(65);
-		expect(cleanPaneRatio(10)).toBe(30);
-		expect(cleanPaneRatio(95)).toBe(80);
-		expect(cleanPaneRatio(Number.NaN)).toBeUndefined();
-		expect(cleanPaneRatio('60')).toBeUndefined();
-	});
-});
-
 describe('mergePersonal', () => {
 	it('保存データが無ければ既定値', () => {
 		expect(mergePersonal(null)).toEqual(DEFAULT_PERSONAL);
 	});
 
 	it('不正な値は既定値に置き換える', () => {
-		expect(mergePersonal({ projectDisplayName: 'name', openNoteIn: 'split' })).toEqual(DEFAULT_PERSONAL);
-		expect(mergePersonal({ openNoteIn: 'window' }).openNoteIn).toBe('window');
-		expect(mergePersonal({ openNoteIn: 'tab' }).openNoteIn).toBe('tab');
-		expect(mergePersonal({}).openNoteIn).toBe('right');
-		expect(mergePersonal({ paneRatio: '50' }).paneRatio).toBe(60);
-		expect(mergePersonal({ paneRatio: 50 }).paneRatio).toBe(50);
+		expect(mergePersonal({ projectDisplayName: 'name' })).toEqual(DEFAULT_PERSONAL);
 		expect(mergePersonal({ reportFolder: 3 }).reportFolder).toBe('');
 		expect(mergePersonal({ reportFolder: ' \\\\server\\share\\pm ' }).reportFolder).toBe('\\\\server\\share\\pm');
 	});
 
 	it('個人の設定がまだ無ければ、以前 data.json に入れていた値を引き継ぐ', () => {
-		expect(mergePersonal(null, { projectDisplayName: 'case_id', openNoteIn: 'window' })).toEqual({
-			projectDisplayName: 'case_id',
-			openNoteIn: 'window',
-			paneRatio: 60,
-			reportFolder: '',
-		});
+		expect(mergePersonal(null, { projectDisplayName: 'case_id' })).toEqual({ ...DEFAULT_PERSONAL, projectDisplayName: 'case_id' });
 		expect(mergePersonal({ projectDisplayName: 'title' }, { projectDisplayName: 'case_id' }).projectDisplayName).toBe('title');
+	});
+});
+
+describe('プロジェクト状況の節の並び', () => {
+	it('保存が無ければ初期の並びで全部表示', () => {
+		expect(cleanProjectSections(undefined)).toEqual(DEFAULT_PERSONAL.projectSections);
+	});
+
+	it('保存した並びと表示を守り、知らない節・重複は捨て、足りない節は末尾に足す', () => {
+		const raw = [
+			{ id: 'epics', visible: false },
+			{ id: 'unknown', visible: true },
+			{ id: 'milestones' },
+			{ id: 'epics', visible: true },
+			'progress',
+		];
+		expect(cleanProjectSections(raw)).toEqual([
+			{ id: 'epics', visible: false },
+			{ id: 'milestones', visible: true },
+			{ id: 'progress', visible: true },
+			{ id: 'allocation', visible: true },
+		]);
+	});
+
+	it('1つ上・下へ動かす。端では変えない', () => {
+		const list = DEFAULT_PERSONAL.projectSections;
+		expect(moveSection(list, 1, -1).map((s) => s.id)).toEqual(['milestones', 'progress', 'epics', 'allocation']);
+		expect(moveSection(list, 1, 1).map((s) => s.id)).toEqual(['progress', 'epics', 'milestones', 'allocation']);
+		expect(moveSection(list, 0, -1)).toEqual(list);
+		expect(moveSection(list, 3, 1)).toEqual(list);
 	});
 });

@@ -7,6 +7,7 @@ import { EMPTY_FILTER, filterProjects } from '../calc/filter';
 import type ProjectManagerPlugin from '../main';
 import { buildHtmlReport, REPORT_FILE_NAME } from '../report/htmlReport';
 import { reportFolderProblem } from '../settings';
+import { notifyError } from '../ui/notify';
 
 /** HTMLレポートを書き出すコマンドを登録する（要件4.10） */
 export function registerHtmlReport(plugin: ProjectManagerPlugin): void {
@@ -52,8 +53,7 @@ export async function exportHtmlReport(plugin: ProjectManagerPlugin): Promise<vo
 		await fs.writeFile(file, html, 'utf8');
 		new Notice(`HTMLレポートを書き出しました：${file}`);
 	} catch (e) {
-		console.error('[project-manager] HTMLレポートの書き出しに失敗しました', e);
-		new Notice(`HTMLレポートを書き出せませんでした：${file}\n${e instanceof Error ? e.message : String(e)}`);
+		notifyError(e, `HTMLレポートを書き出せませんでした：${file}`);
 	}
 }
 

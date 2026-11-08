@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Warning } from '../calc/warnings';
+import type { Warning } from './warnings';
 import { hoursText, progressDetail, subtaskText, warningCounts, warningSummary } from './format';
 
 const w = (kind: Warning['kind']) => ({ kind }) as Warning;

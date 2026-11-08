@@ -59,11 +59,12 @@ classDiagram
 		+delete(path)
 		+get(id) AnyNote
 		+records() NoteRecord[]
-		+projects() Project[]
-		+epics() Epic[]
-		+tasks() Task[]
-		+members() Member[]
-		+worklogs() Worklog[]
+		+projects() readonly Project[]
+		+epics() readonly Epic[]
+		+tasks() readonly Task[]
+		+members() readonly Member[]
+		+worklogs() readonly Worklog[]
+		-groupedLists() 種類ごとの一覧
 		+problems() NoteProblem[]
 	}
 	class UsageCounter {
@@ -95,6 +96,10 @@ classDiagram
 		+calendar: WorkCalendar
 		+summary: WorkSummary
 		+projects: Map
+		+epics: Map
+		+members: Map
+		+byProject: Map
+		+warningsOf(task) Warning[]
 		+schedule: ScheduleResult
 		+today: IsoDate
 	}
@@ -165,9 +170,13 @@ classDiagram
 		+start?: IsoDate
 		+durationDays?: number
 		+due?: IsoDate
+		+planStart?: IsoDate
+		+planEnd?: IsoDate
 		+subtasks: SubtaskCount
 	}
 	class Member {
+		+familyName?: string
+		+givenName?: string
 		+dailyHours: number
 		+loadLimitPct: number
 		+active: boolean
@@ -273,6 +282,7 @@ classDiagram
 - 保存して閉じる入力画面は `FormModal` を継ぐ（設計書 4.5, 4.6）
   - 中身は `render()` を書き、保存は `submit(check, write)` に任せる
 - WBS・ガント・プロジェクト状況は `WbsDrag` を1つずつ持ち、行のドラッグで番号を書き換える（設計書 9.7）
+- 同じ3つは `TreeToggle`（開閉の状態）と `ChildRows`（タスクの行の足し引き）も1つずつ持つ（設計書 9.7）
 
 ```mermaid
 classDiagram
@@ -314,11 +324,19 @@ classDiagram
 	PmView <|-- WbsView
 	PmView <|-- GanttView
 	PmView <|-- ArchiveView
+	PmView <|-- WorklogView
+	WorklogView ..> WorklogGridModal : 押すと入力フォームを開く
 	PmView <|-- HealthView
 	WbsView *-- WbsDrag : 行のドラッグで番号を入れ替え
 	GanttView *-- WbsDrag
 	ProjectStatusView *-- WbsDrag
 	WbsDrag ..> VaultStore : writeMany でまとめて書く
+	WbsView *-- TreeToggle : 開閉の状態
+	GanttView *-- TreeToggle
+	ProjectStatusView *-- TreeToggle
+	WbsView *-- ChildRows : タスクの行を足し引き
+	GanttView *-- ChildRows
+	ProjectStatusView *-- ChildRows
 
 	Modal <|-- FormModal
 	FormModal <|-- TaskFormModal
@@ -328,7 +346,7 @@ classDiagram
 	FormModal <|-- TableEditModal
 	FormModal <|-- ChecklistModal
 	FormModal <|-- AllocationMatrixModal
-	Modal <|-- WorklogModal
+	Modal <|-- WorklogGridModal
 	Modal <|-- NewNoteModal
 	Modal <|-- LoadDetailModal
 	FuzzySuggestModal <|-- ChooseModal
@@ -417,9 +435,9 @@ sequenceDiagram
 	end
 ```
 
-### 2.3 入力補助フォームでの書き込み（設計書 4.1, 4.5, 4.6）
+### 2.3 入力補助フォームでの書き込み（設計書 4.1, 4.5, 4.6, 4.11）
 
-- タスクの例。エピック・プロジェクト・メンバーも同じ流れ
+- タスクの例。エピック・プロジェクト・メンバーも同じ流れ（本文の説明はタスクだけ）
 - 画面の更新は書き込みの後、2.2 の流れで起こる
 
 ```mermaid
@@ -427,23 +445,30 @@ sequenceDiagram
 	actor U as 利用者
 	participant E as editTask.ts
 	participant F as taskForm.ts（純粋）
+	participant D as taskDescription.ts（純粋）
 	participant M as TaskFormModal
 	participant W as writeFrontmatter
 	participant O as Obsidian（fileManager）
 	participant A as applyFrontmatter（純粋）
 
-	U->>E: 「入力補助フォームで編集」（コマンド・右クリック）
+	U->>E: ビューの行のクリック（コマンド・右クリックも）
 	E->>E: formSource()（索引の準備と frontmatter を確かめる）
 	E->>F: taskFormFromFrontmatter(fm)
 	F-->>E: TaskForm
-	E->>M: new TaskFormModal(候補は store.index から).open()
+	E->>O: vault.read(file)
+	E->>D: descriptionOf(本文)
+	E->>M: new TaskFormModal(候補は store.index から、説明).open()
+	U->>M: 日付・日数を変える
+	M->>M: previewTaskSchedule()（計算上の日程を出し直す。書かない）
 	U->>M: 入力して「保存」
 	M->>M: submit()（保存中なら受け付けない）
 	M->>F: taskFormToUpdate(form, statuses, taskId)
 	F-->>M: errors・warnings・update
+	M->>D: descriptionErrors(説明)
 	alt errors がある
 		M->>M: errors を表示して render()
 	else errors が無い
+		M->>O: vault.process(file, applyDescription)（説明を変えたときだけ本文が変わる）
 		M->>W: writeFrontmatter(app, file, task, update)
 		W->>O: processFrontMatter(file, callback)
 		O->>A: applyFrontmatter(fm, type, update)

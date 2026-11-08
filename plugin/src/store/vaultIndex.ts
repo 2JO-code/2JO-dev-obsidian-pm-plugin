@@ -1,5 +1,5 @@
 import type { UsageCounter } from '../config/impact';
-import type { Epic, IsoDate, Member, NoteId, Project, StatusSets, Task, Worklog } from '../model';
+import type { Epic, IsoDate, Member, NoteId, NoteType, Project, StatusSets, Task, Worklog } from '../model';
 import type { AnyNote, NoteProblem, NoteRecord } from './buildNote';
 
 /** Vault 全体のノートの索引。パスとIDで引ける。計算結果は持たない（設計書 1.3） */
@@ -9,6 +9,8 @@ export class VaultIndex implements UsageCounter {
 	private pathsById = new Map<NoteId, Set<string>>();
 	/** 中身が変わるたびに増える番号。計算結果を使い回すかの判定に使う（設計書 11章） */
 	private changes = 0;
+	/** 種類ごとの一覧。中身が変わったら作り直す（設計書 3.5） */
+	private lists?: { version: number; all: Map<NoteType, AnyNote[]>; active: Map<NoteType, AnyNote[]> };
 
 	get size(): number {
 		return this.byPath.size;
@@ -76,23 +78,23 @@ export class VaultIndex implements UsageCounter {
 		return [...this.byPath.values()];
 	}
 
-	projects(options?: ListOptions): Project[] {
+	projects(options?: ListOptions): readonly Project[] {
 		return this.list('project', options);
 	}
 
-	epics(options?: ListOptions): Epic[] {
+	epics(options?: ListOptions): readonly Epic[] {
 		return this.list('epic', options);
 	}
 
-	tasks(options?: ListOptions): Task[] {
+	tasks(options?: ListOptions): readonly Task[] {
 		return this.list('task', options);
 	}
 
-	members(): Member[] {
+	members(): readonly Member[] {
 		return this.list('user', { includeArchived: true });
 	}
 
-	worklogs(): Worklog[] {
+	worklogs(): readonly Worklog[] {
 		return this.list('worklog', { includeArchived: true });
 	}
 
@@ -125,12 +127,29 @@ export class VaultIndex implements UsageCounter {
 		return count;
 	}
 
-	private list<T extends AnyNote>(type: T['type'], options: ListOptions = {}): T[] {
-		const result: T[] = [];
+	private list<T extends AnyNote>(type: T['type'], options: ListOptions = {}): readonly T[] {
+		const lists = this.groupedLists();
+		const notes = (options.includeArchived ? lists.all : lists.active).get(type) ?? [];
+		return notes as T[];
+	}
+
+	/** 全ノートを1回だけ見て、種類ごと（アーカイブ内を含む・含まない）に分ける */
+	private groupedLists(): NonNullable<VaultIndex['lists']> {
+		if (this.lists?.version === this.changes) return this.lists;
+		const all = new Map<NoteType, AnyNote[]>();
+		const active = new Map<NoteType, AnyNote[]>();
+		const push = (map: Map<NoteType, AnyNote[]>, note: AnyNote): void => {
+			const notes = map.get(note.type);
+			if (notes) notes.push(note);
+			else map.set(note.type, [note]);
+		};
 		for (const r of this.byPath.values()) {
-			if (r.note?.type === type && (options.includeArchived || !r.archived)) result.push(r.note as T);
+			if (!r.note) continue;
+			push(all, r.note);
+			if (!r.archived) push(active, r.note);
 		}
-		return result;
+		this.lists = { version: this.changes, all, active };
+		return this.lists;
 	}
 }
 

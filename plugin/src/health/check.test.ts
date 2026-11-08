@@ -27,7 +27,7 @@ const project = (id: string, status = '進行中', content = ''): NoteSource => 
 	frontmatter: { type: 'project', title: 'P', aliases: ['P'], case_id: '1', official_name: 'P', status },
 	content,
 });
-const user: NoteSource = { path: 'u.md', basename: USER, frontmatter: { type: 'user', title: 'U', aliases: ['U'], daily_hours: 8, load_limit_pct: 120, active: true } };
+const user: NoteSource = { path: 'u.md', basename: USER, frontmatter: { type: 'user', title: 'U', aliases: ['U'], family_name: 'U', given_name: 'U', daily_hours: 8, load_limit_pct: 120, active: true } };
 const epicOfProject2: NoteSource = {
 	path: 'e.md',
 	basename: EPIC2,

@@ -4,7 +4,7 @@ import { openNewNoteModal } from '../commands/createNote';
 import { chooseMemberForHolidays } from '../commands/editHolidays';
 import { openMemberForm } from '../commands/editTask';
 import { openWorklogModal } from '../commands/worklog';
-import { dayOfWeek } from '../calc/dates';
+import { dayOfWeek, WEEKDAYS } from '../calc/dates';
 import type { MemberLoad } from '../calc/load';
 import {
 	DEFAULT_MEMBER_STATUS,
@@ -21,15 +21,16 @@ import type ProjectManagerPlugin from '../main';
 import type { Member } from '../model';
 import { projectLabel } from '../settings';
 import { LoadDetailModal } from '../ui/loadDetailModal';
-import { actionButtons, rowButton } from './actions';
+import { actionButtons, formClick } from './actions';
 import { PmView } from './baseView';
-import { hoursText, rateText } from './format';
+import { hoursText, rateText } from '../calc/format';
 import { projectChoices } from './choices';
-import { checkbox, dateRange, renderFilterBar, singleSelect } from './filterBar';
-import { noteLink } from './openNote';
+import { dateRange, renderFilterBar, singleSelect } from './filterBar';
 import { openView } from './openView';
-
-export const MEMBER_STATUS_VIEW_TYPE = 'pm-member-status';
+import { tableHeader } from '../ui/table';
+import { field } from '../parse/values';
+import { MEMBER_STATUS_VIEW_TYPE } from './viewTypes';
+import { checkbox } from '../ui/controls';
 
 const UNIT_CHOICES: { value: PeriodUnit; label: string }[] = [
 	{ value: 'day', label: '日' },
@@ -41,8 +42,6 @@ const MODE_CHOICES: { value: LoadMode; label: string }[] = [
 	{ value: 'planned', label: '予定負荷率' },
 	{ value: 'actual', label: '実績稼働率' },
 ];
-
-export const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
 
 /** メンバー状況のビューと、開くコマンドを登録する */
 export function registerMemberStatusView(plugin: ProjectManagerPlugin): void {
@@ -80,7 +79,7 @@ export class MemberStatusView extends PmView {
 
 	async setState(state: unknown, result: ViewStateResult): Promise<void> {
 		this.options = parseMemberStatusOptions(
-			typeof state === 'object' && state !== null ? (state as { memberStatus?: unknown }).memberStatus : undefined,
+			field(state, 'memberStatus'),
 		);
 		await super.setState(state, result);
 	}
@@ -146,21 +145,19 @@ export class MemberStatusView extends PmView {
 		const table = memberStatusTable(ctx, members, range, options.unit);
 		const current = periodOf(ctx.today, options.unit).key;
 		const tableEl = scroll.createEl('table', { cls: 'pm-table pm-load-table' });
-		const head = tableEl.createEl('thead').createEl('tr');
-		head.createEl('th', { text: 'メンバー', cls: 'pm-load-member' });
-		for (const p of table.periods) {
-			const th = head.createEl('th', { text: periodLabel(p), cls: 'is-numeric' });
-			if (p.key === current) th.addClass('is-today');
-			if (p.unit === 'day' && !ctx.calendar.isWorkday(p.start)) th.addClass('is-holiday');
-		}
+		const heads = tableHeader(tableEl, [{ label: 'メンバー', cls: 'pm-load-member' }, ...table.periods.map((p) => ({ label: periodLabel(p), numeric: true }))]);
+		table.periods.forEach((p, i) => {
+			const th = heads[i + 1];
+			if (p.key === current) th?.addClass('is-today');
+			if (p.unit === 'day' && !ctx.calendar.isWorkday(p.start)) th?.addClass('is-holiday');
+		});
 
 		const body = tableEl.createEl('tbody');
 		for (const row of table.rows) {
 			const tr = body.createEl('tr');
 			const name = tr.createEl('td', { text: row.member.title, cls: 'pm-load-member pm-link' });
-			name.setAttr('aria-label', 'メンバーのノートを開く');
-			noteLink(this.plugin, name, row.member.path);
-			rowButton(name, 'フォーム', () => openMemberForm(this.plugin, row.member.path));
+			name.setAttr('aria-label', 'メンバーの入力補助フォームを開く');
+			formClick(name, () => openMemberForm(this.plugin, row.member.path));
 			for (const load of row.cells) this.drawCell(tr, row.member, load, ctx);
 		}
 	}

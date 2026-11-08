@@ -15,6 +15,10 @@ import { cleanColor } from '../settings';
 import { redrawViews } from '../views/baseView';
 import { confirm } from './confirmModal';
 import type { SettingGroups } from './settingGroups';
+import { notifyError } from './notify';
+
+/** 色を選んでいる間の保存を、最後の変更からこの時間（ミリ秒）待ってまとめる */
+export const COLOR_SAVE_DELAY = 500;
 
 const CATEGORY_LABELS: Record<StatusCategory, string> = {
 	not_started: '未着手系',
@@ -181,7 +185,7 @@ export class SharedConfigSettings {
 			void this.plugin.saveSettings();
 			redrawViews(this.app);
 		},
-		500,
+		COLOR_SAVE_DELAY,
 		true,
 	);
 
@@ -204,7 +208,7 @@ export class SharedConfigSettings {
 				saved = true;
 			}
 		} catch (e) {
-			new Notice(e instanceof Error ? e.message : String(e));
+			notifyError(e);
 		}
 		this.refresh();
 		return saved;
@@ -291,7 +295,7 @@ export class SharedConfigSettings {
 				this.notifyImpact(impact);
 			}
 		} catch (e) {
-			new Notice(e instanceof Error ? e.message : String(e));
+			notifyError(e);
 		}
 		this.refresh();
 	}

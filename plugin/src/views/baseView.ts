@@ -2,11 +2,15 @@ import { type App, ItemView, type ViewStateResult, type WorkspaceLeaf } from 'ob
 import { ContextCache, type CalcContext } from '../calc/context';
 import { localToday } from '../calc/dates';
 import { EMPTY_FILTER, parseFilter, type ViewFilter } from '../calc/filter';
+import type { RowLabels } from '../calc/taskList';
+import { openChecklistEditor } from '../commands/editChecklist';
 import { statusColor } from '../config/statusColor';
 import type ProjectManagerPlugin from '../main';
 import type { StatusSets } from '../model';
 import { statusBadge } from './badges';
-import { checkbox } from './filterBar';
+import type { TaskCellEnv } from './taskColumns';
+import { field } from '../parse/values';
+import { checkbox } from '../ui/controls';
 
 /** 開いているビューで共有する計算用のデータ（設計書 11章） */
 const contextCache = new ContextCache();
@@ -75,9 +79,8 @@ export abstract class PmView extends ItemView {
 	}
 
 	async setState(state: unknown, result: ViewStateResult): Promise<void> {
-		const raw = typeof state === 'object' && state !== null ? (state as { filter?: unknown; gridLines?: unknown }) : {};
-		this.filter = parseFilter(raw.filter);
-		this.gridLines = raw.gridLines !== false;
+		this.filter = parseFilter(field(state, 'filter'));
+		this.gridLines = field(state, 'gridLines') !== false;
 		await super.setState(state, result);
 		this.redraw();
 	}
@@ -100,6 +103,17 @@ export abstract class PmView extends ItemView {
 		const td = tr.createEl('td');
 		this.statusBadge(td, set, status);
 		return td;
+	}
+
+	/** タスクの行のセルを描くのに使うもの（`taskCells`）。epicWbs は WBS の列で使うエピックの番号 */
+	protected taskCellEnv(ctx: CalcContext, labels: RowLabels, epicWbs?: string): TaskCellEnv {
+		return {
+			calendar: ctx.calendar,
+			labels,
+			statusCell: (tr, status) => this.statusCell(tr, 'task', status),
+			openChecklist: (task) => void openChecklistEditor(this.plugin, task.path),
+			...(epicWbs !== undefined ? { epicWbs } : {}),
+		};
 	}
 
 	/** 画面の上に出す一行の説明（シェルの見出しの横） */

@@ -9,10 +9,11 @@ import { actionButtons } from './actions';
 import { kindMark } from './badges';
 import { PmView } from './baseView';
 import { singleSelect } from './filterBar';
-import { noteLink } from './openNote';
 import { openView } from './openView';
-
-export const ARCHIVE_VIEW_TYPE = 'pm-archive';
+import { tableHeader } from '../ui/table';
+import { field } from '../parse/values';
+import { ARCHIVE_VIEW_TYPE } from './viewTypes';
+import { notifyError } from '../ui/notify';
 
 /** アーカイブ対象の一覧のビューと、開くコマンドを登録する */
 export function registerArchiveView(plugin: ProjectManagerPlugin): void {
@@ -30,8 +31,7 @@ async function copy(text: string, what: string): Promise<void> {
 		await navigator.clipboard.writeText(text);
 		new Notice(`${what}をコピーしました`);
 	} catch (e) {
-		console.error('[project-manager] コピーに失敗しました', e);
-		new Notice('コピーできませんでした');
+		notifyError(e, 'コピーできませんでした');
 	}
 }
 
@@ -63,7 +63,7 @@ export class ArchiveView extends PmView {
 	}
 
 	async setState(state: unknown, result: ViewStateResult): Promise<void> {
-		const raw = typeof state === 'object' && state !== null ? (state as { project?: unknown }).project : undefined;
+		const raw = field(state, 'project');
 		this.projectId = typeof raw === 'string' ? raw : undefined;
 		await super.setState(state, result);
 	}
@@ -136,12 +136,10 @@ export class ArchiveView extends PmView {
 		names.addEventListener('click', () => void copy(group.items.map((i) => i.from.split('/').pop() ?? i.from).join('\n'), 'ファイル名'));
 
 		const table = section.createEl('table', { cls: 'pm-table' });
-		const tr = table.createEl('thead').createEl('tr');
-		for (const label of ['種類', 'タイトル', 'ファイル名', '注意']) tr.createEl('th', { text: label });
+		tableHeader(table, ['種類', 'タイトル', 'ファイル名', '注意']);
 		const tbody = table.createEl('tbody');
 		for (const item of group.items) {
-			const row = tbody.createEl('tr', { cls: 'is-clickable' });
-			noteLink(this.plugin, row, item.from);
+			const row = tbody.createEl('tr');
 			kindMark(row.createEl('td', { text: ARCHIVE_KIND_LABELS[item.kind] }), item.kind);
 			row.createEl('td', { text: item.title });
 			row.createEl('td', { text: item.from.split('/').pop() ?? item.from });

@@ -3,6 +3,7 @@ import { compareJa } from './compare';
 import type { CalcContext } from './context';
 import { memberLoad, type MemberLoad } from './load';
 import { defaultRange, periodsBetween, type Period, type PeriodUnit } from './workdays';
+import { isRecord } from '../parse/values';
 
 export type LoadMode = 'planned' | 'actual';
 
@@ -21,7 +22,6 @@ export const DEFAULT_MEMBER_STATUS: MemberStatusOptions = { unit: 'week', mode: 
 const UNITS: readonly PeriodUnit[] = ['day', 'week', 'month'];
 const MODES: readonly LoadMode[] = ['planned', 'actual'];
 
-const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 const date = (v: unknown): IsoDate | undefined => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : undefined);
 const pick = <T extends string>(v: unknown, allowed: readonly T[], fallback: T): T =>
 	allowed.find((a) => a === v) ?? fallback;

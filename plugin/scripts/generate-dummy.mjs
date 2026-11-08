@@ -1,4 +1,4 @@
-// 動作確認用のダミーデータを開発用Vaultに作る（T1-17、要件6.3）。
+// 動作確認用のダミーデータを開発用Vaultに作る（要件6.3）。
 //
 //   node scripts/generate-dummy.mjs            作る（すでにあれば消してから作り直す）
 //   node scripts/generate-dummy.mjs --clean    消すだけ
@@ -178,7 +178,9 @@ const FAMILY = ['佐藤', '鈴木', '高橋', '田中', '伊藤', '渡辺', '山
 const GIVEN = ['翔', '陽菜', '蓮', '結衣', '大和', '葵', '悠真', '凛', '湊', 'さくら', '樹', '美咲', '颯太', '花', '陸'];
 const members = Array.from({ length: MEMBER_COUNT }, (_, i) => {
 	const id = `USER-${uuid7()}`;
-	const title = `【ダミー】${FAMILY[i % FAMILY.length]} ${GIVEN[(i * 7) % GIVEN.length]}`;
+	const familyName = `【ダミー】${FAMILY[i % FAMILY.length]}`;
+	const givenName = GIVEN[(i * 7) % GIVEN.length];
+	const title = `${familyName} ${givenName}`;
 	const m = {
 		id,
 		title,
@@ -189,7 +191,7 @@ const members = Array.from({ length: MEMBER_COUNT }, (_, i) => {
 	write(
 		folders.members,
 		id,
-		`${frontmatter({ type: 'user', title, aliases: [title], daily_hours: m.dailyHours, load_limit_pct: m.loadLimitPct, active: m.active })}\nダミーデータです。`,
+		`${frontmatter({ type: 'user', title, aliases: [title], family_name: familyName, given_name: givenName, daily_hours: m.dailyHours, load_limit_pct: m.loadLimitPct, active: m.active })}\nダミーデータです。`,
 	);
 	return m;
 });
@@ -231,7 +233,7 @@ for (let p = 0; p < PROJECT_COUNT; p++) {
 				project: id,
 				epic,
 				wbs: String(t + 1),
-				assignees: sample(team, chance(0.2) ? 2 : 1),
+				assignees: sample(team, 1),
 				duration: int(1, 8),
 				dependsOn: previous && chance(0.4) ? [previous] : [],
 				subtaskCount: int(0, 4),

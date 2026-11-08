@@ -1,7 +1,12 @@
-import type { CalcContext } from '../calc/context';
-import type { CountProgress, TaskProgress } from '../calc/progress';
-import { WARNING_LABELS, type Warning, type WarningKind } from '../calc/warnings';
-import type { Member, NoteId, SubtaskCount } from '../model';
+import type { CalcContext } from './context';
+import type { CountProgress, TaskProgress } from './progress';
+import { WARNING_LABELS, type Warning, type WarningKind } from './warnings';
+import type { Member, NoteId, NoteType, SubtaskCount } from '../model';
+import { parseLinkId } from '../parse/values';
+
+/** 選択肢に無い値の表示名。ID なら「見つかりません」、読めない値なら「読めません」 */
+export const missingLabel = (value: string, type: NoteType): string =>
+	`${value}（${parseLinkId(value, type) === value ? '見つかりません' : '読めません'}）`;
 
 /** ノートのタイトル（見つからなければID） */
 export function noteTitle(ctx: CalcContext, id: NoteId): string {
@@ -35,6 +40,9 @@ export const subtaskText = (p: TaskProgress, subtasks: SubtaskCount) =>
 
 /** 時間（3けた区切り、小数は2けたまで。例：8,123.5）。値が無ければ「—」（設計書 9.1） */
 export const hoursText = (h: number | undefined) => (h === undefined ? '—' : h.toLocaleString('ja-JP', { maximumFractionDigits: 2 }));
+
+/** マスに出す時間。0 は空、ほかは hoursText と同じ */
+export const cellHoursText = (h: number) => (h === 0 ? '' : hoursText(h));
 
 /** 警告の種類の並び（重いものから。印・件数の表示に使う） */
 export const WARNING_ORDER: readonly WarningKind[] = ['overdue', 'overdueRisk', 'overEstimate', 'overAllocation', 'loadWarning', 'loadCaution', 'holidayWork'];

@@ -19,7 +19,7 @@ function indexOf(...sources: NoteSource[]): VaultIndex {
 const member: NoteSource = {
 	path: `Members/${USER}.md`,
 	basename: USER,
-	frontmatter: { type: 'user', title: '山田 太郎', aliases: ['山田 太郎'], daily_hours: 8, load_limit_pct: 120, active: true },
+	frontmatter: { type: 'user', title: '山田 太郎', aliases: ['山田 太郎'], family_name: '山田', given_name: '太郎', daily_hours: 8, load_limit_pct: 120, active: true },
 };
 
 describe('labelOf', () => {

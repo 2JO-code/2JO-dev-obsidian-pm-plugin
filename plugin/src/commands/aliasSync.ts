@@ -1,8 +1,9 @@
-import { Notice, type TFile } from 'obsidian';
+import type { TFile } from 'obsidian';
 import { parseNoteId } from '../id';
 import type ProjectManagerPlugin from '../main';
 import { syncAliases } from '../write/aliases';
 import { writeFrontmatter } from '../write/frontmatterFile';
+import { notifyError } from '../ui/notify';
 
 /** タイトルの変更から書き込むまでの待ち時間（ミリ秒。設計書 4.2） */
 const DELAY = 1500;
@@ -35,6 +36,6 @@ async function apply(plugin: ProjectManagerPlugin, file: TFile): Promise<void> {
 	try {
 		await writeFrontmatter(plugin.app, file, parsed.type, { aliases: next });
 	} catch (e) {
-		new Notice(`別名（aliases）を更新できませんでした: ${e instanceof Error ? e.message : String(e)}`);
+		notifyError(e, '別名（aliases）を更新できませんでした');
 	}
 }

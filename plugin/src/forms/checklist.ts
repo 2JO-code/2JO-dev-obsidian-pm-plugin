@@ -8,7 +8,7 @@ export interface ChecklistRow {
 }
 
 /** 本文のチェックリストの1行 */
-interface ChecklistLine {
+export interface ChecklistLine {
 	line: number;
 	/** 行そのもの（行末の \r は除く） */
 	raw: string;
@@ -41,13 +41,16 @@ export interface ChecklistEditResult {
 
 const ITEM = /^(\s*(?:[-*+]|\d+[.)])\s+)\[(.)\](?:\s(.*))?$/;
 
+/** 本文が始まる行（frontmatter の次の行。frontmatter が無ければ 0） */
+export function bodyStartLine(lines: readonly string[]): number {
+	if (lines[0]?.replace(/\r$/, '') !== '---') return 0;
+	const end = lines.findIndex((l, i) => i > 0 && l.replace(/\r$/, '') === '---');
+	return end > 0 ? end + 1 : 0;
+}
+
 /** 本文のチェックリストの行。[ ] [x] [X] だけ（数え方は完了の割合と同じ）。frontmatter とコードブロックの中は除く */
-function checklistLines(lines: readonly string[]): ChecklistLine[] {
-	let start = 0;
-	if (lines[0]?.replace(/\r$/, '') === '---') {
-		const end = lines.findIndex((l, i) => i > 0 && l.replace(/\r$/, '') === '---');
-		if (end > 0) start = end + 1;
-	}
+export function checklistLines(lines: readonly string[]): ChecklistLine[] {
+	const start = bodyStartLine(lines);
 	let inCode = false;
 	const out: ChecklistLine[] = [];
 	for (let i = start; i < lines.length; i++) {

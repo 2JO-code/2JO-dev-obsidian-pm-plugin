@@ -1,4 +1,6 @@
+import { isFinished } from '../config/status';
 import type { StatusCategory, StatusDef } from '../model';
+import { isRecord } from '../parse/values';
 import type { TaskRow } from './taskList';
 
 export interface KanbanColumn {
@@ -22,7 +24,7 @@ export function kanbanColumns(rows: readonly TaskRow[], statuses: readonly Statu
 		name: s.name,
 		category: s.category,
 		rows: [],
-		collapsedByDefault: s.category === 'done' || s.category === 'stopped',
+		collapsedByDefault: isFinished(s.category),
 	}));
 	const byName = new Map(columns.map((c) => [c.name, c]));
 	const unknown: KanbanColumn = { name: UNKNOWN_COLUMN, rows: [], collapsedByDefault: false };
@@ -47,8 +49,8 @@ export function parseDraggedCard(raw: string): DraggedCard | undefined {
 	} catch {
 		return undefined;
 	}
-	if (typeof data !== 'object' || data === null) return undefined;
-	const { path, title, from } = data as Record<string, unknown>;
+	if (!isRecord(data)) return undefined;
+	const { path, title, from } = data;
 	if (typeof path !== 'string' || path === '' || typeof title !== 'string' || typeof from !== 'string') return undefined;
 	return { path, title, from };
 }

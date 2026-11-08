@@ -5,3 +5,6 @@ scan.json
 
 # 個人の Claude Code 設定
 .claude/settings.local.json
+
+# 日々変わる開発の進み具合（TASKS.md・HISTORY.md）。手元だけで管理する
+docs/progress/

@@ -4,7 +4,7 @@ import { TABLE_SPEC } from '../parse/bodyTables';
 import { ChooseModal } from '../ui/chooseModal';
 import { textCell } from '../ui/formParts';
 import { TableEditModal } from '../ui/tableEditModal';
-import { isMemberFile } from './editTask';
+import { isMemberFile } from './noteFiles';
 import { storeReady, tableSource, usable } from './ready';
 
 /** 個人休日の編集画面を開くコマンドと右クリックメニューを登録する */

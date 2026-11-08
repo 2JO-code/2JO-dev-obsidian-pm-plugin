@@ -30,7 +30,7 @@
   - 型だけなら `import type` でよい
 - `main.ts` には起動処理、各機能の `register…(plugin)` の呼び出し、設定の読み込みと保存だけを書く
   - コマンド・メニュー・ビューなどは `register…(plugin)` 関数として各フォルダに置く
-- 1ファイルは1つの役割にする。300行を超えたら分けることを考える
+- 1ファイルは1つの役割にする
 - フォルダごとの `index.ts` でまとめて export してよい（`main.ts` からはファイルを直接 import する）
 
 ## 3. 名前
@@ -57,6 +57,8 @@
 - `any` を使わない。外から来る値（frontmatter、JSON、`loadData()`）は `unknown` で受け、確かめてから使う
 - `as` による型の決めつけは避ける
   - 外から来る値は確かめてから使う（例：候補の一覧と照らす `oneOf()`）
+  - オブジェクトの中は `isRecord` で確かめ、キーの値は `field(v, 'key')` で読む（`parse/values.ts`）
+  - ビューの状態（`setState`）も同じ。`isRecord` をファイルごとに書かない
   - Obsidian の `TFile` などは `instanceof` で確かめる
   - TypeScript が型を絞れないだけで値が確かなとき（`Object.keys()` の結果など）は使ってよい
 - モデル（`model/` の型）の任意項目は「キーが無い」で表す
@@ -73,7 +75,8 @@
 - 入力の誤りは、純粋関数が文言の一覧（`errors: string[]`）で返すか、文言つきの `Error` を投げる
   - 画面側はそれを表示するだけにする
 - 保存してよいが知らせたいことは `warnings` として分ける
-- Obsidian API の失敗（ファイルの書き込みなど）は `try` / `catch` で受け、`Notice` で知らせる
+- Obsidian API の失敗（ファイルの書き込みなど）は `try` / `catch` で受け、`notifyError` で知らせる（設計書 4.13）
+  - `e instanceof Error ? …` を書かず、`errorMessage` を使う
   - 黙って無視しない。コンソールへの出力はベストプラクティス 8章
 
 ## 6. 非同期処理

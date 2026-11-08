@@ -25,8 +25,8 @@ const index = indexOf([
 	epic('EPIC-2', { wbs: '1.2', title: '要件' }),
 	member(USER, { title: '佐藤' }),
 	member(USER2, { title: '伊藤' }),
-	task('T1', { title: 'い', epic: EPIC, status: '進行中', due: '2026-11-05', estimate: 4 }),
-	task('T2', { title: 'あ', project: PJT2, epic: 'EPIC-2', status: '完了', assignees: [USER, USER2], due: '2026-11-20' }),
+	task('T1', { title: 'い', epic: EPIC, status: '進行中', due: '2026-11-05', estimate: 4, planStart: '2026-11-02', planEnd: '2026-11-06' }),
+	task('T2', { title: 'あ', project: PJT2, epic: 'EPIC-2', status: '完了', assignees: [USER, USER2], due: '2026-11-20', planEnd: '2026-11-20' }),
 	task('T3', { title: 'う', status: 'レビュー待ち', assignees: [], subtasks: { done: 1, total: 4 } }),
 	task('T4', { title: 'え', status: '謎', assignees: ['USER-x'], epic: 'EPIC-x' }),
 	worklog(USER, '2026-11', [
@@ -56,6 +56,13 @@ describe('taskRows', () => {
 		expect(row('T1').schedule).toEqual({ start: '2026-11-05', end: '2026-11-10', startDelayed: false, endDelayed: true });
 		expect(row('T3').schedule).toBeUndefined();
 		expect(ids(sortTaskRows(rows, 'end', false, labels, statusOrder))).toEqual(['T1', 'T2', 'T3', 'T4']);
+	});
+
+	it('予定終了日があれば、計算上の終了日との差（稼働日）を持つ', () => {
+		expect(row('T1').planDelay).toBe(2);
+		expect(row('T2').planDelay).toBe(0);
+		expect(row('T3').planDelay).toBeUndefined();
+		expect(ids(sortTaskRows(rows, 'planDelay', true, labels, statusOrder))).toEqual(['T1', 'T2', 'T3', 'T4']);
 	});
 
 	it('見つからないメンバー・設定に無いステータスはそのまま扱う', () => {

@@ -68,6 +68,10 @@ export interface Task extends TitledNote {
 	durationDays?: number;
 	/** 期限日（固定値） */
 	due?: IsoDate;
+	/** 予定開始日（最初の計画。固定値） */
+	planStart?: IsoDate;
+	/** 予定終了日（最初の計画。固定値）。計算上の終了日と比べて遅れを出す */
+	planEnd?: IsoDate;
 	subtasks: SubtaskCount;
 }
 
@@ -79,7 +83,11 @@ export interface PersonalHoliday extends TableRow {
 
 export interface Member extends TitledNote {
 	type: 'user';
-	/** title は氏名 */
+	// title は氏名（姓・名とは別に入力する）
+	/** 姓。入力しなおす前の古いメンバーには無い（設計書 4.5） */
+	familyName?: string;
+	/** 名 */
+	givenName?: string;
 	dailyHours: number;
 	loadLimitPct: number;
 	active: boolean;

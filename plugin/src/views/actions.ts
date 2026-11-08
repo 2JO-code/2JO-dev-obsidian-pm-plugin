@@ -1,6 +1,6 @@
 import type { TaskProgress } from '../calc/progress';
 import type { SubtaskCount } from '../model';
-import { subtaskText } from './format';
+import { subtaskText } from '../calc/format';
 
 /** シェルの操作の欄（右寄せ）に並べるボタン（要件4.2、設計書 9.1）。tooltip はマウスを乗せたときの説明 */
 export function actionButtons(actions: HTMLElement, buttons: { text: string; onClick: () => void; tooltip?: string }[]): void {
@@ -11,6 +11,14 @@ export function actionButtons(actions: HTMLElement, buttons: { text: string; onC
 	}
 }
 
+/** 要素のクリックで編集画面（フォーム・表の編集画面）を開く。親の要素のクリックには伝えない（設計書 9.1） */
+export function formClick(el: HTMLElement, open: () => void): void {
+	el.addEventListener('click', (evt) => {
+		evt.stopPropagation();
+		open();
+	});
+}
+
 /** セルをリンクにする（行のクリックとは別に動く） */
 export function cellLink(cell: HTMLElement, onClick: () => void): void {
 	cell.addClass('pm-link');
@@ -18,29 +26,6 @@ export function cellLink(cell: HTMLElement, onClick: () => void): void {
 		evt.stopPropagation();
 		onClick();
 	});
-}
-
-/**
- * 開閉の印（▶／▼）。開け閉めはこの印を押したときだけ（行のほかの場所では開閉しない。設計書 9.1）。
- * 子が無ければ印を出さない（幅だけ取る）
- */
-export function toggleMark(parent: HTMLElement, open: boolean, hasChildren: boolean, onToggle: () => void): HTMLElement {
-	const mark = parent.createSpan({ cls: 'pm-toggle', text: hasChildren ? (open ? '▼' : '▶') : '' });
-	if (!hasChildren) return mark;
-	mark.addClass('is-button');
-	mark.setAttr('aria-label', open ? 'たたむ' : '開く');
-	mark.addEventListener('click', (evt) => {
-		evt.stopPropagation();
-		onToggle();
-	});
-	return mark;
-}
-
-/** 行の中の開閉の印（▶／▼）を書き換える（行を作り直さずに開閉するとき。設計書 9.7） */
-export function updateToggleMark(row: HTMLElement, open: boolean): void {
-	const mark = row.querySelector<HTMLElement>('.pm-toggle');
-	mark?.setText(open ? '▼' : '▶');
-	mark?.setAttr('aria-label', open ? 'たたむ' : '開く');
 }
 
 /** タスクの進捗のセル。押すとチェックリストの編集画面を開く（行のクリックとは別に動く。設計書 9.1） */

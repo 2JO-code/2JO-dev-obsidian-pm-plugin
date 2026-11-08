@@ -2,7 +2,8 @@ import type { CalcContext } from '../calc/context';
 import type { TaskFilterOptions } from '../calc/taskList';
 import type { ProjectDisplayName } from '../settings';
 import { epicChoices } from './choices';
-import { checkbox, dateRange, multiSelect } from './filterBar';
+import { dateRange, multiSelect } from './filterBar';
+import { checkbox } from '../ui/controls';
 
 /** タスクのビューだけの絞り込みの項目（エピック・期限日・警告ありのみ）。絞り込みの部品の extra に入れる */
 export function taskFilterFields(

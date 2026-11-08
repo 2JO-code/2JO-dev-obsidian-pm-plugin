@@ -3,7 +3,7 @@ import type { Epic, IsoDate, Milestone, NoteId, Project, StatusCategory, Task, Y
 import { compareNumeric } from './compare';
 import type { CalcContext } from './context';
 import { countProgress, workload, type CountProgress, type Workload } from './progress';
-import { allocationWarnings, taskWarnings, type Warning } from './warnings';
+import { allocationWarnings, type Warning } from './warnings';
 
 /** 進捗・工数・警告のまとまり（プロジェクト全体とエピックごとに使う） */
 export interface Status {
@@ -29,6 +29,8 @@ export interface MilestoneRow {
 	late: boolean;
 	/** マイルストーンの日付を過ぎたのに、連動エピックが完了系でない */
 	missed: boolean;
+	/** 表の「注意」の列に出す文（設計書 11.8） */
+	notes: string[];
 }
 
 export interface AllocationCell {
@@ -57,10 +59,7 @@ export interface ProjectStatus extends Status {
 	allocation: AllocationTable;
 }
 
-const compareText = compareNumeric;
-
 function status(ctx: CalcContext, tasks: Task[], extra: Warning[] = []): Status {
-	const statuses = ctx.statuses.task;
 	let span: Status['span'];
 	for (const t of tasks) {
 		const s = ctx.schedule.schedules.get(t.id);
@@ -70,26 +69,28 @@ function status(ctx: CalcContext, tasks: Task[], extra: Warning[] = []): Status 
 	return {
 		...(span ? { span } : {}),
 		tasks,
-		progress: countProgress(tasks, statuses),
+		progress: countProgress(tasks, ctx.statuses.task),
 		workload: workload(tasks, ctx.summary),
-		warnings: [...tasks.flatMap((t) => taskWarnings(t, statuses, ctx.summary, ctx.today, ctx.schedule.schedules.get(t.id))), ...extra],
+		warnings: [...tasks.flatMap((t) => ctx.warningsOf(t)), ...extra],
 	};
 }
 
 /** プロジェクト状況（要件4.8、設計書 11.8）。アーカイブ内のエピック・タスクも含める */
 export function projectStatus(ctx: CalcContext, project: Project): ProjectStatus {
-	const all = { includeArchived: true };
-	const tasks = ctx.index.tasks(all).filter((t) => t.project === project.id);
-	const epics = ctx.index.epics(all).filter((e) => e.project === project.id);
+	const notes = ctx.byProject.get(project.id);
+	const tasks = [...(notes?.tasks ?? [])];
+	const epics = [...(notes?.epics ?? [])];
 
 	const epicIds = new Set(epics.map((e) => e.id));
 	const byEpic = new Map<NoteId | undefined, Task[]>();
 	for (const t of tasks) {
 		const key = t.epic && epicIds.has(t.epic) ? t.epic : undefined;
-		byEpic.set(key, [...(byEpic.get(key) ?? []), t]);
+		const group = byEpic.get(key);
+		if (group) group.push(t);
+		else byEpic.set(key, [t]);
 	}
 	const epicRows: EpicRow[] = epics
-		.sort((a, b) => compareText(a.wbs ?? '￿', b.wbs ?? '￿') || compareText(a.title, b.title))
+		.sort((a, b) => compareNumeric(a.wbs ?? '￿', b.wbs ?? '￿') || compareNumeric(a.title, b.title))
 		.map((epic) => {
 			const category = findStatus(ctx.statuses.task, epic.status)?.category;
 			return { epic, ...(category ? { category } : {}), ...status(ctx, byEpic.get(epic.id) ?? []) };
@@ -108,16 +109,17 @@ export function projectStatus(ctx: CalcContext, project: Project): ProjectStatus
 
 function milestoneRows(project: Project, epics: EpicRow[], today: IsoDate): MilestoneRow[] {
 	return [...project.milestones]
-		.sort((a, b) => compareText(a.date, b.date) || a.line - b.line)
+		.sort((a, b) => compareNumeric(a.date, b.date) || a.line - b.line)
 		.map((milestone) => {
 			const epic = milestone.epic ? epics.find((r) => r.epic?.id === milestone.epic) : undefined;
 			const due = epic?.epic?.due;
-			return {
-				milestone,
-				...(epic ? { epic } : {}),
-				late: !!due && due > milestone.date,
-				missed: !!epic && milestone.date < today && epic.category !== 'done',
-			};
+			const late = !!due && due > milestone.date;
+			const missed = !!epic && milestone.date < today && epic.category !== 'done';
+			const notes: string[] = [];
+			if (milestone.epic && !epic) notes.push('連動エピックが見つかりません');
+			if (late) notes.push('完了予定日がマイルストーンより後');
+			if (missed) notes.push('日付を過ぎたが未完了');
+			return { milestone, ...(epic ? { epic } : {}), late, missed, notes };
 		});
 }
 

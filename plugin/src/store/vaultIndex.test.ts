@@ -72,6 +72,31 @@ describe('VaultIndex', () => {
 		expect(index.tasks({ includeArchived: true })).toHaveLength(2);
 	});
 
+	it('種類ごとの一覧は、変更が無ければ同じものを返し、変更があれば作り直す', () => {
+		const index = new VaultIndex();
+		index.set(task(1, '進行中'));
+		index.set(worklog);
+		const first = index.tasks();
+		expect(index.tasks()).toBe(first);
+		expect(index.worklogs()).toHaveLength(1);
+		index.set(task(2, '未着手'));
+		expect(index.tasks().map((t) => t.title)).toEqual(['T1', 'T2']);
+		index.delete('Tasks/1.md');
+		expect(index.tasks().map((t) => t.title)).toEqual(['T2']);
+		index.clear();
+		expect(index.tasks()).toEqual([]);
+	});
+
+	it('アーカイブ内を含む一覧と含まない一覧を、登録の順のまま分ける', () => {
+		const index = new VaultIndex();
+		index.set(task(1, '進行中'));
+		index.set(task(2, '完了', 'Archive/2.md', true));
+		index.set(task(3, '未着手'));
+		expect(index.tasks().map((t) => t.title)).toEqual(['T1', 'T3']);
+		expect(index.tasks({ includeArchived: true }).map((t) => t.title)).toEqual(['T1', 'T2', 'T3']);
+		expect(index.projects()).toEqual([]);
+	});
+
 	it('読めないノートもIDの重複確認の対象にする', () => {
 		const index = new VaultIndex();
 		index.set(record({ path: 'x.md', basename: `TASK-${U(9)}`, frontmatter: undefined }));

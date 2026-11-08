@@ -8,7 +8,7 @@ Obsidian 上で、複数プロジェクト横断の進捗・メンバー負荷�
 
 - 仕様の正本は [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md)。実装・設計判断の前に該当章を読む
 - 未決事項は要件 8章。勝手に確定させず、ユーザーに確認する
-- **再開するときは、まず [docs/TASKS.md](docs/TASKS.md) で現在地（`[~]` と次の `[ ]`）を確かめる**
+- **再開するときは、まず [docs/progress/TASKS.md](docs/progress/TASKS.md) で現在地（`[~]` と次の `[ ]`）を確かめる**
 
 ## 文書の役割
 
@@ -19,8 +19,8 @@ Obsidian 上で、複数プロジェクト横断の進捗・メンバー負荷�
 | [REQUIREMENTS.md](docs/REQUIREMENTS.md) | 何を作るか（今の仕様） | 作り方、理由、変更の経緯 |
 | [DESIGN.md](docs/DESIGN.md) | 今の作りと、そうした理由 | 変更の経緯（いつ・だれの要望か） |
 | [DIAGRAMS.md](docs/DIAGRAMS.md) | 今の作りの図（クラス図・シーケンス図、Mermaid） | 理由・細かい決まり（設計書へ） |
-| [TASKS.md](docs/TASKS.md) | 作業中・未着手のタスク、持ち越し課題 | 終わったタスク |
-| [HISTORY.md](docs/HISTORY.md) | 終わったタスクの結果、仕様の移り変わり | 今の仕様・作りの説明 |
+| [TASKS.md](docs/progress/TASKS.md) | 作業中・未着手のタスク、持ち越し課題 | 終わったタスク |
+| [HISTORY.md](docs/progress/HISTORY.md) | 終わったタスクの結果、仕様の移り変わり | 今の仕様・作りの説明 |
 | [CODING_GUIDELINES.md](docs/CODING_GUIDELINES.md) | このプロジェクト独自のコードの書き方 | Obsidian API の公式の決まり |
 | [OBSIDIAN_BEST_PRACTICES.md](docs/OBSIDIAN_BEST_PRACTICES.md) | Obsidian API の使い方（公式と適用方針） | 独自の書き方 |
 | [UI_STYLE_GUIDE.md](docs/UI_STYLE_GUIDE.md) | 見た目の書き方（色・余白・印・リンク・表） | 決めた理由（設計書へ） |
@@ -78,6 +78,7 @@ Obsidian 上で、複数プロジェクト横断の進捗・メンバー負荷�
 
 - フォルダ構成
   - `docs/`：上の文書。`docs/vault/README.md` は Vault の直下に置く利用者向けの使い方の正本
+  - `docs/progress/`：日々変わる TASKS.md・HISTORY.md。Git に入れない（手元だけ）
     - ビルドで `plugin/src/generated/readmeText.ts` に変換され、「使い方を開く」で Vault に書き出す（設計書 9章）
   - `plugin/`：プラグインのソースとビルド設定（公式 `obsidian-sample-plugin` ベース）。npm 関連はすべてここ
   - ルート：CLAUDE.md（ルートにないと読み込まれない）、`.claude/`、`.gitignore`

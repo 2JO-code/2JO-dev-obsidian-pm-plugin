@@ -4,6 +4,7 @@ import type { RawTableRow } from '../parse/markdownTable';
 import { applyTableEdits, type TableSpec } from '../write/markdownTable';
 import { FormModal } from './formModal';
 import { errorBox } from './formParts';
+import { tableHeader } from './table';
 
 /** 表の列。セルに入力欄を作り、値は行のオブジェクトに入れる */
 export interface TableEditColumn<T> {
@@ -52,9 +53,7 @@ export class TableEditModal<T extends object> extends FormModal {
 		contentEl.createDiv({ cls: 'pm-note', text: options.note });
 
 		const table = contentEl.createEl('table', { cls: 'pm-table pm-table-edit' });
-		const head = table.createEl('thead').createEl('tr');
-		for (const c of options.columns) head.createEl('th', { text: c.label });
-		head.createEl('th');
+		tableHeader(table, [...options.columns.map((c) => c.label), '']);
 		const body = table.createEl('tbody');
 		this.rows.forEach((row, i) => {
 			const tr = body.createEl('tr');

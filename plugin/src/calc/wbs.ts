@@ -1,4 +1,5 @@
 import type { Epic, NoteId, Project, Task } from '../model';
+import { stringArray } from '../parse/values';
 import { compareNumeric } from './compare';
 import type { CalcContext } from './context';
 import { filterProjects, filterTasks, type ViewFilter } from './filter';
@@ -103,4 +104,4 @@ export function toggledForAll(tree: readonly WbsProject[], open: boolean): Set<s
 
 /** 保存されていた開閉の状態を読む */
 export const parseToggled = (raw: unknown): Set<string> =>
-	new Set(Array.isArray(raw) ? raw.filter((s): s is string => typeof s === 'string') : []);
+	new Set(stringArray(raw));

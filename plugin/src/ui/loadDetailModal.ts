@@ -1,7 +1,8 @@
 import { type App, Modal } from 'obsidian';
 import type { MemberLoad } from '../calc/load';
 import type { Member, NoteId } from '../model';
-import { hoursText, rateText } from '../views/format';
+import { hoursText, rateText } from '../calc/format';
+import { tableHeader } from './table';
 
 export interface LoadDetailOptions {
 	member: Member;
@@ -41,10 +42,7 @@ export class LoadDetailModal extends Modal {
 			return;
 		}
 		const table = contentEl.createEl('table', { cls: 'pm-table' });
-		const head = table.createEl('thead').createEl('tr');
-		head.createEl('th', { text: 'プロジェクト' });
-		head.createEl('th', { text: '予定(h)', cls: 'is-numeric' });
-		head.createEl('th', { text: '実績(h)', cls: 'is-numeric' });
+		tableHeader(table, ['プロジェクト', { label: '予定(h)', numeric: true }, { label: '実績(h)', numeric: true }]);
 		const body = table.createEl('tbody');
 		const rows = [...load.byProject].sort((a, b) => b[1].planned - a[1].planned || b[1].actual - a[1].actual);
 		for (const [id, hours] of rows) {

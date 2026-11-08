@@ -1,3 +1,4 @@
+import { nameErrors } from '../forms/memberForm';
 import { newNoteId, type IdKind } from '../id';
 import { emptyValue, FRONTMATTER_KEYS, MEMBER_DEFAULTS, type NoteId, type StatusSets } from '../model';
 import type { FolderSettings } from '../settings';
@@ -10,7 +11,7 @@ export type NewNoteInput =
 	| { kind: 'project'; title: string; caseId: string; officialName: string }
 	| { kind: 'epic'; title: string; project: NoteId; wbs: string }
 	| { kind: 'task'; title: string; project: NoteId; epic?: NoteId; wbs?: string }
-	| { kind: 'user'; title: string };
+	| { kind: 'user'; title: string; familyName: string; givenName: string };
 
 /** 作成するノートの中身 */
 export interface NewNotePlan {
@@ -39,8 +40,16 @@ export function planNewNote(
 	generateId: (kind: IdKind, exists: (id: NoteId) => boolean) => NoteId = newNoteId,
 ): NewNotePlan {
 	const title = input.title.trim();
-	if (title === '') throw new Error(input.kind === 'user' ? '氏名を入力してください' : 'タイトルを入力してください');
-	const base: FrontmatterUpdate = { type: input.kind, title, aliases: [title] };
+	let names: FrontmatterUpdate = {};
+	if (input.kind === 'user') {
+		// メンバーは氏名・姓・名をそれぞれ入れる（設計書 4.5）
+		const familyName = input.familyName.trim();
+		const givenName = input.givenName.trim();
+		const errors = nameErrors(title, familyName, givenName);
+		if (errors.length > 0) throw new Error(errors.join('。'));
+		names = { family_name: familyName, given_name: givenName };
+	} else if (title === '') throw new Error('タイトルを入力してください');
+	const base: FrontmatterUpdate = { type: input.kind, title, aliases: [title], ...names };
 	const firstStatus = (set: keyof StatusSets) => {
 		const name = statuses[set][0]?.name;
 		if (!name) throw new Error('ステータスが設定されていません');

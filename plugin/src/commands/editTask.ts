@@ -1,9 +1,12 @@
 import { Notice, TFile } from 'obsidian';
+import { localToday } from '../calc/dates';
+import { WorkCalendar } from '../calc/workdays';
+import { checklistRows } from '../forms/checklist';
 import { epicFormFromFrontmatter } from '../forms/epicForm';
 import { memberFormFromFrontmatter } from '../forms/memberForm';
 import { projectFormFromFrontmatter } from '../forms/projectForm';
+import { descriptionOf } from '../forms/taskDescription';
 import { taskFormFromFrontmatter } from '../forms/taskForm';
-import { parseNoteId } from '../id';
 import type ProjectManagerPlugin from '../main';
 import type { NoteType } from '../model';
 import { EpicFormModal } from '../ui/epicFormModal';
@@ -11,17 +14,8 @@ import { MemberFormModal } from '../ui/memberFormModal';
 import { ProjectFormModal } from '../ui/projectFormModal';
 import { TaskFormModal } from '../ui/taskFormModal';
 import { openChecklistEditor } from './editChecklist';
+import { isNoteFile } from './noteFiles';
 import { storeReady } from './ready';
-
-/** その種類のノートか（ファイル名で判定） */
-function isNoteFile(file: unknown, type: NoteType): file is TFile {
-	return file instanceof TFile && file.extension === 'md' && parseNoteId(file.basename)?.type === type;
-}
-
-/** タスクのノートか */
-export const isTaskFile = (file: unknown): file is TFile => isNoteFile(file, 'task');
-/** メンバーのノートか（作業ログは除く） */
-export const isMemberFile = (file: unknown): file is TFile => isNoteFile(file, 'user');
 
 type FormOpener = (plugin: ProjectManagerPlugin, target: TFile | string) => void;
 
@@ -128,20 +122,27 @@ export function openTaskForm(plugin: ProjectManagerPlugin, target: TFile | strin
 	const src = formSource(plugin, target);
 	if (!src) return;
 	const { file, fm } = src;
+	void plugin.app.vault.read(file).then((content) => openTaskFormWith(plugin, file, fm, content));
+}
+
+/** 本文を読んだあとで、タスクの入力補助フォームを開く */
+function openTaskFormWith(plugin: ProjectManagerPlugin, file: TFile, fm: Record<string, unknown>, content: string): void {
 	const { index } = plugin.store;
-	const subtasks = index.tasks({ includeArchived: true }).find((t) => t.path === file.path)?.subtasks;
 	new TaskFormModal(plugin.app, {
+		description: descriptionOf(content),
 		file,
 		taskId: file.basename,
 		form: taskFormFromFrontmatter(fm),
 		projects: index.projects(),
 		epics: index.epics(),
 		tasks: index.tasks(),
-		numbered: index.tasks({ includeArchived: true }),
+		allTasks: index.tasks({ includeArchived: true }),
 		members: index.members(),
 		statuses: plugin.config.statuses.task,
 		displayName: plugin.personal.projectDisplayName,
-		checklist: subtasks && subtasks.total > 0 ? `${subtasks.done}/${subtasks.total}` : '',
-		editChecklist: () => void openChecklistEditor(plugin, file.path),
+		calendar: new WorkCalendar(plugin.config.calendar),
+		today: localToday(),
+		checklist: checklistRows(content).rows,
+		editChecklist: (onSaved) => void openChecklistEditor(plugin, file.path, (saved) => onSaved(checklistRows(saved).rows)),
 	}).open();
 }

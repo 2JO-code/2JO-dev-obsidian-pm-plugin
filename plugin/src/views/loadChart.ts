@@ -1,5 +1,5 @@
 import type { LoadChart, LoadChartRow } from '../calc/loadChart';
-import { hoursText, rateText } from './format';
+import { hoursText, rateText } from '../calc/format';
 
 const LEVEL_TEXT = { caution: '注意', warning: '警告' } as const;
 
@@ -48,7 +48,7 @@ export function renderLoadChart(parent: HTMLElement, chart: LoadChart, handlers:
 		const line = root.createDiv({ cls: 'pm-loadchart-row is-clickable' });
 		line.addEventListener('click', handlers.openRow);
 		const name = line.createDiv({ cls: 'pm-loadchart-name pm-link', text: member.title });
-		name.setAttr('aria-label', 'メンバーのノートを開く');
+		name.setAttr('aria-label', 'メンバーの入力補助フォームを開く');
 		handlers.openMember(row, name);
 
 		const track = line.createDiv({ cls: 'pm-loadchart-track' });

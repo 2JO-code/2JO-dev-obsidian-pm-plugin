@@ -3,7 +3,7 @@ import type { HolidayKind, WorkCalendar } from '../calc/workdays';
 import type { Member } from '../model';
 import { isIsoDate } from '../parse/values';
 import { WARNING_LABELS, type Warning } from '../calc/warnings';
-import { countText, pct, warningCounts } from './format';
+import { countText, pct, warningCounts } from '../calc/format';
 
 /**
  * 進捗率の横棒と文字（例：▬▬▭ 17%（54/316））。設計書 9.1。

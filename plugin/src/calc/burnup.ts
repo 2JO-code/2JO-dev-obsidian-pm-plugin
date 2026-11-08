@@ -29,7 +29,7 @@ export interface Burnup {
  * 作業ログも日付も無ければ undefined
  */
 export function burnup(ctx: CalcContext, project: Project): Burnup | undefined {
-	const tasks = ctx.index.tasks({ includeArchived: true }).filter((t) => t.project === project.id);
+	const tasks = ctx.byProject.get(project.id)?.tasks ?? [];
 	const ids = new Set(tasks.map((t) => t.id));
 	const daily = new Map<IsoDate, { planned: number; actual: number }>();
 	for (const log of ctx.index.worklogs()) {
@@ -93,7 +93,7 @@ export interface ProgressPlan {
  * 分母・完了の数え方は進捗率（`countProgress`）と同じ。完了した日は記録が無いので、実績は今日の値だけ
  */
 export function progressPlan(ctx: CalcContext, project: Project, range: { start: IsoDate; end: IsoDate }): ProgressPlan {
-	const tasks = ctx.index.tasks({ includeArchived: true }).filter((t) => t.project === project.id);
+	const tasks = ctx.byProject.get(project.id)?.tasks ?? [];
 	const { done, total } = countProgress(tasks, ctx.statuses.task);
 	const ends: IsoDate[] = [];
 	let unscheduled = 0;

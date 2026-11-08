@@ -1,22 +1,30 @@
 import { type App, debounce, Notice, PluginSettingTab, Setting } from 'obsidian';
 import type ProjectManagerPlugin from '../main';
-import { applyPaneRatio } from '../views/paneLeaf';
 import { applyKindColors } from './kindColors';
 import { SettingGroups } from './settingGroups';
-import { onCommit, SharedConfigSettings } from './sharedConfigSettings';
+import { COLOR_SAVE_DELAY, onCommit, SharedConfigSettings } from './sharedConfigSettings';
 import {
 	cleanColor,
 	cleanFolderPath,
-	cleanPaneRatio,
+	DEFAULT_PERSONAL,
 	DEFAULT_SETTINGS,
 	type FolderSettings,
 	type KindColors,
-	OPEN_NOTE_IN,
+	moveSection,
 	oneOf,
-	PANE_RATIO,
 	PROJECT_DISPLAY_NAMES,
 	type ProjectDisplayName,
+	type ProjectSection,
+	type ProjectSectionSetting,
 } from '../settings';
+import { redrawViews } from '../views/baseView';
+
+const SECTION_LABELS: Record<ProjectSection, string> = {
+	progress: '進捗グラフ',
+	milestones: 'マイルストーン',
+	epics: 'エピックとタスク',
+	allocation: '工数配分',
+};
 
 const KIND_LABELS: Record<keyof KindColors, string> = { project: 'プロジェクト', epic: 'エピック', task: 'タスク' };
 
@@ -58,6 +66,9 @@ export class ProjectManagerSettingTab extends PluginSettingTab {
 
 		const personal = groups.add(containerEl, 'personal', 'このパソコンだけの設定', 'このパソコンにだけ保存します。ほかの人には影響しません。');
 		this.renderDisplay(groups.add(personal, 'personal.display', '表示'));
+		this.renderProjectSections(
+			groups.add(personal, 'personal.projectSections', 'プロジェクト状況の節', '概要の下に出す節の並び順と、表示するかどうか。概要は常に一番上です。'),
+		);
 		this.renderReport(groups.add(personal, 'personal.report', 'HTMLレポート'));
 
 		const shared = groups.add(
@@ -76,7 +87,7 @@ export class ProjectManagerSettingTab extends PluginSettingTab {
 	private renderColors(el: HTMLElement): void {
 		const { colors } = this.plugin.settings;
 		// 色を選んでいる間は何度も変わるので、保存はまとめて1回にする（設計書 6章）
-		const save = debounce(() => void this.plugin.saveSettings(), 500, true);
+		const save = debounce(() => void this.plugin.saveSettings(), COLOR_SAVE_DELAY, true);
 		for (const key of Object.keys(KIND_LABELS) as (keyof KindColors)[]) {
 			new Setting(el)
 				.setName(KIND_LABELS[key])
@@ -133,34 +144,39 @@ export class ProjectManagerSettingTab extends PluginSettingTab {
 					this.plugin.savePersonal();
 				});
 			});
+	}
 
-		new Setting(el)
-			.setName('ノートを開く場所')
-			.setDesc('ビューのクリックでノートをどこに開くか')
-			.addDropdown((dropdown) => {
-				dropdown.addOption('right', '右枠（ビューの隣）');
-				dropdown.addOption('tab', '新しいタブ');
-				dropdown.addOption('window', '別ウィンドウ');
-				dropdown.setValue(personal.openNoteIn).onChange((value) => {
-					personal.openNoteIn = oneOf(value, OPEN_NOTE_IN) ?? personal.openNoteIn;
-					this.plugin.savePersonal();
-				});
-			});
-
-		new Setting(el)
-			.setName('左枠（ビュー）の幅')
-			.setDesc('画面を左右に分けたときの左枠の幅（%）。残りが右枠（ノート）になります。分けたときと、ここを変えたときに当てはめます')
-			.addSlider((slider) => {
-				slider
-					.setLimits(PANE_RATIO.min, PANE_RATIO.max, PANE_RATIO.step)
-					.setValue(personal.paneRatio)
-					.setDynamicTooltip()
-					.onChange((value) => {
-						personal.paneRatio = cleanPaneRatio(value) ?? personal.paneRatio;
-						this.plugin.savePersonal();
-						applyPaneRatio(this.app, personal.paneRatio);
-					});
-			});
+	/** 個人の設定：プロジェクト状況の節の並び順と表示（この PC だけに保存） */
+	private renderProjectSections(el: HTMLElement): void {
+		const { personal } = this.plugin;
+		const save = (sections: ProjectSectionSetting[]) => {
+			personal.projectSections = sections;
+			this.plugin.savePersonal();
+			redrawViews(this.app);
+			this.refresh();
+		};
+		const list = personal.projectSections;
+		list.forEach((section, i) => {
+			new Setting(el)
+				.setName(SECTION_LABELS[section.id])
+				.addExtraButton((button) => {
+					button.setIcon('arrow-up').setTooltip('上へ').onClick(() => save(moveSection(list, i, -1)));
+					if (i === 0) button.setDisabled(true);
+				})
+				.addExtraButton((button) => {
+					button.setIcon('arrow-down').setTooltip('下へ').onClick(() => save(moveSection(list, i, 1)));
+					if (i === list.length - 1) button.setDisabled(true);
+				})
+				.addToggle((toggle) =>
+					toggle
+						.setTooltip('表示する')
+						.setValue(section.visible)
+						.onChange((visible) => save(list.map((s, j) => (j === i ? { ...s, visible } : s)))),
+				);
+		});
+		new Setting(el).addButton((button) =>
+			button.setButtonText('初期の並びに戻す').onClick(() => save(DEFAULT_PERSONAL.projectSections.map((s) => ({ ...s })))),
+		);
 	}
 
 	/** 個人の設定：HTMLレポート（この PC だけに保存。設計書 6章） */

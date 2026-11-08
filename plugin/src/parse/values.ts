@@ -1,6 +1,15 @@
 import { parseNoteId } from '../id';
 import type { NoteId, NoteType } from '../model';
 
+/** 配列でないオブジェクトか（外から来た値の中を読む前に確かめる。規約 4章） */
+export const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
+
+/** オブジェクトのそのキーの値。オブジェクトでなければ undefined（ビューの状態などを読むとき） */
+export const field = (v: unknown, key: string): unknown => (isRecord(v) ? v[key] : undefined);
+
+/** 文字の配列として読む。配列でなければ空、文字でない要素は除く */
+export const stringArray = (v: unknown): string[] => (Array.isArray(v) ? v.filter((s): s is string => typeof s === 'string') : []);
+
 /** `YYYY-MM-DD` で実在する日付か */
 export function isIsoDate(value: string): boolean {
 	const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);

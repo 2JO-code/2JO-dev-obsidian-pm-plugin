@@ -4,6 +4,12 @@ const DAY = 86400000;
 const toTime = (date: IsoDate) => Date.parse(`${date}T00:00:00Z`);
 const fromTime = (time: number): IsoDate => new Date(time).toISOString().slice(0, 10);
 
+/** 曜日の名前（0=日曜） */
+export const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
+
+/** 月/日の短い表示（例：11/2） */
+export const monthDayText = (date: IsoDate) => `${Number(date.slice(5, 7))}/${Number(date.slice(8, 10))}`;
+
 export function addDays(date: IsoDate, days: number): IsoDate {
 	return fromTime(toTime(date) + days * DAY);
 }

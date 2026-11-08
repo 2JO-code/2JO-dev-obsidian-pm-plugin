@@ -1,5 +1,6 @@
 import type { Warning } from '../calc/warnings';
 import type { WorkCalendar } from '../calc/workdays';
+import { isFinished } from '../config/status';
 import type { IsoDate, StatusCategory } from '../model';
 import { dateCell, holidayMark, type People } from './badges';
 
@@ -14,7 +15,7 @@ interface ScheduleLike {
 const DELAYED = '遅れを反映して、ずらしています（未完了の先行・自分は今日まで延びたとみなす）';
 
 /** 期限日のセル。期限超過なら赤にし、マウスを乗せたときに警告の文を出す。休日なら種類の印 */
-export function dueCell(tr: HTMLElement, calendar: WorkCalendar, row: { task: { due?: IsoDate }; warnings: Warning[]; assignees: People }): HTMLElement {
+export function dueCell(tr: HTMLElement, calendar: WorkCalendar, row: { task: { due?: IsoDate }; warnings: readonly Warning[]; assignees: People }): HTMLElement {
 	const td = dateCell(tr, calendar, row.task.due, row.assignees);
 	const overdue = row.warnings.find((w) => w.kind === 'overdue');
 	if (overdue) {
@@ -36,25 +37,43 @@ export function scheduleCells(
 	category: StatusCategory | undefined,
 	people: People = [],
 ): void {
-	const { schedule } = row;
+	scheduleStartCell(tr, calendar, row.schedule, people);
+	scheduleEndCell(tr, calendar, row, category, people);
+}
+
+/** 日程が無いときの印。薄い「—」にし、マウスを乗せると理由を出す */
+function noSchedule(td: HTMLElement): HTMLElement {
+	td.addClass('pm-text-faint');
+	td.setAttr('aria-label', '日程を計算できません（日付が無い、先行タスクの日程が出せない、または依存関係が循環しています）');
+	return td;
+}
+
+/** 計算上の開始日のセル。遅れでずらした日に印を付ける */
+export function scheduleStartCell(tr: HTMLElement, calendar: WorkCalendar, schedule: ScheduleLike | undefined, people: People = []): HTMLElement {
 	const start = tr.createEl('td', { text: schedule?.start ?? '—' });
-	const end = tr.createEl('td', { text: schedule?.end ?? '—' });
-	if (!schedule) {
-		start.addClass('pm-text-faint');
-		end.addClass('pm-text-faint');
-		const reason = '日程を計算できません（日付が無い、先行タスクの日程が出せない、または依存関係が循環しています）';
-		start.setAttr('aria-label', reason);
-		end.setAttr('aria-label', reason);
-		return;
-	}
+	if (!schedule) return noSchedule(start);
 	holidayMark(start, calendar, schedule.start, people);
-	holidayMark(end, calendar, schedule.end, people);
 	if (schedule.startDelayed) {
 		start.addClass('pm-text-warning');
 		start.setAttr('aria-label', DELAYED);
 	}
+	return start;
+}
+
+/** 計算上の終了日のセル。期限日より後なら赤、遅れでずらしたなら橙 */
+export function scheduleEndCell(
+	tr: HTMLElement,
+	calendar: WorkCalendar,
+	row: { schedule?: ScheduleLike; task: { due?: IsoDate } },
+	category: StatusCategory | undefined,
+	people: People = [],
+): HTMLElement {
+	const { schedule } = row;
+	const end = tr.createEl('td', { text: schedule?.end ?? '—' });
+	if (!schedule) return noSchedule(end);
+	holidayMark(end, calendar, schedule.end, people);
 	// 色は赤（期限日より後）を橙（遅れ）より優先し、理由は両方出す
-	const open = category !== 'done' && category !== 'stopped';
+	const open = !isFinished(category);
 	const late = open && row.task.due && schedule.end > row.task.due ? `期限日（${row.task.due}）より後に終わる見込みです` : '';
 	if (late) {
 		end.addClass('pm-text-error');
@@ -63,4 +82,5 @@ export function scheduleCells(
 		end.addClass('pm-text-warning');
 		end.setAttr('aria-label', DELAYED);
 	}
+	return end;
 }

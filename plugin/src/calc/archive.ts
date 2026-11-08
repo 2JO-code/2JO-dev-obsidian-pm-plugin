@@ -1,4 +1,4 @@
-import { findStatus } from '../config/status';
+import { findStatus, isFinished } from '../config/status';
 import type { NoteId, Project, StatusSets } from '../model';
 import type { VaultIndex } from '../store/vaultIndex';
 
@@ -65,7 +65,7 @@ export function archivePlan(index: VaultIndex, project: Project, archiveFolder: 
 		const notes: string[] = [];
 		if (t.status !== undefined) {
 			const category = findStatus(statuses.task, t.status)?.category;
-			if (category !== 'done' && category !== 'stopped') notes.push(`ステータスが「${t.status}」のままです（完了系・停止系ではありません）`);
+			if (!isFinished(category)) notes.push(`ステータスが「${t.status}」のままです（完了系・停止系ではありません）`);
 		}
 		if (index.getRecord(to)) notes.push('移動先に同じ名前のファイルがあります');
 		items.push({ kind: t.kind, id: t.id, title: t.title, from: t.path, to, notes });

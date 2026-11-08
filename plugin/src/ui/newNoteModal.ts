@@ -1,9 +1,10 @@
-import { type App, Modal, Notice, Setting } from 'obsidian';
+import { type App, Modal, Setting } from 'obsidian';
 import type { IdKind } from '../id';
 import type { Epic, NoteId, Project } from '../model';
 import type { NewNoteInput } from '../commands/newNote';
 import type { ProjectDisplayName } from '../settings';
 import { epicOptions, projectOptions } from './formParts';
+import { notifyError } from './notify';
 
 const TITLES: Record<IdKind, string> = {
 	project: '新しいプロジェクト',
@@ -14,8 +15,8 @@ const TITLES: Record<IdKind, string> = {
 
 export interface NewNoteModalOptions {
 	kind: IdKind;
-	projects: Project[];
-	epics: Epic[];
+	projects: readonly Project[];
+	epics: readonly Epic[];
 	displayName: ProjectDisplayName;
 	/** 最初から選んでおくプロジェクト・エピック（ビューから作るとき） */
 	initial?: { project?: NoteId; epic?: NoteId };
@@ -25,7 +26,10 @@ export interface NewNoteModalOptions {
 
 /** ノート作成の入力画面（設計書 4.4） */
 export class NewNoteModal extends Modal {
+	/** タイトル。メンバーのときは氏名 */
 	private title = '';
+	private familyName = '';
+	private givenName = '';
 	private caseId = '';
 	private officialName = '';
 	private wbs = '';
@@ -50,10 +54,18 @@ export class NewNoteModal extends Modal {
 		const { contentEl, options } = this;
 		this.setTitle(TITLES[options.kind]);
 
+		// メンバーは氏名のあとに姓・名を入れる（設計書 4.5）
 		new Setting(contentEl).setName(options.kind === 'user' ? '氏名' : options.kind === 'project' ? '簡易プロジェクト名' : 'タイトル').addText((text) => {
 			text.onChange((v) => (this.title = v));
 			window.setTimeout(() => text.inputEl.focus(), 0);
 		});
+		if (options.kind === 'user') {
+			new Setting(contentEl)
+				.setName('姓')
+				.setDesc('ガントチャートの担当者に出します')
+				.addText((text) => text.onChange((v) => (this.familyName = v)));
+			new Setting(contentEl).setName('名').addText((text) => text.onChange((v) => (this.givenName = v)));
+		}
 
 		if (options.kind === 'project') {
 			new Setting(contentEl).setName('案件ID').addText((text) => text.onChange((v) => (this.caseId = v)));
@@ -120,13 +132,13 @@ export class NewNoteModal extends Modal {
 					? { kind, title: this.title, project: this.project, wbs: this.wbs }
 					: kind === 'task'
 						? { kind, title: this.title, project: this.project, ...(this.epic ? { epic: this.epic } : {}) }
-						: { kind, title: this.title };
+						: { kind, title: this.title, familyName: this.familyName, givenName: this.givenName };
 		this.saving = true;
 		try {
 			await this.options.onSubmit(input);
 			this.close();
 		} catch (e) {
-			new Notice(e instanceof Error ? e.message : String(e));
+			notifyError(e);
 		} finally {
 			this.saving = false;
 		}

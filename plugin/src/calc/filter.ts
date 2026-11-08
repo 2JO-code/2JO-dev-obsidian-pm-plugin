@@ -1,5 +1,6 @@
 import { findStatus } from '../config/status';
 import type { IsoDate, NoteId, Project, StatusDef, StatusSets, Task } from '../model';
+import { isRecord, stringArray as strings } from '../parse/values';
 
 /** ビュー共通の絞り込み（要件4.1）。一覧が空なら「すべて」 */
 export interface ViewFilter {
@@ -23,8 +24,6 @@ export const EMPTY_FILTER: ViewFilter = {
 	includeArchived: false,
 };
 
-const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
-const strings = (v: unknown): string[] => (Array.isArray(v) ? v.filter((s): s is string => typeof s === 'string') : []);
 const date = (v: unknown): IsoDate | undefined => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : undefined);
 
 /** 保存されていた絞り込み（ビューの状態）を読む。不正な値は既定値にする */

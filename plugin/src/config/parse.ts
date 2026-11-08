@@ -1,5 +1,7 @@
 import { STATUS_CATEGORIES, type Calendar, type Holiday, type StatusCategory, type StatusDef, type StatusSets } from '../model';
 import { defaultCalendar, defaultStatusSets } from './defaults';
+import { isRecord } from '../parse/values';
+import { errorMessage } from '../errors';
 
 /** 読み取り結果。problems があれば一部が使えなかった */
 export interface ParseResult<T> {
@@ -9,13 +11,11 @@ export interface ParseResult<T> {
 
 const DATE_PATTERN = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
 
-const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
-
 function parseJson(text: string): { data: unknown; error?: string } {
 	try {
 		return { data: JSON.parse(text) as unknown };
 	} catch (e) {
-		return { data: undefined, error: e instanceof Error ? e.message : String(e) };
+		return { data: undefined, error: errorMessage(e) };
 	}
 }
 

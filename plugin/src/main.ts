@@ -25,6 +25,7 @@ import { registerMemberStatusView } from './views/memberStatusView';
 import { registerProjectStatusView } from './views/projectStatusView';
 import { registerTaskListView } from './views/taskListView';
 import { registerWbsView } from './views/wbsView';
+import { registerWorklogView } from './views/worklogView';
 
 /** 個人の設定の保存先（設計書 6章） */
 const PERSONAL_KEY = 'project-manager:personal';
@@ -61,6 +62,7 @@ export default class ProjectManagerPlugin extends Plugin {
 		registerKanbanView(this);
 		registerWbsView(this);
 		registerGanttView(this);
+		registerWorklogView(this);
 		registerHtmlReport(this);
 		registerArchiveView(this);
 		registerReadme(this);
@@ -75,8 +77,6 @@ export default class ProjectManagerPlugin extends Plugin {
 			this.usage = this.store.index;
 		});
 	}
-
-	onunload() {}
 
 	async saveSettings(): Promise<void> {
 		await this.saveData(this.settings);

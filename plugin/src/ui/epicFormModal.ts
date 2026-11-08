@@ -1,23 +1,23 @@
-import { type App, Setting, type TFile } from 'obsidian';
+import { type App, DropdownComponent, TextAreaComponent, TextComponent, type TFile } from 'obsidian';
 import { epicFormToUpdate, type EpicForm } from '../forms/epicForm';
 import type { Member, NoteId, Project, StatusDef } from '../model';
 import type { ProjectDisplayName } from '../settings';
 import { writeFrontmatter } from '../write/frontmatterFile';
 import { FormModal } from './formModal';
-import { dateSetting, errorBox, memberSetting, projectOptions, statusSetting } from './formParts';
+import { dateInput, errorBox, formColumns, formField, formSection, memberOptions, projectOptions, statusOptions } from './formParts';
 
 export interface EpicFormModalOptions {
 	file: TFile;
 	form: EpicForm;
-	projects: Project[];
-	members: Member[];
+	projects: readonly Project[];
+	members: readonly Member[];
 	statuses: StatusDef[];
 	displayName: ProjectDisplayName;
 	/** タスクかマイルストーンの連動があり、プロジェクトを変えられないときの元のプロジェクト */
 	fixedProject?: NoteId;
 }
 
-/** エピックの入力補助フォーム（設計書 4.5） */
+/** エピックの入力補助フォーム（設計書 4.5, 4.12） */
 export class EpicFormModal extends FormModal {
 	private readonly form: EpicForm;
 
@@ -31,6 +31,7 @@ export class EpicFormModal extends FormModal {
 
 	onOpen(): void {
 		this.setTitle('エピックを編集');
+		this.modalEl.addClass('pm-form-modal');
 		this.render();
 	}
 
@@ -40,33 +41,39 @@ export class EpicFormModal extends FormModal {
 		contentEl.addClass('pm-task-form');
 		errorBox(contentEl, this.errors);
 
-		new Setting(contentEl).setName('タイトル').addText((t) => t.setValue(form.title).onChange((v) => (form.title = v)));
-		new Setting(contentEl)
-			.setName('プロジェクト')
-			.setDesc(options.fixedProject !== undefined ? 'タスクかマイルストーンの連動があるため変えられません' : '')
-			.addDropdown((d) => {
-				projectOptions(d, options.projects, options.displayName, form.project);
-				d.setDisabled(options.fixedProject !== undefined).onChange((v) => (form.project = v));
-			});
-		statusSetting(contentEl, options.statuses, form.status, (v) => (form.status = v));
-		memberSetting(contentEl, '担当者', '任意。1人', options.members, form.owner, (v) => (form.owner = v));
+		// まとまりを左右の列に分け、縦に収める（設計書 4.12）
+		const [left, right] = formColumns(contentEl);
 
-		new Setting(contentEl)
-			.setName('WBS番号')
-			.setDesc('任意。例：1.2')
-			.addText((t) => t.setValue(form.wbs).onChange((v) => (form.wbs = v)));
-		dateSetting(contentEl, '開始日', '任意。表示用（計算上の日程はタスクから求めます）', form.start, (v) => (form.start = v));
-		dateSetting(contentEl, '完了予定日', '任意。マイルストーンと連動できます', form.due, (v) => (form.due = v));
-		new Setting(contentEl)
-			.setName('インプット')
-			.setDesc('任意。1行に1つ')
-			.addTextArea((t) => t.setValue(form.inputs).onChange((v) => (form.inputs = v)));
-		new Setting(contentEl)
-			.setName('アウトプット')
-			.setDesc('任意。1行に1つ')
-			.addTextArea((t) => t.setValue(form.outputs).onChange((v) => (form.outputs = v)));
+		const fixed = options.fixedProject !== undefined;
+		const belong = formSection(left, '所属', 2);
+		const project = new DropdownComponent(
+			formField(belong, 'プロジェクト', fixed ? { hint: 'タスクかマイルストーンの連動があるため変えられません' } : {}),
+		);
+		projectOptions(project, options.projects, options.displayName, form.project);
+		project.setDisabled(fixed).onChange((v) => (form.project = v));
+		new TextComponent(formField(belong, 'WBS番号（任意）', { hint: '例：1.2' })).setValue(form.wbs).onChange((v) => (form.wbs = v));
+
+		const title = formSection(left, '', 1);
+		new TextComponent(formField(title, 'タイトル')).setValue(form.title).onChange((v) => (form.title = v));
+
+		const state = formSection(left, '担当と状態', 2);
+		memberOptions(new DropdownComponent(formField(state, '担当者（任意）', { hint: '1人' })), options.members, form.owner, (v) => (form.owner = v));
+		statusOptions(new DropdownComponent(formField(state, 'ステータス')), options.statuses, form.status).onChange((v) => (form.status = v));
+
+		const schedule = formSection(right, '日程', 2);
+		dateInput(formField(schedule, '開始日（任意）', { hint: '表示用。計算上の日程はタスクから求めます' }), form.start, (v) => (form.start = v));
+		dateInput(formField(schedule, '完了予定日（任意）', { hint: 'マイルストーンと連動できます' }), form.due, (v) => (form.due = v));
+
+		const io = formSection(right, 'インプット・アウトプット', 2);
+		this.listInput(formField(io, 'インプット（任意）', { hint: '1行に1つ' }), form.inputs, (v) => (form.inputs = v));
+		this.listInput(formField(io, 'アウトプット（任意）', { hint: '1行に1つ' }), form.outputs, (v) => (form.outputs = v));
 
 		this.footer(() => void this.save());
+	}
+
+	/** 1行に1つの複数行の欄 */
+	private listInput(el: HTMLElement, value: string, onChange: (v: string) => void): void {
+		new TextAreaComponent(el).setValue(value).onChange(onChange).inputEl.addClass('pm-description-input');
 	}
 
 	private async save(): Promise<void> {

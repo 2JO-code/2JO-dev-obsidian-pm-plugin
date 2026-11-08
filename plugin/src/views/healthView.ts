@@ -7,12 +7,11 @@ import { healthProblems, reloadData } from '../commands/reload';
 import { labelOf } from '../health/labels';
 import type ProjectManagerPlugin from '../main';
 import type { NoteProblem, ProblemFix } from '../store/buildNote';
-import { actionButtons, rowButton } from './actions';
+import { actionButtons, formClick } from './actions';
 import { PmView } from './baseView';
-import { noteLink, openNote } from './openNote';
+import { openNote } from './openNote';
 import { openView } from './openView';
-
-export const HEALTH_VIEW_TYPE = 'pm-health';
+import { HEALTH_VIEW_TYPE } from './viewTypes';
 
 /** 警告一覧のビューと、開くコマンドを登録する */
 export function registerHealthView(plugin: ProjectManagerPlugin): void {
@@ -24,7 +23,7 @@ export function registerHealthView(plugin: ProjectManagerPlugin): void {
 	});
 }
 
-/** 警告一覧。ファイルごとにまとめて表示し、クリックで直す画面かノートを開く（設計書 8章） */
+/** 警告一覧。ファイルごとにまとめて表示し、クリックで直す画面を開く。画面の無い警告だけノートを開く（設計書 8章） */
 export class HealthView extends PmView {
 	getViewType(): string {
 		return HEALTH_VIEW_TYPE;
@@ -39,7 +38,7 @@ export class HealthView extends PmView {
 	}
 
 	protected getDescription(): string {
-		return 'ノートの書き方の誤り（読めないプロパティなど）。クリックで入力補助フォームや表の編集画面を開いて直します（画面が無いものはノートを開きます）';
+		return 'ノートの書き方の誤り（読めないプロパティなど）。クリックで入力補助フォームや表の編集画面を開いて直します（画面が無いものだけ、ノートを新しいタブで開きます）';
 	}
 
 	protected draw(el: HTMLElement, ctx: CalcContext): void {
@@ -60,8 +59,13 @@ export class HealthView extends PmView {
 			if (isConfig) {
 				group.createDiv({ cls: 'pm-health-hint', text: '設定画面のステータス・会社カレンダーから直してください' });
 			} else {
-				title.addClass('pm-action-link');
-				noteLink(this.plugin, title, path);
+				const file = this.plugin.app.vault.getFileByPath(path);
+				const openForm = file ? formOpenerOf(file) : undefined;
+				if (file && openForm) {
+					title.addClass('pm-action-link');
+					title.setAttr('aria-label', '入力補助フォームを開く');
+					formClick(title, () => openForm(this.plugin, file));
+				}
 			}
 
 			const list = group.createEl('ul');
@@ -71,15 +75,15 @@ export class HealthView extends PmView {
 				if (p.line !== undefined) message.createSpan({ cls: 'pm-health-line', text: `${p.line + 1}行目` });
 				message.createSpan({ text: p.message });
 				if (isConfig) continue;
-				// 直す画面があればそれを開き、横にノートを開くボタンを置く（設計書 8章）
+				// 直す画面があればそれを開く。無ければ最後の手段としてノートを開く（設計書 8章）
 				const fix = this.fixer(p, ctx);
 				message.addClass('pm-action-link');
 				if (fix) {
 					message.setAttr('aria-label', FIX_LABEL[fix.kind]);
 					message.addEventListener('click', fix.open);
-					rowButton(item, 'ノート', () => void openNote(this.plugin, path, p.line !== undefined ? { line: p.line } : {}));
 				} else {
-					noteLink(this.plugin, message, path, p.line);
+					message.setAttr('aria-label', 'ノートを新しいタブで開いて直す');
+					message.addEventListener('click', () => void openNote(this.plugin, path, p.line));
 				}
 			}
 		}

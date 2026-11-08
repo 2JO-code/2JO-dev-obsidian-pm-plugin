@@ -4,9 +4,11 @@ import { compareNumeric } from './compare';
 import type { CalcContext } from './context';
 import { currentStatusName } from './filter';
 import { taskProgress, type TaskProgress } from './progress';
+import { taskPlanDelay } from './planDelay';
 import type { TaskSchedule } from './schedule';
-import { taskWarnings, type Warning } from './warnings';
+import type { Warning } from './warnings';
 import type { Hours } from './worklogSummary';
+import { isRecord, stringArray } from '../parse/values';
 
 /** タスク一覧の1行（設計書 11.6） */
 export interface TaskRow {
@@ -22,28 +24,30 @@ export interface TaskRow {
 	progress: TaskProgress;
 	/** 計算上の日程。出せなければ undefined（設計書 11.9） */
 	schedule?: TaskSchedule;
-	warnings: Warning[];
+	/** 予定終了日からの遅れ（稼働日）。予定終了日か日程が無ければ undefined（設計書 11.18） */
+	planDelay?: number;
+	warnings: readonly Warning[];
 }
 
 export function taskRows(ctx: CalcContext, tasks: readonly Task[]): TaskRow[] {
 	const statuses = ctx.statuses.task;
-	const members = new Map(ctx.index.members().map((m) => [m.id, m]));
-	const epics = new Map(ctx.index.epics({ includeArchived: true }).map((e) => [e.id, e]));
 	return tasks.map((task) => {
 		const project = ctx.projects.get(task.project);
-		const epic = task.epic ? epics.get(task.epic) : undefined;
+		const epic = task.epic ? ctx.epics.get(task.epic) : undefined;
 		const schedule = ctx.schedule.schedules.get(task.id);
+		const planDelay = taskPlanDelay(task, schedule, ctx.calendar);
 		return {
 			task,
 			...(project ? { project } : {}),
 			...(epic ? { epic } : {}),
 			status: currentStatusName(task.status, statuses),
 			...withCategory(findStatus(statuses, task.status)?.category),
-			assignees: task.assignees.flatMap((id) => members.get(id) ?? []),
+			assignees: task.assignees.flatMap((id) => ctx.members.get(id) ?? []),
 			hours: ctx.summary.task(task.id),
 			progress: taskProgress(task, statuses),
 			...(schedule ? { schedule } : {}),
-			warnings: taskWarnings(task, statuses, ctx.summary, ctx.today, schedule),
+			...(planDelay !== undefined ? { planDelay } : {}),
+			warnings: ctx.warningsOf(task),
 		};
 	});
 }
@@ -61,6 +65,7 @@ export type TaskSortKey =
 	| 'start'
 	| 'end'
 	| 'due'
+	| 'planDelay'
 	| 'estimate'
 	| 'planned'
 	| 'actual'
@@ -81,8 +86,6 @@ export interface TaskListOptions {
 	groupBy: TaskGroupBy;
 	sort: TaskSortKey;
 	desc: boolean;
-	/** 行のクリックで入力補助フォームを開くか（false ならノートを開く） */
-	clickOpensForm: boolean;
 }
 
 export const DEFAULT_TASK_LIST: TaskListOptions = {
@@ -91,7 +94,6 @@ export const DEFAULT_TASK_LIST: TaskListOptions = {
 	groupBy: 'none',
 	sort: 'due',
 	desc: false,
-	clickOpensForm: false,
 };
 
 const GROUP_BYS: readonly TaskGroupBy[] = ['none', 'project', 'epic', 'status', 'assignee'];
@@ -104,6 +106,7 @@ const SORT_KEYS: readonly TaskSortKey[] = [
 	'start',
 	'end',
 	'due',
+	'planDelay',
 	'estimate',
 	'planned',
 	'actual',
@@ -111,7 +114,6 @@ const SORT_KEYS: readonly TaskSortKey[] = [
 	'warnings',
 ];
 
-const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 const date = (v: unknown): IsoDate | undefined => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : undefined);
 const pick = <T extends string>(v: unknown, allowed: readonly T[], fallback: T): T =>
 	allowed.find((a) => a === v) ?? fallback;
@@ -122,14 +124,13 @@ export function parseTaskListOptions(raw: unknown): TaskListOptions {
 	const dueFrom = date(data.dueFrom);
 	const dueTo = date(data.dueTo);
 	return {
-		epics: Array.isArray(data.epics) ? data.epics.filter((s): s is string => typeof s === 'string') : [],
+		epics: stringArray(data.epics),
 		...(dueFrom ? { dueFrom } : {}),
 		...(dueTo ? { dueTo } : {}),
 		warningsOnly: data.warningsOnly === true,
 		groupBy: pick(data.groupBy, GROUP_BYS, DEFAULT_TASK_LIST.groupBy),
 		sort: pick(data.sort, SORT_KEYS, DEFAULT_TASK_LIST.sort),
 		desc: data.desc === true,
-		clickOpensForm: data.clickOpensForm === true,
 	};
 }
 
@@ -152,8 +153,6 @@ export interface RowLabels {
 }
 
 export const epicLabel = (epic: Epic): string => (epic.wbs ? `${epic.wbs} ${epic.title}` : epic.title);
-
-const compareText = compareNumeric;
 
 /** 値の無いものは昇順・降順どちらでも最後にする */
 function compareOptional<T>(a: T | undefined, b: T | undefined, cmp: (a: T, b: T) => number, desc: boolean): number {
@@ -179,21 +178,23 @@ export function sortTaskRows(
 	const value = (a: TaskRow, b: TaskRow): number => {
 		switch (key) {
 			case 'title':
-				return desc ? -compareText(a.task.title, b.task.title) : compareText(a.task.title, b.task.title);
+				return desc ? -compareNumeric(a.task.title, b.task.title) : compareNumeric(a.task.title, b.task.title);
 			case 'project':
-				return compareOptional(a.project && labels.project(a.project), b.project && labels.project(b.project), compareText, desc);
+				return compareOptional(a.project && labels.project(a.project), b.project && labels.project(b.project), compareNumeric, desc);
 			case 'epic':
-				return compareOptional(a.epic && epicLabel(a.epic), b.epic && epicLabel(b.epic), compareText, desc);
+				return compareOptional(a.epic && epicLabel(a.epic), b.epic && epicLabel(b.epic), compareNumeric, desc);
 			case 'status':
 				return compareOptional(order(a.status), order(b.status), num, desc);
 			case 'assignee':
-				return compareOptional(a.assignees[0]?.title, b.assignees[0]?.title, compareText, desc);
+				return compareOptional(a.assignees[0]?.title, b.assignees[0]?.title, compareNumeric, desc);
 			case 'start':
-				return compareOptional(a.schedule?.start, b.schedule?.start, compareText, desc);
+				return compareOptional(a.schedule?.start, b.schedule?.start, compareNumeric, desc);
 			case 'end':
-				return compareOptional(a.schedule?.end, b.schedule?.end, compareText, desc);
+				return compareOptional(a.schedule?.end, b.schedule?.end, compareNumeric, desc);
 			case 'due':
-				return compareOptional(a.task.due, b.task.due, compareText, desc);
+				return compareOptional(a.task.due, b.task.due, compareNumeric, desc);
+			case 'planDelay':
+				return compareOptional(a.planDelay, b.planDelay, num, desc);
 			case 'estimate':
 				return compareOptional(a.task.estimate, b.task.estimate, num, desc);
 			case 'planned':
@@ -206,7 +207,7 @@ export function sortTaskRows(
 				return desc ? b.warnings.length - a.warnings.length : a.warnings.length - b.warnings.length;
 		}
 	};
-	return [...rows].sort((a, b) => value(a, b) || compareText(a.task.title, b.task.title));
+	return [...rows].sort((a, b) => value(a, b) || compareNumeric(a.task.title, b.task.title));
 }
 
 export interface TaskGroup {
@@ -256,5 +257,5 @@ export function groupTaskRows(
 		}
 		return g.label.startsWith('（') ? 1 : 0;
 	};
-	return [...groups.values()].sort((a, b) => rank(a) - rank(b) || compareText(a.label, b.label));
+	return [...groups.values()].sort((a, b) => rank(a) - rank(b) || compareNumeric(a.label, b.label));
 }

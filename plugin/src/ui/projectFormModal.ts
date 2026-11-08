@@ -8,7 +8,7 @@ import { dateSetting, errorBox, memberSetting, statusSetting } from './formParts
 export interface ProjectFormModalOptions {
 	file: TFile;
 	form: ProjectForm;
-	members: Member[];
+	members: readonly Member[];
 	statuses: StatusDef[];
 }
 

@@ -3,6 +3,7 @@ import { moveInOrder, renumberEpics, renumberTasks, type Numbered } from '../cal
 import type { NoteId } from '../model';
 import type { VaultStore } from '../store/vaultStore';
 import { writeFrontmatter } from '../write/frontmatterFile';
+import { notifyError } from '../ui/notify';
 
 /** ドラッグ中の行を渡す種類（ほかのドラッグと区別する） */
 const DRAG_TYPE = 'application/x-pm-wbs';
@@ -110,8 +111,7 @@ export class WbsDrag {
 			const where = after ? '後ろ' : '前';
 			new Notice(`「${dragged.title}」を「${targetTitle}」の${where}へ移しました（番号を ${changes.length} 件書き換え）`);
 		} catch (e) {
-			console.error('[project-manager] WBS番号の書き込みに失敗しました', e);
-			new Notice(`WBS番号を ${changes.length} 件中 ${failed || changes.length} 件書き込めませんでした。ノートのプロパティ（YAML）が壊れていないか確かめてください`);
+			notifyError(e, `WBS番号を ${changes.length} 件中 ${failed || changes.length} 件書き込めませんでした。ノートのプロパティ（YAML）が壊れていないか確かめてください`);
 		}
 	}
 }

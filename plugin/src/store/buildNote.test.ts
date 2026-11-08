@@ -100,12 +100,19 @@ describe('buildNote', () => {
 	it('メンバーの数値が無ければ既定値を使い、必須項目の欠落を報告する', () => {
 		const r = buildNote({ path: 'u.md', basename: id('USER'), frontmatter: { type: 'user', title: '山田', aliases: ['山田'] } });
 		expect(r?.note).toMatchObject({ dailyHours: 8, loadLimitPct: 120, active: true });
-		expect(r?.problems[0]?.message).toMatch(/daily_hours, load_limit_pct, active/);
+		expect(r?.problems[0]?.message).toMatch(/family_name, given_name, daily_hours, load_limit_pct, active/);
+	});
+
+	it('メンバーの姓・名を読む', () => {
+		const frontmatter = { type: 'user', title: '山田 太郎', aliases: ['山田 太郎'], family_name: '山田', given_name: '太郎', daily_hours: 8, load_limit_pct: 120, active: true };
+		const r = buildNote({ path: 'u.md', basename: id('USER'), frontmatter });
+		expect(r?.note).toMatchObject({ title: '山田 太郎', familyName: '山田', givenName: '太郎' });
+		expect(r?.problems).toEqual([]);
 	});
 
 	it('メンバーの本文の個人休日の表を読み、読めない行は行番号つきで報告する', () => {
 		const content = ['---', 'type: user', '---', '## 個人休日', '| 日付 | メモ |', '| --- | --- |', '| 2026-11-20 | 有給 |', '| 11/21 |  |'].join('\n');
-		const frontmatter = { type: 'user', title: '山田', aliases: ['山田'], daily_hours: 8, load_limit_pct: 120, active: true };
+		const frontmatter = { type: 'user', title: '山田 太郎', aliases: ['山田 太郎'], family_name: '山田', given_name: '太郎', daily_hours: 8, load_limit_pct: 120, active: true };
 		const r = buildNote({ path: 'u.md', basename: id('USER'), frontmatter, content });
 		expect(r?.note).toMatchObject({ holidays: [{ line: 6, date: '2026-11-20', memo: '有給' }] });
 		expect(r?.problems).toEqual([{ path: 'u.md', line: 7, message: '個人休日の日付が YYYY-MM-DD ではありません: 11/21', fix: 'holidays' }]);

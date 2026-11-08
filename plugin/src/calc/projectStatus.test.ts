@@ -63,6 +63,13 @@ describe('projectStatus', () => {
 		]);
 	});
 
+	it('マイルストーンの注意の文を組み立てる', () => {
+		expect(status.milestones.map((m) => m.notes)).toEqual([['日付を過ぎたが未完了'], ['完了予定日がマイルストーンより後'], []]);
+		const lost = project(PJT2, { milestones: [{ line: 2, name: '検収', date: '2026-12-01', epic: 'E-NONE' }] });
+		const other = buildContext(indexOf([lost]), defaultStatusSets(), defaultCalendar(), '2026-11-10');
+		expect(projectStatus(other, lost).milestones[0]?.notes).toEqual(['連動エピックが見つかりません']);
+	});
+
 	it('配分表は配分の行と、作業ログのある月×メンバーを合わせる', () => {
 		const { months, members, cells } = status.allocation;
 		expect(months).toEqual(['2026-10', '2026-11', '2026-12']);
@@ -70,5 +77,21 @@ describe('projectStatus', () => {
 		expect(cells.get(cellKey(USER, '2026-11'))).toEqual({ hours: 5, line: 8, planned: 6, actual: 4, over: true });
 		expect(cells.get(cellKey(USER2, '2026-10'))).toEqual({ planned: 1, actual: 1, over: false });
 		expect(cells.get(cellKey(USER2, '2026-12'))).toEqual({ hours: 10, line: 9, planned: 0, actual: 0, over: false });
+	});
+});
+
+describe('buildContext の前もっての計算', () => {
+	it('タスクとエピックをプロジェクトごとに分ける（アーカイブ内も含む）', () => {
+		expect(ctx.byProject.get(PJT)?.tasks.map((t) => t.id)).toEqual(['T1', 'T2', 'T3', 'T4']);
+		expect(ctx.byProject.get(PJT2)?.epics.map((e) => e.id)).toEqual(['E9']);
+		expect(ctx.byProject.get('PJT-none')).toBeUndefined();
+	});
+
+	it('タスクの警告は1回だけ計算し、全体とエピックの行で同じものを使う', () => {
+		const t2 = ctx.index.get('T2');
+		if (t2?.type !== 'task') throw new Error('T2 が無い');
+		expect(ctx.warningsOf(t2)).toBe(ctx.warningsOf(t2));
+		const e1 = status.epics.find((r) => r.epic?.id === 'E1');
+		expect(e1?.warnings.map((w) => w.kind).sort()).toEqual(['overEstimate', 'overdue']);
 	});
 });

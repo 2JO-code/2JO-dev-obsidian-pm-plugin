@@ -1,5 +1,4 @@
 import type { ViewStateResult } from 'obsidian';
-import { burnup, progressPlan } from '../calc/burnup';
 import { compareNumeric } from '../calc/compare';
 import type { CalcContext } from '../calc/context';
 import type { WorkCalendar } from '../calc/workdays';
@@ -7,26 +6,24 @@ import { dashboard, MILESTONE_DAYS, type Dashboard } from '../calc/dashboard';
 import { filterProjects } from '../calc/filter';
 import { isLoadChartPeriod, isLoadChartSort, loadChart, LOAD_CHART_PERIODS, LOAD_CHART_SORTS, type LoadChartPeriod, type LoadChartSort } from '../calc/loadChart';
 import { openNewNoteModal } from '../commands/createNote';
+import { openMemberForm } from '../commands/editTask';
 import { exportHtmlReport } from '../commands/htmlReport';
 import { openWorklogModal } from '../commands/worklog';
 import type ProjectManagerPlugin from '../main';
 import type { Member } from '../model';
 import { projectLabel } from '../settings';
-import { actionButtons } from './actions';
+import { actionButtons, formClick } from './actions';
 import { PmView } from './baseView';
 import { projectChoices } from './choices';
-import { renderBurnup, renderProgress } from './burnupChart';
-import { checkbox, renderFilterBar, singleSelect } from './filterBar';
+import { renderFilterBar, singleSelect } from './filterBar';
 import { dateCell, holidayMark, kindMark, periodCells, progressBar } from './badges';
-import { hoursText, membersOf, pct } from './format';
+import { hoursText, membersOf, pct } from '../calc/format';
 import { renderLoadChart } from './loadChart';
-import { MEMBER_STATUS_VIEW_TYPE } from './memberStatusView';
-import { noteLink } from './openNote';
 import { openView } from './openView';
-import { PROJECT_STATUS_VIEW_TYPE } from './projectStatusView';
 import { warningLink } from './warningLink';
-
-export const DASHBOARD_VIEW_TYPE = 'pm-dashboard';
+import { tableHeader } from '../ui/table';
+import { field } from '../parse/values';
+import { DASHBOARD_VIEW_TYPE, MEMBER_STATUS_VIEW_TYPE, PROJECT_STATUS_VIEW_TYPE } from './viewTypes';
 
 /** ダッシュボードのビューと、開くコマンドを登録する */
 export function registerDashboardView(plugin: ProjectManagerPlugin): void {
@@ -40,10 +37,6 @@ export function registerDashboardView(plugin: ProjectManagerPlugin): void {
 
 /** ダッシュボード（全プロジェクト状況。要件4.8b、設計書 9.5） */
 export class DashboardView extends PmView {
-	/** 工数の累積のグラフで選んだプロジェクト。無ければ表の先頭 */
-	private burnupProject: string | undefined;
-	/** グラフを出すか（ビューの状態として保存。初期は両方出す。設計書 9.5） */
-	private charts = { burnup: true, progress: true };
 	/** 負荷率のグラフの期間（ビューの状態として保存。初期は今週） */
 	private loadPeriod: LoadChartPeriod = 'thisWeek';
 	/** 負荷率のグラフの並び順（ビューの状態として保存。初期は名前順） */
@@ -52,29 +45,17 @@ export class DashboardView extends PmView {
 	getState(): Record<string, unknown> {
 		return {
 			...super.getState(),
-			...(this.burnupProject ? { burnupProject: this.burnupProject } : {}),
-			charts: this.charts,
 			loadPeriod: this.loadPeriod,
 			loadSort: this.loadSort,
 		};
 	}
 
 	async setState(state: unknown, result: ViewStateResult): Promise<void> {
-		const raw =
-			typeof state === 'object' && state !== null
-				? (state as { burnupProject?: unknown; charts?: { burnup?: unknown; progress?: unknown }; loadPeriod?: unknown; loadSort?: unknown })
-				: {};
-		this.loadSort = isLoadChartSort(raw.loadSort) ? raw.loadSort : 'name';
-		this.burnupProject = typeof raw.burnupProject === 'string' ? raw.burnupProject : undefined;
-		this.charts = { burnup: raw.charts?.burnup !== false, progress: raw.charts?.progress !== false };
-		this.loadPeriod = isLoadChartPeriod(raw.loadPeriod) ? raw.loadPeriod : 'thisWeek';
+		const loadSort = field(state, 'loadSort');
+		const loadPeriod = field(state, 'loadPeriod');
+		this.loadSort = isLoadChartSort(loadSort) ? loadSort : 'name';
+		this.loadPeriod = isLoadChartPeriod(loadPeriod) ? loadPeriod : 'thisWeek';
 		await super.setState(state, result);
-	}
-
-	private setCharts(charts: { burnup: boolean; progress: boolean }): void {
-		this.charts = charts;
-		this.app.workspace.requestSaveLayout();
-		this.redraw();
 	}
 
 	getViewType(): string {
@@ -121,45 +102,8 @@ export class DashboardView extends PmView {
 		const data = dashboard(ctx, projects, members);
 
 		this.drawProjects(body, data, mode, ctx);
-		this.drawBurnup(body, ctx, data, mode);
 		this.drawMembers(body, ctx, members);
 		this.drawMilestones(body, data, mode, ctx.calendar);
-	}
-
-	/** 工数の累積のグラフ（設計書 9.5）。表示中のプロジェクトから1つ選ぶ */
-	private drawBurnup(parent: HTMLElement, ctx: CalcContext, data: Dashboard, mode: Parameters<typeof projectLabel>[1]): void {
-		const section = parent.createDiv({ cls: 'pm-section' });
-		const head = section.createDiv({ cls: 'pm-section-head' });
-		head.createEl('h4', { text: '工数の累積と進捗率' });
-		const { charts } = this;
-		checkbox(head, '工数の累積', charts.burnup, (on) => this.setCharts({ ...charts, burnup: on }));
-		checkbox(head, '進捗率', charts.progress, (on) => this.setCharts({ ...charts, progress: on }));
-		if (!charts.burnup && !charts.progress) return;
-		const choices = data.projects.map((s) => ({ value: s.project.id, label: projectLabel(s.project, mode) }));
-		const selected = data.projects.find((s) => s.project.id === this.burnupProject) ?? data.projects[0];
-		if (!selected) {
-			section.createDiv({ cls: 'pm-view-empty', text: '条件に合うプロジェクトはありません' });
-			return;
-		}
-		singleSelect(head, 'プロジェクト', selected.project.id, choices, (id) => {
-			this.burnupProject = id;
-			this.app.workspace.requestSaveLayout();
-			this.redraw();
-		});
-		const result = burnup(ctx, selected.project);
-		if (!result) {
-			section.createDiv({ cls: 'pm-view-empty', text: '作業ログも日付もないため、グラフを描けません' });
-			return;
-		}
-		if (charts.burnup) {
-			section.createEl('h5', { cls: 'pm-burnup-title', text: '工数の累積（予定・実績）' });
-			renderBurnup(section, result, ctx.today);
-		}
-		// 進捗率のグラフ。期間は工数の累積とそろえ、上下で見比べられるようにする
-		if (charts.progress) {
-			section.createEl('h5', { cls: 'pm-burnup-title', text: '進捗率（予定と今日の実績）' });
-			renderProgress(section, progressPlan(ctx, selected.project, result), result, ctx.today);
-		}
 	}
 
 	private drawProjects(parent: HTMLElement, data: Dashboard, mode: Parameters<typeof projectLabel>[1], ctx: CalcContext): void {
@@ -171,21 +115,18 @@ export class DashboardView extends PmView {
 			return;
 		}
 		const table = section.createEl('table', { cls: 'pm-table' });
-		const head = table.createEl('thead').createEl('tr');
-		for (const [label, numeric] of [
-			['プロジェクト', false],
-			['ステータス', false],
-			['期間', false],
-			['終了（計算）', false],
-			['進捗率', true],
-			['見積(h)', true],
-			['予定(h)', true],
-			['実績(h)', true],
-			['警告', false],
-		] as const) {
+		tableHeader(table, [
+			'プロジェクト',
+			'ステータス',
 			// 期間は開始日と期限日の2列（periodCells）
-			head.createEl('th', { text: label, cls: numeric ? 'is-numeric' : '', attr: label === '期間' ? { colspan: 2 } : {} });
-		}
+			{ label: '期間', colspan: 2 },
+			'終了（計算）',
+			{ label: '進捗率', numeric: true },
+			{ label: '見積(h)', numeric: true },
+			{ label: '予定(h)', numeric: true },
+			{ label: '実績(h)', numeric: true },
+			'警告',
+		]);
 		const body = table.createEl('tbody');
 		for (const s of data.projects) {
 			const { project } = s;
@@ -233,10 +174,10 @@ export class DashboardView extends PmView {
 		}
 		section.createDiv({ cls: 'pm-note', text: `負荷警告 ${counts.warning} 人 ／ 負荷注意 ${counts.caution} 人` });
 		renderLoadChart(section, chart, {
-			openMember: (row, el) => noteLink(this.plugin, el, row.member.path),
+			openMember: (row, el) => formClick(el, () => openMemberForm(this.plugin, row.member.path)),
 			openRow: () => void openView(this.app, MEMBER_STATUS_VIEW_TYPE),
 		});
-		section.createDiv({ cls: 'pm-note', text: '予定負荷率＝予定の時間 ÷ 働ける時間（稼働日 × 1日の通常稼働時間）。棒にマウスを乗せると時間を出します。メンバー名のクリックでメンバーのノート、ほかの場所のクリックでメンバー状況を開きます' });
+		section.createDiv({ cls: 'pm-note', text: '予定負荷率＝予定の時間 ÷ 働ける時間（稼働日 × 1日の通常稼働時間）。棒にマウスを乗せると時間を出します。メンバー名のクリックでメンバーの入力補助フォーム、ほかの場所のクリックでメンバー状況を開きます' });
 	}
 
 	private drawMilestones(parent: HTMLElement, data: Dashboard, mode: Parameters<typeof projectLabel>[1], calendar: WorkCalendar): void {
@@ -247,8 +188,7 @@ export class DashboardView extends PmView {
 			return;
 		}
 		const table = section.createEl('table', { cls: 'pm-table' });
-		const head = table.createEl('thead').createEl('tr');
-		for (const label of ['日付', 'プロジェクト', '名前', '連動エピック', '注意']) head.createEl('th', { text: label });
+		tableHeader(table, ['日付', 'プロジェクト', '名前', '連動エピック', '注意']);
 		const body = table.createEl('tbody');
 		for (const m of data.milestones) {
 			const tr = body.createEl('tr', { cls: 'is-clickable' });
@@ -258,10 +198,7 @@ export class DashboardView extends PmView {
 			tr.createEl('td', { text: m.milestone.name });
 			const epic = m.epic?.epic;
 			tr.createEl('td', { text: epic && m.epic ? `${epic.title}（${epic.status}・${pct(m.epic.progress)}）` : (m.milestone.epic ?? '') });
-			const notes: string[] = [];
-			if (m.milestone.epic && !m.epic) notes.push('連動エピックが見つかりません');
-			if (m.late) notes.push('完了予定日がマイルストーンより後');
-			tr.createEl('td', { cls: 'pm-text-error', text: notes.join('・') });
+			tr.createEl('td', { cls: 'pm-text-error', text: m.notes.join('・') });
 		}
 	}
 }

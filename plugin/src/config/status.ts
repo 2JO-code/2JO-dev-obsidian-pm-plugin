@@ -6,6 +6,9 @@ export function findStatus(defs: readonly StatusDef[], value: string): StatusDef
 	return defs.find((d) => d.name === name) ?? defs.find((d) => d.aliases.includes(name));
 }
 
+/** 完了系・停止系の分類か（もう作業しないタスク） */
+export const isFinished = (category: StatusCategory | undefined): boolean => category === 'done' || category === 'stopped';
+
 /** 名前が空でなく、他の名前・旧名と重ならないことを確かめる */
 function checkName(defs: readonly StatusDef[], name: string, except?: StatusDef): void {
 	if (name === '') throw new Error('ステータス名を入力してください');

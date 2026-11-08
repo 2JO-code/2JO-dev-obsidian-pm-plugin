@@ -3,11 +3,12 @@ import type { CalcContext } from '../calc/context';
 import { dashboard, MILESTONE_DAYS } from '../calc/dashboard';
 import type { MemberLoad } from '../calc/load';
 import { cellKey, type ProjectStatus } from '../calc/projectStatus';
+import { isFinished } from '../config/status';
 import { statusColor } from '../config/statusColor';
 import type { Member, NoteId, Project, StatusSets } from '../model';
 import { cleanColor, DEFAULT_SETTINGS, type KindColors, projectLabel, type ProjectDisplayName, type StatusColors } from '../settings';
 import { WARNING_LABELS, type Warning } from '../calc/warnings';
-import { countText, hoursText, pct, rateText, warningCounts, warningSummary } from '../views/format';
+import { countText, hoursText, pct, rateText, warningCounts, warningSummary } from '../calc/format';
 
 /** HTMLレポートのファイル名（出力先のフォルダに上書きする。設計書 13章） */
 export const REPORT_FILE_NAME = 'project-report.html';
@@ -146,7 +147,7 @@ export function buildHtmlReport(ctx: CalcContext, input: ReportInput): string {
 						cell(label(m.project)),
 						cell(m.milestone.name),
 						cell(m.epic?.epic ? `${m.epic.epic.title}（${m.epic.epic.status}・${pct(m.epic.progress)}）` : (m.milestone.epic ?? '')),
-						cell(milestoneNotes(m).join('・'), 'error'),
+						cell(m.notes.join('・'), 'error'),
 					]),
 				),
 	);
@@ -160,14 +161,6 @@ export function buildHtmlReport(ctx: CalcContext, input: ReportInput): string {
 
 function loadCell(load: MemberLoad): Cell {
 	return cell(`${rateText(load.plannedRate)}（${hoursText(load.work.planned)}h／${hoursText(load.base)}h）`, `load-${load.plannedLevel}`);
-}
-
-function milestoneNotes(m: ProjectStatus['milestones'][number]): string[] {
-	const notes: string[] = [];
-	if (m.milestone.epic && !m.epic) notes.push('連動エピックが見つかりません');
-	if (m.late) notes.push('完了予定日がマイルストーンより後');
-	if (m.missed) notes.push('日付を過ぎたが未完了');
-	return notes;
 }
 
 function projectSection(s: ProjectStatus, title: string, name: (id: NoteId) => string, status: StatusCell): string {
@@ -203,7 +196,7 @@ function projectSection(s: ProjectStatus, title: string, name: (id: NoteId) => s
 						cell(m.epic?.epic ? m.epic.epic.title : (m.milestone.epic ?? '')),
 						cell(m.epic?.epic ? `${m.epic.epic.status}・${pct(m.epic.progress)}` : ''),
 						cell(m.epic?.epic?.due ?? ''),
-						cell(milestoneNotes(m).join('・'), 'error'),
+						cell(m.notes.join('・'), 'error'),
 					]),
 				),
 	);
@@ -215,7 +208,7 @@ function projectSection(s: ProjectStatus, title: string, name: (id: NoteId) => s
 			: table(
 					['WBS', 'タイトル', 'ステータス', '担当者', '進捗', '見積(h)', '予定(h)', '実績(h)', '開始（計算）', '終了（計算）', '開始日', '完了予定日', '警告'],
 					s.epics.map((r) => {
-						const open = r.category !== 'done' && r.category !== 'stopped';
+						const open = !isFinished(r.category);
 						const endLate = open && !!r.span && !!r.epic?.due && r.span.end > r.epic.due;
 						return [
 							cell(r.epic?.wbs ?? ''),

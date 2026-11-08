@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { barBox, DEFAULT_GANTT, dependencyFlags, dependencyLinks, fitRange, ganttScale, markX, parseGanttOptions, xOf } from './gantt';
+import { barBox, DEFAULT_GANTT, dependencyFlags, dependencyLinks, fitRange, ganttLabelWidthOf, ganttScale, markX, parseGanttOptions, xOf } from './gantt';
 import { task } from './testData';
 
 describe('ganttScale', () => {
@@ -74,5 +74,16 @@ describe('parseGanttOptions', () => {
 			start: '2026-11-01',
 			showDependencies: true,
 		});
+	});
+});
+
+describe('ganttLabelWidthOf', () => {
+	it('数でなければ初期値、範囲の外は端にそろえ、小数は丸める', () => {
+		expect(ganttLabelWidthOf(undefined)).toBe(320);
+		expect(ganttLabelWidthOf('400')).toBe(320);
+		expect(ganttLabelWidthOf(Number.NaN)).toBe(320);
+		expect(ganttLabelWidthOf(100)).toBe(160);
+		expect(ganttLabelWidthOf(1200)).toBe(800);
+		expect(ganttLabelWidthOf(250.6)).toBe(251);
 	});
 });

@@ -19,16 +19,16 @@ import { openWorklogModal } from '../commands/worklog';
 import type ProjectManagerPlugin from '../main';
 import { projectLabel } from '../settings';
 import { writeFrontmatter } from '../write/frontmatterFile';
-import { actionButtons, rowButton } from './actions';
+import { actionButtons, formClick } from './actions';
 import { holidayMark, kindMark, warningBadges } from './badges';
 import { PmView } from './baseView';
 import { memberChoices, projectChoices, statusChoices } from './choices';
 import { rangeSlider, renderFilterBar } from './filterBar';
-import { noteLink } from './openNote';
 import { openView } from './openView';
 import { taskFilterFields, withTaskFilter } from './taskFilters';
-
-export const KANBAN_VIEW_TYPE = 'pm-kanban';
+import { field, stringArray } from '../parse/values';
+import { KANBAN_VIEW_TYPE } from './viewTypes';
+import { notifyError } from '../ui/notify';
 
 /** 1列に一度に出すカードの数 */
 const CARD_PAGE = 50;
@@ -86,17 +86,16 @@ export class KanbanView extends PmView {
 	}
 
 	async setState(state: unknown, result: ViewStateResult): Promise<void> {
-		const raw = typeof state === 'object' && state !== null ? (state as { kanban?: unknown }).kanban : undefined;
+		const raw = field(state, 'kanban');
 		const { epics, dueFrom, dueTo, warningsOnly } = parseTaskListOptions(raw);
-		const saved = typeof raw === 'object' && raw !== null ? (raw as { toggled?: unknown; columnWidth?: unknown }) : {};
-		const { toggled } = saved;
+		const toggled = field(raw, 'toggled');
 		this.options = {
 			epics,
 			warningsOnly,
 			...(dueFrom ? { dueFrom } : {}),
 			...(dueTo ? { dueTo } : {}),
-			toggled: Array.isArray(toggled) ? toggled.filter((s): s is string => typeof s === 'string') : [],
-			columnWidth: columnWidthOf(saved.columnWidth),
+			toggled: stringArray(toggled),
+			columnWidth: columnWidthOf(field(raw, 'columnWidth')),
 		};
 		this.limits.clear();
 		await super.setState(state, result);
@@ -255,15 +254,14 @@ export class KanbanView extends PmView {
 			await writeFrontmatter(this.app, file, 'task', { status: move.status });
 			new Notice(`「${card.title}」を「${from || '設定に無いステータス'}」→「${move.status}」にしました`);
 		} catch (e) {
-			console.error('[project-manager] ステータスの書き込みに失敗しました', e);
-			new Notice('ステータスを書き込めませんでした。ノートのプロパティ（YAML）が壊れていないか確かめてください');
+			notifyError(e, 'ステータスを書き込めませんでした。ノートのプロパティ（YAML）が壊れていないか確かめてください');
 		}
 	}
 
 	private drawCard(col: HTMLElement, row: TaskRow, labels: RowLabels, calendar: WorkCalendar): void {
 		const { task } = row;
 		const card = col.createDiv({ cls: 'pm-kanban-card is-clickable' });
-		noteLink(this.plugin, card, task.path);
+		formClick(card, () => openTaskForm(this.plugin, task.path));
 		card.draggable = true;
 		card.addEventListener('dragstart', (e) => {
 			const dragged: DraggedCard = { path: task.path, title: task.title, from: row.status };
@@ -274,7 +272,6 @@ export class KanbanView extends PmView {
 		card.addEventListener('dragend', () => card.removeClass('is-dragging'));
 		const title = card.createDiv({ cls: 'pm-kanban-title' });
 		kindMark(title.createSpan({ text: task.title }), 'task');
-		rowButton(title, 'フォーム', () => openTaskForm(this.plugin, task.path));
 		card.createDiv({ cls: 'pm-kanban-meta', text: row.project ? labels.project(row.project) : task.project });
 		const assignees = row.assignees.map((m) => m.title).join('、');
 		if (assignees) card.createDiv({ cls: 'pm-kanban-meta', text: `担当：${assignees}` });

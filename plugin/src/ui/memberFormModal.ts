@@ -32,7 +32,13 @@ export class MemberFormModal extends FormModal {
 		contentEl.addClass('pm-task-form');
 		errorBox(contentEl, this.errors);
 
+		// 氏名・姓・名はそれぞれ入力する（設計書 4.5）
 		new Setting(contentEl).setName('氏名').addText((t) => t.setValue(form.title).onChange((v) => (form.title = v)));
+		new Setting(contentEl)
+			.setName('姓')
+			.setDesc('ガントチャートの担当者に出します')
+			.addText((t) => t.setValue(form.familyName).onChange((v) => (form.familyName = v)));
+		new Setting(contentEl).setName('名').addText((t) => t.setValue(form.givenName).onChange((v) => (form.givenName = v)));
 		new Setting(contentEl)
 			.setName('1日の通常稼働時間(h)')
 			.setDesc('負荷率の基準。0.25刻み（例：8）')

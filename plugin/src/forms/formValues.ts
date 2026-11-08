@@ -23,10 +23,6 @@ export const isReadable = (value: string, type: NoteType): boolean => parseLinkI
 /** 書き込む値。読める ID はリンクに、読めない値は元のまま */
 export const linkValue = (value: string, type: NoteType): string => (isReadable(value, type) ? toLink(value) : value);
 
-/** 選択肢に無い値の表示名。ID なら「見つかりません」、読めない値なら「読めません」 */
-export const missingLabel = (value: string, type: NoteType): string =>
-	`${value}（${isReadable(value, type) ? '見つかりません' : '読めません'}）`;
-
 /** 読めない値が残っていれば、保存時に知らせる文言を足す */
 export function warnUnreadable(label: string, values: readonly string[], type: NoteType, warnings: string[]): void {
 	const bad = values.filter((v) => v !== '' && !isReadable(v, type));

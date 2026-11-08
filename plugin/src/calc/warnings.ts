@@ -1,3 +1,4 @@
+import { isFinished } from '../config/status';
 import type { IsoDate, Member, NoteId, Project, StatusDef, Task, YearMonth } from '../model';
 import type { MemberLoad } from './load';
 import type { TaskSchedule } from './schedule';
@@ -46,9 +47,9 @@ export function taskWarnings(
 	const warnings: Warning[] = [];
 	const target: WarningTarget = { type: 'task', task: task.id };
 	const category = categoryOf(task, statuses);
-	if (task.due && task.due < today && category !== 'done' && category !== 'stopped') {
+	if (task.due && task.due < today && !isFinished(category)) {
 		warnings.push({ kind: 'overdue', target, message: `期限日（${task.due}）を過ぎています` });
-	} else if (task.due && schedule && schedule.end > task.due && category !== 'done' && category !== 'stopped') {
+	} else if (task.due && schedule && schedule.end > task.due && !isFinished(category)) {
 		warnings.push({
 			kind: 'overdueRisk',
 			target,

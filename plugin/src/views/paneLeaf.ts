@@ -24,50 +24,8 @@ function tabIn(app: App, group: WorkspaceLeaf[]): WorkspaceLeaf {
 	return app.workspace.getLeaf('tab');
 }
 
-/** ビューを開くタブ（左枠。設計書 9.1） */
-export function leftLeaf(app: App): WorkspaceLeaf {
+/** ビューを開くタブ（中央の最初の枠。設計書 9.1） */
+export function firstPaneLeaf(app: App): WorkspaceLeaf {
 	const first = rootGroups(app)[0];
 	return first ? tabIn(app, first) : app.workspace.getLeaf('tab');
-}
-
-/** 中身を差し替えてよいタブ（ノートか空のタブで、固定していない） */
-function replaceable(leaf: WorkspaceLeaf): boolean {
-	const type = leaf.view.getViewType();
-	return (type === 'markdown' || type === 'empty') && leaf.getViewState().pinned !== true;
-}
-
-/**
- * ノートを開くタブ（右枠。設計書 9.1）。右枠で表示中のノートを差し替え、newTab なら右枠に新しいタブを作る。
- * 枠が1つなら右に分割し、左枠の幅を ratio% にする
- */
-export function rightLeaf(app: App, ratio: number, newTab: boolean): WorkspaceLeaf {
-	const groups = rootGroups(app);
-	const last = groups[groups.length - 1];
-	if (groups.length >= 2 && last) {
-		const shown = shownLeaf(last);
-		return !newTab && shown && replaceable(shown) ? shown : tabIn(app, last);
-	}
-	const shown = last && shownLeaf(last);
-	if (!shown) return app.workspace.getLeaf('tab');
-	const leaf = app.workspace.createLeafBySplit(shown, 'vertical');
-	applyPaneRatio(app, ratio);
-	return leaf;
-}
-
-/** 枠の幅を変える Obsidian の非公開の関数（設計書 9.1） */
-interface Resizable {
-	setDimension?: (dimension: number) => void;
-}
-
-/** 左右2つの枠があれば、左枠の幅を ratio% にする */
-export function applyPaneRatio(app: App, ratio: number): void {
-	const groups = rootGroups(app);
-	const [left, right] = groups.map((group) => group[0]?.parent);
-	if (groups.length !== 2 || !left || !right || left.parent !== right.parent) return;
-	const l = left as unknown as Resizable;
-	const r = right as unknown as Resizable;
-	if (typeof l.setDimension !== 'function' || typeof r.setDimension !== 'function') return;
-	l.setDimension(ratio);
-	r.setDimension(100 - ratio);
-	app.workspace.requestSaveLayout();
 }

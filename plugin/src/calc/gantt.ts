@@ -1,6 +1,7 @@
 import type { IsoDate, NoteId, Task } from '../model';
 import { daysBetween } from './dates';
 import { periodsBetween, type Period, type PeriodUnit } from './workdays';
+import { isRecord } from '../parse/values';
 
 /** ガントの表示条件（要件4.8c）。期間が無ければ初期値（前月〜3か月先） */
 export interface GanttOptions {
@@ -13,11 +14,19 @@ export interface GanttOptions {
 
 export const DEFAULT_GANTT: GanttOptions = { unit: 'week', showDependencies: false };
 
+/** 表示名の欄の幅の範囲と初期値(px)。見出しの境をドラッグして変える（設計書 9.8） */
+export const GANTT_LABEL_WIDTH = { min: 160, max: 800, initial: 320 };
+
+/** 表示名の欄の幅。数でなければ初期値、範囲の外は端にそろえる */
+export function ganttLabelWidthOf(v: unknown): number {
+	if (typeof v !== 'number' || !Number.isFinite(v)) return GANTT_LABEL_WIDTH.initial;
+	return Math.min(GANTT_LABEL_WIDTH.max, Math.max(GANTT_LABEL_WIDTH.min, Math.round(v)));
+}
+
 /** 1日の幅(px)。単位ごとに、期間の見出しが読める幅にする */
 export const PX_PER_DAY: Record<PeriodUnit, number> = { day: 28, week: 8, month: 3 };
 
 const UNITS: readonly PeriodUnit[] = ['day', 'week', 'month'];
-const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 const date = (v: unknown): IsoDate | undefined => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : undefined);
 
 /** 保存されていた表示条件を読む。不正な値は既定値にする */

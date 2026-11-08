@@ -144,6 +144,8 @@ export function buildNote(src: NoteSource): NoteRecord | null {
 					start: c.date('start'),
 					durationDays: c.number('duration_days', { step: 1 }),
 					due: c.date('due'),
+					planStart: c.date('plan_start'),
+					planEnd: c.date('plan_end'),
 				}),
 				subtasks: src.subtasks ?? { done: 0, total: 0 },
 			};
@@ -159,6 +161,7 @@ export function buildNote(src: NoteSource): NoteRecord | null {
 			record.note = {
 				...titled(),
 				type: 'user',
+				...optional({ familyName: c.string('family_name'), givenName: c.string('given_name') }),
 				dailyHours: c.number('daily_hours', { step: 0.25 }) ?? MEMBER_DEFAULTS.dailyHours,
 				loadLimitPct: c.number('load_limit_pct', { step: 1 }) ?? MEMBER_DEFAULTS.loadLimitPct,
 				active: c.boolean('active') ?? MEMBER_DEFAULTS.active,

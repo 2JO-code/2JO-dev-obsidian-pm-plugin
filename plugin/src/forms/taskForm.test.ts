@@ -24,6 +24,8 @@ const form = (overrides: Partial<TaskForm> = {}): TaskForm => ({
 	start: '',
 	durationDays: '',
 	due: '',
+	planStart: '',
+	planEnd: '',
 	...overrides,
 });
 
@@ -40,9 +42,21 @@ describe('taskFormFromFrontmatter', () => {
 				estimate: 7.5,
 				depends_on: `[[${TASK}]]`,
 				start: '2026-11-04',
+				plan_start: '2026-11-04',
+				plan_end: '2026-11-06',
 			}),
 		).toEqual(
-			form({ epic: EPIC, wbs: '3', status: '進行中', assignees: [USER], estimate: '7.5', dependsOn: [TASK], start: '2026-11-04' }),
+			form({
+				epic: EPIC,
+				wbs: '3',
+				status: '進行中',
+				assignees: [USER],
+				estimate: '7.5',
+				dependsOn: [TASK],
+				start: '2026-11-04',
+				planStart: '2026-11-04',
+				planEnd: '2026-11-06',
+			}),
 		);
 	});
 
@@ -62,7 +76,16 @@ describe('taskFormFromFrontmatter', () => {
 describe('taskFormToUpdate', () => {
 	it('入力を frontmatter の変更内容にする。空欄の任意項目は空の枠（リストは []、ほかは null）', () => {
 		const { errors, update } = taskFormToUpdate(
-			form({ epic: EPIC, wbs: ' 12 ', assignees: [USER, USER], estimate: '7.5', start: '2026-11-04', due: '2026-11-10' }),
+			form({
+				epic: EPIC,
+				wbs: ' 12 ',
+				assignees: [USER, USER],
+				estimate: '7.5',
+				start: '2026-11-04',
+				due: '2026-11-10',
+				planStart: '2026-11-04',
+				planEnd: '2026-11-09',
+			}),
 			statuses,
 			SELF,
 		);
@@ -82,6 +105,8 @@ describe('taskFormToUpdate', () => {
 			start: '2026-11-04',
 			duration_days: null,
 			due: '2026-11-10',
+			plan_start: '2026-11-04',
+			plan_end: '2026-11-09',
 		});
 	});
 
@@ -103,6 +128,8 @@ describe('taskFormToUpdate', () => {
 			start: null,
 			duration_days: null,
 			due: '2026-11-10',
+			plan_start: null,
+			plan_end: null,
 			memo: 'x',
 		});
 	});
@@ -130,6 +157,20 @@ describe('taskFormToUpdate', () => {
 		]);
 	});
 
+	it('予定開始日・予定終了日は両方そろえ、終了日を開始日より前にしない', () => {
+		const errorsOf = (o: Partial<TaskForm>) => taskFormToUpdate(form(o), statuses, SELF).errors;
+		expect(errorsOf({ planStart: '2026-11-04' })).toEqual(['予定開始日と予定終了日は両方入れてください']);
+		expect(errorsOf({ planEnd: '2026-11-04' })).toEqual(['予定開始日と予定終了日は両方入れてください']);
+		expect(errorsOf({ planStart: '2026-11-05', planEnd: '2026-11-04' })).toEqual(['予定終了日が予定開始日より前になっています']);
+		expect(errorsOf({ planStart: '2026-11-04', planEnd: '2026-11-04' })).toEqual([]);
+	});
+
+	it('担当者が2人以上なら誤りにする（同じ人の重なりは1人と数える）', () => {
+		const other = `USER-${U(6)}`;
+		expect(taskFormToUpdate(form({ assignees: [USER, other] }), statuses, SELF).errors).toContain('担当者は1人だけ選んでください');
+		expect(taskFormToUpdate(form({ assignees: [USER, USER] }), statuses, SELF).errors).toEqual([]);
+	});
+
 	it('保存はできるが知らせること（期限日が開始日より前、使われない入力）', () => {
 		const { errors, warnings } = taskFormToUpdate(
 			form({ start: '2026-11-10', due: '2026-11-01', lagDays: '2' }),
@@ -142,13 +183,13 @@ describe('taskFormToUpdate', () => {
 
 	it('読めないリンクは元のまま書き、知らせる（読めるものはリンクにする）', () => {
 		const { errors, warnings, update } = taskFormToUpdate(
-			form({ assignees: [USER, '[[佐藤]]'], dependsOn: [`[[${PJT}]]`] }),
+			form({ assignees: ['[[佐藤]]'], dependsOn: [TASK, `[[${PJT}]]`] }),
 			statuses,
 			SELF,
 		);
 		expect(errors).toEqual([]);
-		expect(update.assignees).toEqual([`[[${USER}]]`, '[[佐藤]]']);
-		expect(update.depends_on).toEqual([`[[${PJT}]]`]);
+		expect(update.assignees).toEqual(['[[佐藤]]']);
+		expect(update.depends_on).toEqual([`[[${TASK}]]`, `[[${PJT}]]`]);
 		expect(warnings).toEqual([
 			'担当者の読めない値（[[佐藤]]）はそのまま残しました。直すか、外してください',
 			`先行タスクの読めない値（[[${PJT}]]）はそのまま残しました。直すか、外してください`,

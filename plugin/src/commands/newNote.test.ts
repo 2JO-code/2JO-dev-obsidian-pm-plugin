@@ -65,6 +65,8 @@ describe('planNewNote', () => {
 			start: null,
 			duration_days: null,
 			due: null,
+			plan_start: null,
+			plan_end: null,
 		});
 	});
 
@@ -75,15 +77,18 @@ describe('planNewNote', () => {
 		expect(withWbs.frontmatter.wbs).toBe('1.10');
 	});
 
-	it('メンバー：既定値（8h・120%・在籍）と、本文に空の個人休日の表', () => {
-		const plan = planNewNote({ kind: 'user', title: '山田 太郎' }, statuses, folders, none, fixedId);
+	it('メンバー：氏名・姓・名、既定値（8h・120%・在籍）と、本文に空の個人休日の表', () => {
+		const plan = planNewNote({ kind: 'user', title: '山田 太郎', familyName: ' 山田 ', givenName: '太郎' }, statuses, folders, none, fixedId);
 		expect(plan.path).toBe('Members/USER-ID.md');
+		expect(plan.frontmatter).toMatchObject({ title: '山田 太郎', aliases: ['山田 太郎'], family_name: '山田', given_name: '太郎' });
 		expect(plan.frontmatter).toMatchObject({ daily_hours: 8, load_limit_pct: 120, active: true });
 		expect(parsePersonalHolidays(plan.body)).toMatchObject({ found: true, problems: [] });
 	});
 
 	it('入力の誤りはエラーにする', () => {
-		expect(() => planNewNote({ kind: 'user', title: ' ' }, statuses, folders, none)).toThrow('氏名を入力してください');
+		expect(() => planNewNote({ kind: 'user', title: '山田', familyName: ' ', givenName: '太郎' }, statuses, folders, none)).toThrow('姓を入力してください');
+		expect(() => planNewNote({ kind: 'user', title: '山田', familyName: '山田', givenName: '' }, statuses, folders, none)).toThrow('名を入力してください');
+		expect(() => planNewNote({ kind: 'user', title: ' ', familyName: '山田', givenName: '太郎' }, statuses, folders, none)).toThrow('氏名を入力してください');
 		expect(() =>
 			planNewNote({ kind: 'project', title: 'P', caseId: '', officialName: 'X' }, statuses, folders, none),
 		).toThrow('案件IDを入力してください');
@@ -93,7 +98,7 @@ describe('planNewNote', () => {
 	});
 
 	it('既存のIDと重ならないIDを作る', () => {
-		const plan = planNewNote({ kind: 'user', title: 'A' }, statuses, folders, none);
+		const plan = planNewNote({ kind: 'user', title: 'A B', familyName: 'A', givenName: 'B' }, statuses, folders, none);
 		expect(plan.id).toMatch(/^USER-[0-9a-f-]{36}$/);
 	});
 });

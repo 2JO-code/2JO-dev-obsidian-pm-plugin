@@ -342,9 +342,36 @@ body {
 	margin-bottom: var(--size-4-6);
 }
 
+/* 節の中の見出し。大きさは置き場所によらず階層ごとに固定する（h3 > h4 > h5） */
 .pm-section h3,
-.pm-section h4 {
+.pm-section h4,
+.pm-section h5 {
 	margin: 0 0 var(--size-4-2);
+	font-weight: var(--font-semibold);
+	line-height: var(--line-height-tight);
+}
+
+.pm-section h3 {
+	font-size: var(--font-ui-large);
+}
+
+.pm-section h4 {
+	font-size: var(--font-ui-medium);
+}
+
+.pm-section h5 {
+	font-size: var(--font-ui-small);
+}
+
+/* 見出しの行の中では、行の余白だけを使う */
+.pm-section-head > h4 {
+	margin: 0;
+}
+
+/* 見出しの行のすぐ下の注意書き */
+.pm-section-head + .pm-note {
+	margin-top: 0;
+	margin-bottom: var(--size-4-2);
 }
 
 .pm-summary {
@@ -731,65 +758,6 @@ td .pm-progress-pct {
 	margin-left: var(--size-4-2);
 }
 
-.pm-worklog-day {
-	margin: 0 0 var(--size-4-2);
-	padding: var(--size-4-2) var(--size-4-3);
-	border-radius: var(--radius-m);
-	background: var(--background-secondary);
-	font-size: var(--font-ui-small);
-}
-
-.pm-worklog-day:empty {
-	display: none;
-}
-
-.pm-worklog-day ul {
-	margin: 0;
-	padding-left: var(--size-4-5);
-}
-
-.pm-worklog-day-empty {
-	color: var(--text-muted);
-}
-
-.pm-worklog-day-total {
-	margin-top: var(--size-4-1);
-	font-weight: var(--font-semibold);
-}
-
-.pm-worklog-day-title {
-	color: var(--text-muted);
-	margin-bottom: var(--size-4-1);
-}
-
-.pm-worklog-day li.is-target {
-	font-weight: var(--font-semibold);
-}
-
-.pm-worklog-day-mark {
-	margin-left: var(--size-4-2);
-	color: var(--text-accent);
-}
-
-/* 追加か書き換えかのお知らせ。書き換えは見落とさないよう色を付ける */
-.pm-worklog-mode {
-	margin: var(--size-4-2) 0;
-	padding: var(--size-4-2) var(--size-4-3);
-	border-radius: var(--radius-m);
-	border-left: 4px solid var(--interactive-accent);
-	background: var(--background-secondary);
-	font-size: var(--font-ui-small);
-}
-
-.pm-worklog-mode.is-update {
-	border-left-color: var(--color-orange);
-	background: rgba(var(--color-orange-rgb), 0.12);
-}
-
-.pm-worklog-mode-title {
-	font-weight: var(--font-semibold);
-}
-
 /* 本文の表（マイルストーン・工数配分）の編集画面（設計書 4.7）。入力欄はセルの幅いっぱい */
 .pm-table-edit-modal {
 	width: min(760px, 95vw);
@@ -830,46 +798,526 @@ td .pm-progress-pct {
 	text-decoration: line-through;
 }
 
-/* 工数配分のマス目（設計書 4.7）。月が多いと横に流し、メンバー名の列は左に固定する */
+/* タスクのフォームの説明欄（設計書 4.11）。幅いっぱいの複数行 */
+.pm-description-input {
+	width: 100%;
+	min-height: 6em;
+	resize: vertical;
+}
+
+/* タスク・エピックのフォームの並び（設計書 4.12）。まとまりを左右の列に分け、まとまりの中は欄を1〜3列で並べる */
+.pm-form-modal {
+	width: min(1100px, 95vw);
+}
+
+.pm-form-columns {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 0 var(--size-4-8);
+	align-items: start;
+}
+
+.pm-form-column > :first-child {
+	margin-top: 0;
+}
+
+.pm-form-heading {
+	margin: var(--size-4-4) 0 var(--size-4-2);
+	padding-bottom: var(--size-4-1);
+	border-bottom: 1px solid var(--background-modifier-border);
+	font-size: var(--font-ui-small);
+	font-weight: var(--font-semibold);
+	color: var(--text-muted);
+}
+
+.pm-form-grid {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
+	gap: var(--size-4-3) var(--size-4-4);
+	margin-top: var(--size-4-3);
+}
+
+.pm-form-heading + .pm-form-grid {
+	margin-top: 0;
+}
+
+.pm-form-grid.is-cols-2 {
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.pm-form-grid.is-cols-3 {
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.pm-form-field {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-1);
+	min-width: 0;
+}
+
+.pm-form-field.is-full {
+	grid-column: 1 / -1;
+}
+
+.pm-form-label {
+	font-size: var(--font-ui-small);
+	color: var(--text-muted);
+}
+
+.pm-form-control {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-1);
+}
+
+/* 入力欄は幅いっぱい。チェックボックスは除く */
+.pm-form-control input:not([type='checkbox']),
+.pm-form-control select {
+	width: 100%;
+}
+
+.pm-form-control .pm-chips {
+	margin-top: 0;
+}
+
+.pm-form-hint {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-faint);
+}
+
+/* 今の入力では使わない欄。値は残したまま薄く出す */
+.pm-form-field.is-unused .pm-form-label,
+.pm-form-field.is-unused input {
+	color: var(--text-faint);
+}
+
+.pm-form-inline {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--size-4-2);
+}
+
+.pm-schedule-preview {
+	padding: var(--size-4-2) var(--size-4-3);
+	border-radius: var(--radius-m);
+	background: var(--background-secondary);
+	font-size: var(--font-ui-small);
+}
+
+.pm-schedule-preview.is-late {
+	color: var(--color-red);
+}
+
+.pm-schedule-preview.is-none {
+	color: var(--text-faint);
+}
+
+/* 予定との差の行。遅れていればオレンジ（設計書 11.18） */
+.pm-schedule-preview.is-plan {
+	margin-top: var(--size-4-1);
+}
+
+.pm-schedule-preview.is-behind {
+	color: var(--color-orange);
+}
+
+/* フォームの中のチェックリスト（表示だけ）。5件分の高さを超えたら中だけスクロールする */
+.pm-form-checklist {
+	--pm-form-checklist-rows: 5;
+	max-height: calc(var(--pm-form-checklist-rows) * 1.9em);
+	overflow-y: auto;
+	padding: var(--size-4-1) var(--size-4-2);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+}
+
+.pm-form-checklist-item {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-2);
+	line-height: 1.9em;
+}
+
+.pm-form-checklist-item input[type='checkbox'] {
+	flex: none;
+	margin: 0;
+}
+
+/* 完了した項目は、ノートのチェックリストと同じく薄く・取り消し線 */
+.pm-form-checklist-item.is-done span {
+	color: var(--text-faint);
+	text-decoration: line-through;
+}
+
+.pm-task-form > .setting-item:last-child {
+	margin-top: var(--size-4-4);
+}
+
+/* 工数配分（設計書 4.7）・作業ログ（設計書 4.3）のマス目。表計算のように罫線で区切り、入力欄はマスいっぱいに枠なしで置く */
 .pm-allocation-matrix-modal {
 	width: min(1100px, 95vw);
 }
 
-.pm-allocation-matrix-wrap {
+/* 月が多いと横に流す */
+.pm-allocation-matrix-wrap,
+.pm-worklog-grid-wrap {
 	overflow-x: auto;
 }
 
-.pm-table-edit.pm-allocation-matrix {
+.pm-table-edit.pm-allocation-matrix,
+.pm-table-edit.pm-worklog-grid {
 	width: auto;
+	font-variant-numeric: tabular-nums;
 }
 
-.pm-allocation-matrix th {
+.pm-allocation-matrix th,
+.pm-allocation-matrix td,
+.pm-worklog-grid th,
+.pm-worklog-grid td {
+	border-right: 1px solid var(--pm-grid-color);
+	border-bottom: 1px solid var(--pm-grid-color);
+}
+
+.pm-allocation-matrix tr > :first-child,
+.pm-worklog-grid tr > :first-child {
+	border-left: 1px solid var(--pm-grid-color);
+}
+
+.pm-allocation-matrix thead tr:first-child th,
+.pm-worklog-grid thead tr:first-child th {
+	border-top: 1px solid var(--pm-grid-color);
+}
+
+/* 見出しが2段なので上に固定しない。表計算の見出しのように塗る */
+.pm-allocation-matrix th,
+.pm-worklog-grid th {
 	position: static;
+	background: var(--background-secondary);
 }
 
-.pm-allocation-matrix .pm-allocation-matrix-member {
+.pm-allocation-matrix .pm-month-start {
+	border-left: 1px solid var(--background-modifier-border);
+}
+
+/* メンバー名・タスク名の列は左に固定する */
+.pm-allocation-matrix .pm-allocation-matrix-member,
+.pm-worklog-grid .pm-worklog-grid-task {
 	position: sticky;
 	left: 0;
 	z-index: 1;
-	background: var(--background-primary);
-	white-space: nowrap;
+	background: var(--background-secondary);
+	font-weight: var(--font-semibold);
 }
 
-.pm-table-edit.pm-allocation-matrix input {
-	width: 6em;
+/* 入力のマス。中の入力欄は枠・角・背景を消してマスいっぱいに広げ、選んだマスだけアクセント色の枠で囲む */
+.pm-allocation-matrix td.pm-allocation-matrix-input,
+.pm-worklog-grid td.pm-worklog-grid-input {
+	padding: 0;
+}
+
+.pm-table-edit.pm-allocation-matrix input,
+.pm-table-edit.pm-worklog-grid input {
+	width: 5em;
+	height: 100%;
+	padding: var(--size-4-1) var(--size-4-2);
+	border: none;
+	border-radius: 0;
+	background: transparent;
+	box-shadow: none;
 	text-align: right;
+	font-size: var(--font-ui-small);
 }
 
-/* マスの下の参考の予定・実績 */
-.pm-allocation-matrix-ref {
-	font-size: var(--font-smallest);
+.pm-table-edit.pm-allocation-matrix input:focus,
+.pm-table-edit.pm-allocation-matrix input:focus-visible,
+.pm-table-edit.pm-worklog-grid input:focus,
+.pm-table-edit.pm-worklog-grid input:focus-visible {
+	outline: 2px solid var(--interactive-accent);
+	outline-offset: -2px;
+	box-shadow: none;
+}
+
+/* 参考の予定・実績（入力できないマス） */
+.pm-allocation-matrix td.pm-allocation-matrix-ref {
 	color: var(--text-muted);
-	text-align: right;
-	white-space: nowrap;
 }
 
-.pm-allocation-matrix-ref.pm-text-error {
-	color: var(--text-error);
+.pm-allocation-matrix td.pm-allocation-matrix-ref.pm-text-error {
+	color: var(--color-red);
+}
+
+.pm-allocation-matrix td.pm-allocation-matrix-trash {
+	border: none;
+	background: transparent;
+}
+
+/* 表の中の追加欄（左下のメンバー・右上の月）。入力のマスと同じく枠なしでマスいっぱいに置く */
+.pm-allocation-matrix .pm-allocation-matrix-add {
+	padding: 0;
+	font-weight: var(--font-normal);
+}
+
+.pm-table-edit.pm-allocation-matrix .pm-allocation-matrix-add select,
+.pm-table-edit.pm-allocation-matrix .pm-allocation-matrix-add input {
+	width: 100%;
+	min-width: 9em;
+	border: none;
+	border-radius: 0;
+	background-color: transparent;
+	box-shadow: none;
+	color: var(--text-muted);
+	text-align: left;
+}
+
+.pm-table-edit.pm-allocation-matrix .pm-allocation-matrix-add select:focus,
+.pm-table-edit.pm-allocation-matrix .pm-allocation-matrix-add input:focus {
+	outline: 2px solid var(--interactive-accent);
+	outline-offset: -2px;
+	box-shadow: none;
+}
+
+/* 作業ログの入力画面（設計書 4.3）。上の共通のマス目に、週の切り替え・もう片方の値・合計を足す */
+.pm-worklog-grid-modal {
+	width: min(1000px, 95vw);
+}
+
+.pm-worklog-grid-bar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--size-4-2) var(--size-4-4);
+}
+
+.pm-worklog-grid-week,
+.pm-worklog-grid-mode,
+.pm-worklog-grid-filter {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-1);
+}
+
+.pm-worklog-grid .pm-worklog-grid-task {
+	min-width: 14em;
+	max-width: 22em;
+	text-align: left;
+	font-weight: var(--font-normal);
+}
+
+.pm-worklog-grid-weekday {
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	font-weight: var(--font-normal);
+}
+
+/* 階層（プロジェクト → エピック → タスク）の字下げ。ガントの表示名と同じ並び（設計書 4.3） */
+.pm-worklog-grid td.pm-worklog-grid-task {
+	padding-left: calc(var(--size-4-1) + var(--pm-depth, 0) * 1.25em);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.pm-worklog-grid-wbs {
+	margin-right: var(--size-4-2);
+	color: var(--text-muted);
+}
+
+/* プロジェクト・エピックの行は小計だけ。見出しと同じ塗りで入力のマスと区別する */
+.pm-worklog-grid-group td {
+	background: var(--background-secondary);
+	color: var(--text-muted);
+}
+
+.pm-worklog-grid-group.is-project td.pm-worklog-grid-task {
+	color: var(--text-normal);
+	font-weight: var(--font-semibold);
+}
+
+.pm-worklog-grid-group.is-epic td.pm-worklog-grid-task {
+	color: var(--text-normal);
+}
+
+.pm-table-edit.pm-worklog-grid button.pm-worklog-grid-fold {
+	padding: 0 var(--size-4-1);
+	margin-left: var(--size-4-1);
+	height: auto;
+	background: transparent;
+	box-shadow: none;
+	color: var(--text-muted);
+}
+
+.pm-worklog-grid th.is-today {
+	color: var(--text-accent);
+}
+
+.pm-worklog-grid th.is-holiday {
+	color: var(--text-faint);
+}
+
+/* マスの右下に、入力していない側（予定か実績）の値を小さく出す */
+.pm-worklog-grid td.pm-worklog-grid-input {
+	position: relative;
+}
+
+.pm-worklog-grid-ref {
+	position: absolute;
+	right: var(--size-4-1);
+	bottom: 0;
+	color: var(--text-faint);
+	font-size: var(--font-ui-smaller);
+	pointer-events: none;
+}
+
+.pm-table-edit.pm-worklog-grid input {
+	padding-bottom: var(--size-4-3);
+}
+
+/* 1か月の表示は列が多いので、マスを狭くする */
+.pm-table-edit.pm-worklog-grid.is-month input {
+	width: 3.5em;
+}
+
+/* 見積は参考なので控えめに */
+.pm-worklog-grid td.pm-worklog-grid-estimate {
+	color: var(--text-muted);
+}
+
+/* 見積・月の合計の列は、タスク名の右に固定する。位置は表を描いたあとに入れる */
+.pm-worklog-grid .pm-worklog-grid-pin {
+	position: sticky;
+	left: var(--pm-pin-left, 0);
+	z-index: 1;
+	background: var(--background-secondary);
+}
+
+.pm-worklog-grid td.pm-worklog-grid-estimate {
+	background: var(--background-primary);
+}
+
+.pm-worklog-grid-group td.pm-worklog-grid-estimate,
+.pm-worklog-grid-sum td.pm-worklog-grid-estimate {
+	background: var(--background-secondary);
+}
+
+/* 固定した列の右の境目 */
+.pm-worklog-grid .pm-worklog-grid-pin.is-pin-last {
+	border-right: 1px solid var(--background-modifier-border);
+}
+
+/* 作業ログの入力画面の、タスクの作業範囲（設計書 4.3）。予定期間は薄い塗り、計算上の日程は上の細い棒（ガントと同じ色） */
+.pm-worklog-grid td.pm-worklog-grid-input.is-plan {
+	background: color-mix(in srgb, var(--pm-color-task, var(--interactive-accent)) 14%, transparent);
+}
+
+.pm-worklog-grid td.pm-worklog-grid-input.is-schedule::before {
+	content: '';
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	height: var(--size-2-2);
+	background: var(--pm-color-task, var(--interactive-accent));
+	pointer-events: none;
+}
+
+/* 期限日のマスは右端に赤い線（ガントの期限日の線と同じ色） */
+.pm-worklog-grid td.pm-worklog-grid-input.is-due::after {
+	content: '';
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	right: 0;
+	width: 2px;
+	background: var(--color-red);
+	pointer-events: none;
+}
+
+.pm-worklog-grid-swatch.is-due {
+	border-right: 2px solid var(--color-red);
+}
+
+/* 開始日のマスは左端に青い線（ガントの開始日の線と同じ色）。期限日の線と左右で分ける */
+.pm-worklog-grid td.pm-worklog-grid-input.is-start {
+	box-shadow: inset 2px 0 0 var(--color-blue);
+}
+
+/* 保存前に変えたマス。黄の薄い塗りと太字（色だけに頼らない） */
+.pm-table-edit.pm-worklog-grid td.pm-worklog-grid-input.is-edited input {
+	background: color-mix(in srgb, var(--color-yellow) 25%, transparent);
+	font-weight: var(--font-bold);
+}
+
+.pm-worklog-grid-swatch.is-edited {
+	background: color-mix(in srgb, var(--color-yellow) 25%, transparent);
+	font-weight: var(--font-bold);
+}
+
+.pm-worklog-grid-swatch.is-start {
+	border-left: 2px solid var(--color-blue);
+}
+
+.pm-worklog-grid-legend {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--size-4-2);
+}
+
+.pm-worklog-grid-swatch {
+	position: relative;
+	padding: 0 var(--size-4-2);
+	border: 1px solid var(--pm-grid-color);
+}
+
+.pm-worklog-grid-swatch.is-plan {
+	background: color-mix(in srgb, var(--pm-color-task, var(--interactive-accent)) 14%, transparent);
+}
+
+.pm-worklog-grid-swatch.is-schedule {
+	border-top: var(--size-2-2) solid var(--pm-color-task, var(--interactive-accent));
+}
+
+.pm-worklog-grid td.pm-worklog-grid-total,
+.pm-worklog-grid-sum td {
+	background: var(--background-secondary);
+	font-weight: var(--font-semibold);
+}
+
+.pm-worklog-grid-add-row td {
+	padding: 0;
+}
+
+.pm-table-edit.pm-worklog-grid button.pm-worklog-grid-add {
+	width: 100%;
+	border-radius: 0;
+	background: transparent;
+	box-shadow: none;
+	color: var(--text-muted);
+	justify-content: flex-start;
+}
+
+.pm-worklog-grid-links {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--size-4-2);
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+}
+
+.pm-worklog-grid-footer {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--size-4-2);
+	margin-top: var(--size-4-3);
+}
+
+.pm-worklog-grid-dirty {
+	color: var(--color-orange);
+	font-size: var(--font-ui-small);
 }
 
 /* 押して別の画面で選ぶセル（作業ログのタスク）。長い名前は省略する */
@@ -994,8 +1442,20 @@ td .pm-progress-pct {
 	stroke-opacity: 0.6;
 }
 
-.pm-burnup-title {
-	margin: var(--size-4-4) 0 var(--size-4-1);
+.pm-section .pm-burnup-title {
+	margin: var(--size-4-2) 0 var(--size-4-1);
+}
+
+/* 工数の累積と進捗率を横に並べる。幅が足りないときは縦に折り返す */
+.pm-burnup-pair {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--size-4-6);
+}
+
+.pm-burnup-cell {
+	flex: 1 1 420px;
+	min-width: 0;
 }
 
 .pm-burnup-swatch.is-actual-dot {
@@ -1243,10 +1703,14 @@ td .pm-progress-pct {
 /* ガントチャート（設計書 9.8）。横の位置と幅は --pm-x・--pm-w、横軸の幅は --pm-gantt-width で受け取る */
 .pm-gantt {
 	--pm-gantt-label: 320px;
+	--pm-gantt-person: 96px;
+	/* 横軸より左の欄（表示名＋担当者）の幅 */
+	--pm-gantt-side: calc(var(--pm-gantt-label) + var(--pm-gantt-person));
 	--pm-gantt-row: 28px;
 	--pm-gantt-cell: 22px;
 	--pm-gantt-head: calc(var(--pm-gantt-cell) * 2);
 	--pm-gantt-bar: 14px;
+	--pm-gantt-plan: 22px;
 	--pm-gantt-group-bar: 8px;
 	position: relative;
 	width: max-content;
@@ -1274,7 +1738,35 @@ td .pm-progress-pct {
 	border-right: 1px solid var(--background-modifier-border);
 }
 
+/* 担当者を隠したとき。列の幅を 0 にし、縦線などの位置も表示名の欄の右端に戻す */
+.pm-gantt.is-hide-person {
+	--pm-gantt-person: 0px;
+}
+
+.pm-gantt.is-hide-person .pm-gantt-person {
+	display: none;
+}
+
+/* 担当者の欄。表示名の欄の右に並べ、横にスクロールしても左に残す（設計書 9.8） */
+.pm-gantt-person {
+	position: sticky;
+	left: var(--pm-gantt-label);
+	z-index: 2;
+	flex: 0 0 var(--pm-gantt-person);
+	width: var(--pm-gantt-person);
+	height: var(--pm-gantt-row);
+	line-height: var(--pm-gantt-row);
+	padding: 0 var(--size-4-2);
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+	font-weight: var(--font-normal);
+	background: var(--background-primary);
+	border-right: 1px solid var(--background-modifier-border);
+}
+
 .pm-grid-lines .pm-gantt-label,
+.pm-grid-lines .pm-gantt-person,
 .pm-grid-lines .pm-gantt-track {
 	border-bottom: 1px solid var(--pm-grid-color);
 }
@@ -1284,7 +1776,7 @@ td .pm-progress-pct {
 	position: absolute;
 	top: var(--pm-gantt-head);
 	bottom: 0;
-	left: calc(var(--pm-gantt-label) + var(--pm-x));
+	left: calc(var(--pm-gantt-side) + var(--pm-x));
 	width: 1px;
 	background: var(--pm-grid-color);
 	pointer-events: none;
@@ -1295,7 +1787,7 @@ td .pm-progress-pct {
 	position: absolute;
 	top: var(--pm-gantt-head);
 	bottom: 0;
-	left: calc(var(--pm-gantt-label) + var(--pm-x));
+	left: calc(var(--pm-gantt-side) + var(--pm-x));
 	width: var(--pm-w);
 	background: var(--background-secondary);
 	pointer-events: none;
@@ -1316,14 +1808,32 @@ td .pm-progress-pct {
 }
 
 .pm-gantt-head .pm-gantt-label,
+.pm-gantt-head .pm-gantt-person,
 .pm-gantt-head .pm-gantt-track {
 	height: var(--pm-gantt-head);
 	font-weight: var(--font-semibold);
 }
 
-.pm-gantt-head .pm-gantt-label {
+.pm-gantt-head .pm-gantt-label,
+.pm-gantt-head .pm-gantt-person {
 	z-index: 4;
 	line-height: var(--pm-gantt-head);
+}
+
+/* 見出しの「タイトル」の右端の、幅を変えるつまみ。指すと色が付く（設計書 9.8） */
+.pm-gantt-resizer {
+	position: absolute;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	width: var(--size-4-1);
+	cursor: col-resize;
+	touch-action: none;
+}
+
+.pm-gantt-resizer:hover,
+.pm-gantt-resizer.is-active {
+	background: var(--interactive-accent);
 }
 
 .pm-gantt-cell {
@@ -1358,6 +1868,10 @@ td .pm-progress-pct {
 
 .pm-gantt-project .pm-gantt-label {
 	display: flex;
+	background: var(--background-secondary);
+}
+
+.pm-gantt-project .pm-gantt-person {
 	background: var(--background-secondary);
 }
 
@@ -1420,6 +1934,18 @@ td .pm-progress-pct {
 	height: var(--pm-gantt-bar);
 	border-radius: var(--radius-s);
 	background: var(--pm-bar-color, var(--pm-color-task, var(--interactive-accent)));
+}
+
+/* 予定期間の帯。棒の後ろに、棒より少し高く薄く描く（設計書 9.8） */
+.pm-gantt-plan {
+	position: absolute;
+	left: var(--pm-x);
+	width: var(--pm-w);
+	top: calc((var(--pm-gantt-row) - var(--pm-gantt-plan)) / 2);
+	height: var(--pm-gantt-plan);
+	border: 1px dashed color-mix(in srgb, var(--pm-color-task, var(--interactive-accent)) 55%, transparent);
+	border-radius: var(--radius-s);
+	background: color-mix(in srgb, var(--pm-color-task, var(--interactive-accent)) 14%, transparent);
 }
 
 /* 棒の色は種類ごとの設定の色。遅れ・期限より後・完了の色が優先する（設計書 9.8） */
@@ -1500,6 +2026,14 @@ td .pm-progress-pct {
 	outline: 2px solid var(--text-accent);
 }
 
+.pm-gantt-plan.is-legend {
+	position: static;
+	display: inline-block;
+	width: auto;
+	height: auto;
+	padding: 0 var(--size-4-2);
+}
+
 .pm-gantt-bar.is-legend {
 	position: static;
 	display: inline-block;
@@ -1512,6 +2046,41 @@ td .pm-progress-pct {
 
 .pm-gantt-bar.is-legend.is-done {
 	color: var(--text-normal);
+}
+
+/* 開始日の縦線。今日の線（緑）・期限日の線（赤）と分けて青にする */
+.pm-gantt-start {
+	position: absolute;
+	left: var(--pm-x);
+	top: 3px;
+	bottom: 3px;
+	width: 2px;
+	transform: translateX(-1px);
+	background: var(--color-blue);
+}
+
+/* 開始日・期限日の縦線は棒より手前に描く */
+.pm-gantt-start,
+.pm-gantt-due {
+	z-index: 1;
+}
+
+.pm-gantt-start.is-legend,
+.pm-gantt-due.is-legend {
+	position: static;
+	display: inline-block;
+	width: auto;
+	padding-left: var(--size-4-2);
+	transform: none;
+	background: transparent;
+}
+
+.pm-gantt-start.is-legend {
+	border-left: 2px solid var(--color-blue);
+}
+
+.pm-gantt-due.is-legend {
+	border-left: 2px solid var(--color-red);
 }
 
 .pm-gantt-due {
@@ -1545,7 +2114,7 @@ td .pm-progress-pct {
 	position: absolute;
 	top: 0;
 	bottom: 0;
-	left: calc(var(--pm-gantt-label) + var(--pm-x));
+	left: calc(var(--pm-gantt-side) + var(--pm-x));
 	z-index: 1;
 	width: 2px;
 	background: var(--color-green);
@@ -1558,6 +2127,58 @@ td .pm-progress-pct {
 	line-height: var(--pm-gantt-row);
 	white-space: nowrap;
 	color: var(--text-faint);
+}
+
+/* 作業ログの時間（設計書 9.8）。出すあいだは棒と予定期間を薄くし、日のマスに数字を重ねる */
+.pm-gantt.has-worklog .pm-gantt-bar,
+.pm-gantt.has-worklog .pm-gantt-plan,
+.pm-worklog-gantt .pm-gantt-bar,
+.pm-worklog-gantt .pm-gantt-plan {
+	opacity: 0.28;
+}
+
+.pm-gantt-log {
+	position: absolute;
+	top: 0;
+	left: var(--pm-x);
+	width: var(--pm-w);
+	height: var(--pm-gantt-row);
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	overflow: hidden;
+	white-space: nowrap;
+	line-height: 1.15;
+	font-size: var(--font-ui-smaller);
+	font-variant-numeric: tabular-nums;
+}
+
+.pm-gantt-log-planned {
+	color: var(--text-muted);
+}
+
+.pm-gantt-log-actual {
+	font-weight: var(--font-semibold);
+	color: var(--text-normal);
+}
+
+/* プロジェクト・エピックの行は配下の合計なので控えめに */
+.pm-gantt-project .pm-gantt-log-actual,
+.pm-gantt-epic .pm-gantt-log-actual {
+	font-weight: var(--font-normal);
+	color: var(--text-muted);
+}
+
+/* 両方のときは上に予定・下に実績。予定はさらに薄くする */
+.pm-gantt.is-worklog-both .pm-gantt-log-planned {
+	color: var(--text-faint);
+}
+
+/* 棒の期間の外の実績 */
+.pm-gantt-log.is-out .pm-gantt-log-actual,
+.pm-gantt-log-note.is-out {
+	color: var(--color-red);
 }
 
 .pm-gantt-links {
@@ -1586,4 +2207,164 @@ td .pm-progress-pct {
 
 .pm-gantt-links marker path {
 	fill: var(--text-accent);
+}
+
+/* 作業ログのビュー（設計書 9.10）。ガントの行・見出しを使い、横軸に日ごとの時間を出す */
+.pm-worklog-gantt {
+	--pm-worklog-total: 64px;
+	--pm-worklog-estimate: 56px;
+	--pm-gantt-side: calc(var(--pm-gantt-label) + var(--pm-gantt-person) + var(--pm-worklog-estimate) + var(--pm-worklog-total));
+	font-variant-numeric: tabular-nums;
+}
+
+/* 見積の欄（参考）。担当者の右に置き、横にスクロールしても左に残す */
+.pm-worklog-estimate {
+	position: sticky;
+	left: calc(var(--pm-gantt-label) + var(--pm-gantt-person));
+	z-index: 2;
+	flex: 0 0 var(--pm-worklog-estimate);
+	width: var(--pm-worklog-estimate);
+	height: var(--pm-gantt-row);
+	line-height: var(--pm-gantt-row);
+	padding: 0 var(--size-4-2);
+	overflow: hidden;
+	white-space: nowrap;
+	text-align: right;
+	color: var(--text-muted);
+	background: var(--background-primary);
+}
+
+.pm-gantt-project .pm-worklog-estimate,
+.pm-worklog-sum .pm-worklog-estimate {
+	background: var(--background-secondary);
+}
+
+.pm-gantt-head .pm-worklog-estimate {
+	z-index: 4;
+	height: var(--pm-gantt-head);
+	line-height: var(--pm-gantt-head);
+	text-align: center;
+	background: var(--background-secondary);
+}
+
+.pm-grid-lines .pm-worklog-estimate {
+	border-bottom: 1px solid var(--pm-grid-color);
+}
+
+/* 合計の欄。見積の右に置き、横にスクロールしても左に残す */
+.pm-worklog-total {
+	position: sticky;
+	left: calc(var(--pm-gantt-label) + var(--pm-gantt-person) + var(--pm-worklog-estimate));
+	z-index: 2;
+	flex: 0 0 var(--pm-worklog-total);
+	width: var(--pm-worklog-total);
+	height: var(--pm-gantt-row);
+	line-height: var(--pm-gantt-row);
+	padding: 0 var(--size-4-2);
+	text-align: right;
+	font-weight: var(--font-semibold);
+	background: var(--background-secondary);
+	border-right: 1px solid var(--background-modifier-border);
+}
+
+.pm-gantt-head .pm-worklog-total {
+	z-index: 4;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	height: var(--pm-gantt-head);
+	line-height: var(--pm-gantt-cell);
+	text-align: center;
+}
+
+/* 合計の欄の中の列（予定・実績）。右に寄せて並べる */
+.pm-worklog-parts {
+	display: flex;
+}
+
+.pm-worklog-part {
+	flex: 1 1 0;
+	min-width: 0;
+	text-align: right;
+}
+
+.pm-gantt-head .pm-worklog-part {
+	text-align: center;
+	font-weight: var(--font-normal);
+	color: var(--text-muted);
+}
+
+/* 予定と実績の両方のときは、日の見出しの下に「予」「実」の段を足す */
+.pm-worklog-gantt.is-both {
+	--pm-gantt-head: calc(var(--pm-gantt-cell) * 3);
+}
+
+.pm-gantt-cell.is-sub {
+	top: calc(var(--pm-gantt-cell) * 2);
+	font-size: var(--font-ui-smaller);
+	font-weight: var(--font-normal);
+}
+
+.pm-grid-lines .pm-worklog-total {
+	border-bottom: 1px solid var(--pm-grid-color);
+}
+
+/* 日ごとの時間。もう片方（予定か実績）は右に小さく出す */
+.pm-worklog-cell {
+	position: absolute;
+	left: var(--pm-x);
+	width: var(--pm-w);
+	height: var(--pm-gantt-row);
+	line-height: var(--pm-gantt-row);
+	padding: 0 var(--size-4-1);
+	overflow: hidden;
+	white-space: nowrap;
+	text-align: right;
+	/* 後ろの棒を指せるように、数字は指す対象にしない */
+	pointer-events: none;
+}
+
+/* 両方のときは、予定を控えめにして実績と見分ける */
+.pm-worklog-gantt.is-both .pm-worklog-cell.is-planned {
+	color: var(--text-muted);
+}
+
+/* プロジェクト・エピック・タスクの行は小計なので控えめに */
+.pm-gantt-project .pm-worklog-cell,
+.pm-gantt-epic .pm-worklog-cell,
+.pm-gantt-task .pm-worklog-cell {
+	color: var(--text-muted);
+}
+
+/* 記録した人が1人のタスクの行は、その人の値なので通常の色 */
+.pm-gantt-task.is-own .pm-worklog-cell {
+	color: var(--text-normal);
+}
+
+.pm-worklog-member .pm-gantt-label {
+	padding-left: var(--size-4-16);
+}
+
+.pm-worklog-member.is-clickable {
+	cursor: var(--cursor-link);
+}
+
+/* 日の欄を押すと入力フォームを開く。指した行を薄く塗る */
+.pm-worklog-gantt .pm-gantt-track.is-day-link {
+	cursor: var(--cursor-link);
+}
+
+.pm-worklog-gantt .pm-gantt-track.is-day-link:hover {
+	background: var(--background-modifier-hover);
+}
+
+.pm-worklog-member.is-clickable:hover > * {
+	background: var(--background-modifier-hover);
+}
+
+.pm-worklog-sum .pm-gantt-label,
+.pm-worklog-sum .pm-gantt-person,
+.pm-worklog-sum .pm-gantt-track {
+	background: var(--background-secondary);
+	font-weight: var(--font-semibold);
 }

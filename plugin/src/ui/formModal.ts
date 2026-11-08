@@ -1,4 +1,5 @@
 import { Modal, Notice, Setting } from 'obsidian';
+import { notifyError } from './notify';
 
 /** 入力を確かめた結果。errors があれば保存しない */
 export interface FormCheck {
@@ -44,7 +45,7 @@ export abstract class FormModal extends Modal {
 		try {
 			await write(result);
 		} catch (e) {
-			new Notice(`保存できませんでした: ${e instanceof Error ? e.message : String(e)}`);
+			notifyError(e, '保存できませんでした');
 			return;
 		} finally {
 			this.saving = false;

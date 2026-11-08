@@ -1,4 +1,5 @@
 import { EMPTY_FILTER, type ViewFilter } from '../calc/filter';
+import { checkbox } from '../ui/controls';
 
 export interface Choice {
 	value: string;
@@ -144,12 +145,4 @@ export function rangeSlider(
 	});
 	slider.addEventListener('change', () => onChange(Number(slider.value)));
 	return field;
-}
-
-export function checkbox(parent: HTMLElement, label: string, checked: boolean, onChange: (v: boolean) => void): void {
-	const field = parent.createEl('label', { cls: 'pm-filter-field pm-filter-check' });
-	const input = field.createEl('input', { type: 'checkbox' });
-	input.checked = checked;
-	input.addEventListener('change', () => onChange(input.checked));
-	field.appendText(label);
 }

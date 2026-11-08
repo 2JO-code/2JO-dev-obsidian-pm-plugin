@@ -1,7 +1,8 @@
 import { ButtonComponent, Notice, TextComponent } from 'obsidian';
 import { compareJa } from '../calc/compare';
 import { firstDayOf, lastDayOf } from '../calc/dates';
-import { isReadable, missingLabel } from '../forms/formValues';
+import { isReadable } from '../forms/formValues';
+import { missingLabel } from '../calc/format';
 import { worklogEdits, worklogRows, type WorklogRow } from '../forms/worklogTable';
 import { labelOf } from '../health/labels';
 import { parseNoteId, worklogId } from '../id';

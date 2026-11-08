@@ -2,12 +2,15 @@ import { type App, ButtonComponent, Setting, TextComponent, type TFile } from 'o
 import { applyChecklistEdits, checklistEdits, type ChecklistRow } from '../forms/checklist';
 import { FormModal } from './formModal';
 import { errorBox } from './formParts';
+import { tableHeader } from './table';
 
 export interface ChecklistModalOptions {
 	file: TFile;
 	title: string;
 	rows: ChecklistRow[];
 	snapshot: string[];
+	/** 保存したあとに、書き換えた本文を渡す（タスクのフォームの表示を出し直すため） */
+	onSaved?: (content: string) => void;
 }
 
 /** タスクの本文のチェックリストの編集画面。変えた行だけを書き換える（設計書 4.10） */
@@ -39,9 +42,7 @@ export class ChecklistModal extends FormModal {
 		contentEl.createDiv({ cls: 'pm-note', text: 'チェックした割合がタスクの進捗になります。Enter で次の項目を足せます。変えた行だけをノートに書き換えます' });
 
 		const table = contentEl.createEl('table', { cls: 'pm-table pm-table-edit pm-checklist-edit' });
-		const head = table.createEl('thead').createEl('tr');
-		head.createEl('th', { text: '項目（チェックで完了）' });
-		head.createEl('th');
+		tableHeader(table, ['項目（チェックで完了）', '']);
 		const body = table.createEl('tbody');
 		this.rows.forEach((row, i) => {
 			const tr = body.createEl('tr');
@@ -97,7 +98,8 @@ export class ChecklistModal extends FormModal {
 		await this.submit(
 			() => checklistEdits(this.rows, this.initial),
 			async (result) => {
-				await this.app.vault.process(options.file, (content) => applyChecklistEdits(content, options.snapshot, result.edits));
+				const content = await this.app.vault.process(options.file, (c) => applyChecklistEdits(c, options.snapshot, result.edits));
+				options.onSaved?.(content);
 			},
 		);
 	}

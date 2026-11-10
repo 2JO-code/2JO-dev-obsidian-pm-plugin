@@ -77,4 +77,11 @@ describe('holidayWorkWarnings', () => {
 		const ws = holidayWorkWarnings(member(USER), summary, calendar);
 		expect(ws.map((w) => w.target)).toEqual([{ type: 'memberDate', member: USER, date: '2026-11-07' }]);
 	});
+
+	it('その人の個人休日に入っている記録も休日稼働', () => {
+		const summary = new WorkSummary([worklog(USER, '2026-11', [['2026-11-09', 'T1', 8, 0]])], [task('T1')]);
+		const off = member(USER, { holidays: [{ line: 0, date: '2026-11-09', memo: '有給' }] });
+		expect(holidayWorkWarnings(off, summary, calendar).map((w) => w.target)).toEqual([{ type: 'memberDate', member: USER, date: '2026-11-09' }]);
+		expect(holidayWorkWarnings(member(USER), summary, calendar)).toEqual([]);
+	});
 });

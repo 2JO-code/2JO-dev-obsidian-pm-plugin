@@ -95,11 +95,12 @@ export function loadWarnings(member: Member, load: MemberLoad): Warning[] {
 	];
 }
 
-/** 休日稼働：休日に予定・実績が入っている日 */
+/** 休日稼働：勤務日でない日（休日・その人の個人休日）に予定・実績が入っている日（要件4.4） */
 export function holidayWorkWarnings(member: Member, summary: WorkSummary, calendar: WorkCalendar): Warning[] {
 	const warnings: Warning[] = [];
+	const isDuty = calendar.dutyDayOf(member);
 	for (const date of summary.memberDates(member.id).sort()) {
-		if (calendar.isWorkday(date)) continue;
+		if (isDuty(date)) continue;
 		let planned = 0;
 		let actual = 0;
 		for (const hours of summary.memberDay(member.id, date).values()) {
@@ -110,7 +111,7 @@ export function holidayWorkWarnings(member: Member, summary: WorkSummary, calend
 			warnings.push({
 				kind: 'holidayWork',
 				target: { type: 'memberDate', member: member.id, date },
-				message: `休日（${date}）に予定 ${h(planned)}／実績 ${h(actual)} が入っています`,
+				message: `休日・個人休日（${date}）に予定 ${h(planned)}／実績 ${h(actual)} が入っています`,
 			});
 		}
 	}

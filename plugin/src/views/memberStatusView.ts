@@ -134,7 +134,7 @@ export class MemberStatusView extends PmView {
 		legend.createSpan({ cls: 'pm-mark is-tinted pm-load-holiday-mark', text: '休稼＝休日稼働あり' });
 		notes.createDiv({
 			cls: 'pm-note',
-			text: `${options.scale === 'hours' ? `マスは${LOAD_MODE_LABEL[options.mode]}の時間(h)。色は負荷率で付けます。` : ''}負荷率＝${LOAD_MODE_LABEL[options.mode]}の時間 ÷ 基準工数（稼働日 × 1日の通常稼働時間）。配分は月の工数配分を稼働日で割って期間の分を足したもの。マスにマウスを乗せると配分・予定・実績の時間が出ます`,
+			text: `${options.scale === 'hours' ? `マスは${LOAD_MODE_LABEL[options.mode]}の時間(h)。色は負荷率で付けます。` : ''}負荷率＝${LOAD_MODE_LABEL[options.mode]}の時間 ÷ 基準工数（勤務日 × 1日の通常稼働時間。勤務日＝稼働日−個人休日）。配分は月の工数配分を勤務日で割って期間の分を足したもの。個人休日の日は「—」。マスにマウスを乗せると配分・予定・実績の時間が出ます`,
 		});
 
 		let members = ctx.index.members().filter((m) => !options.activeOnly || m.active);

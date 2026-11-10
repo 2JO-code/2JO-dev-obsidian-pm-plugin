@@ -48,6 +48,16 @@ export class WorkCalendar {
 	}
 
 	/**
+	 * そのメンバーの勤務日か：稼働日のうち、その人の個人休日でない日（要件4.5）。
+	 * 負荷の計算だけに使う。日程の計算は isWorkday のまま（要件3.6）
+	 */
+	dutyDayOf(member: Pick<Member, 'holidays'>): (date: IsoDate) => boolean {
+		if (member.holidays.length === 0) return (date) => this.isWorkday(date);
+		const off = new Set(member.holidays.map((h) => h.date));
+		return (date) => this.isWorkday(date) && !off.has(date);
+	}
+
+	/**
 	 * その日の休日の種類と理由（一覧の休みの印。設計書 9.1）。会社休日・個人休日・土日休日の順。稼働日なら空。
 	 * 個人休日は印のためだけで、稼働日の判定（isWorkday）には入れない（要件3.6）
 	 * @param members 個人休日を見るメンバー（行の担当者など）
@@ -114,4 +124,11 @@ export function periodsBetween(start: IsoDate, end: IsoDate, unit: PeriodUnit): 
 export function defaultRange(today: IsoDate): { start: IsoDate; end: IsoDate } {
 	const month = monthOfDate(today);
 	return { start: firstDayOf(addMonths(month, -1)), end: lastDayOf(addMonths(month, 3)) };
+}
+
+/** start〜end（両端を含む）のうち、条件に合う日の数 */
+export function countDays(start: IsoDate, end: IsoDate, match: (date: IsoDate) => boolean): number {
+	let count = 0;
+	for (const date of eachDate(start, end)) if (match(date)) count++;
+	return count;
 }

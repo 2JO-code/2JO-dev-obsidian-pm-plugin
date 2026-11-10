@@ -64,7 +64,7 @@ export class LoadDetailModal extends Modal {
 			tr.createEl('td', { text: hoursText(r.planned), cls: 'is-numeric' });
 			tr.createEl('td', { text: hoursText(r.actual), cls: 'is-numeric' });
 		}
-		contentEl.createDiv({ cls: 'pm-note', text: '配分は月の工数配分を稼働日で割った、この期間の分です。予定・実績には休日の分も含みます' });
+		contentEl.createDiv({ cls: 'pm-note', text: '配分は月の工数配分を勤務日（稼働日−個人休日）で割った、この期間の分です。予定・実績には休日・個人休日の分も含みます' });
 	}
 
 	onClose(): void {

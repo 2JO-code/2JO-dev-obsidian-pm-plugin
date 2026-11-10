@@ -94,3 +94,24 @@ describe('loadHoursText', () => {
 		expect(loadHoursText(load)).toBe('配分 6h／予定 10h／実績 9h／基準 32h／休日 予定 5h・実績 2h（負荷率に入れない）');
 	});
 });
+
+describe('個人休日と負荷', () => {
+	// 11/2(月) を休む。記録は 11/2 に予定6・実績5（T1）と予定4・実績4（T2）
+	const off = member(USER, { holidays: [{ line: 0, date: '2026-11-02', memo: '有給' }] });
+
+	it('基準工数は勤務日（稼働日−個人休日）× 1日の通常稼働時間', () => {
+		// 11/2〜8：稼働日4日（11/3 祝日）から 11/2 を引いて3日
+		const load = memberLoad(off, periodOf('2026-11-04', 'week'), summary, calendar, noAllocations);
+		expect(load.base).toBe(24);
+	});
+
+	it('個人休日の予定・実績は負荷率に入れず、休日稼働にする', () => {
+		const day = memberLoad(off, periodOf('2026-11-02', 'day'), summary, calendar, noAllocations);
+		expect(day.base).toBe(0);
+		expect(day.plannedRate).toBeNull();
+		expect(day.holiday).toEqual({ planned: 10, actual: 9 });
+		const week = memberLoad(off, periodOf('2026-11-04', 'week'), summary, calendar, noAllocations);
+		expect(week.work.planned).toBe(0);
+		expect(week.holiday.planned).toBe(15);
+	});
+});

@@ -1,7 +1,7 @@
 import type { Member, NoteId } from '../model';
 import type { AllocationSummary } from './allocationLoad';
 import { hoursText } from './format';
-import type { Period, WorkCalendar } from './workdays';
+import { countDays, type Period, type WorkCalendar } from './workdays';
 import type { Hours, WorkSummary } from './worklogSummary';
 
 /** 負荷の段階（要件4.4, 4.8の色分け） */
@@ -26,7 +26,7 @@ export const isLoadScale = (v: unknown): v is LoadScale => v === 'rate' || v ===
 
 export interface MemberLoad {
 	period: Period;
-	/** 基準工数（100%）＝期間内の稼働日数 × 1日の通常稼働時間 */
+	/** 基準工数（100%）＝期間内の勤務日数（稼働日−個人休日）× 1日の通常稼働時間 */
 	base: number;
 	/** 期間内の配分（全プロジェクトの合計。月の配分を稼働日で按分） */
 	allocated: number;
@@ -34,9 +34,9 @@ export interface MemberLoad {
 	allocatedLevel: LoadLevel;
 	/** プロジェクト別の配分 */
 	allocatedByProject: Map<NoteId, number>;
-	/** 稼働日の予定・実績（負荷率の計算に使う） */
+	/** 勤務日の予定・実績（負荷率の計算に使う） */
 	work: Hours;
-	/** 休日の予定・実績（負荷率に入れず、休日稼働として別に示す） */
+	/** 勤務日でない日（休日・個人休日）の予定・実績（負荷率に入れず、休日稼働として別に示す） */
 	holiday: Hours;
 	/** 予定負荷率・実績稼働率（1 = 100%）。基準工数が0なら null */
 	plannedRate: number | null;
@@ -65,16 +65,18 @@ export function memberLoad(
 	calendar: WorkCalendar,
 	allocations: AllocationSummary,
 ): MemberLoad {
-	const base = calendar.countWorkdays(period.start, period.end) * member.dailyHours;
-	const work = summary.memberRange(member.id, period.start, period.end, (d) => calendar.isWorkday(d));
-	const holiday = summary.memberRange(member.id, period.start, period.end, (d) => !calendar.isWorkday(d));
+	// 勤務日＝稼働日のうち、その人の個人休日でない日（要件4.5）
+	const isDuty = calendar.dutyDayOf(member);
+	const base = countDays(period.start, period.end, isDuty) * member.dailyHours;
+	const work = summary.memberRange(member.id, period.start, period.end, isDuty);
+	const holiday = summary.memberRange(member.id, period.start, period.end, (d) => !isDuty(d));
 	const byProject = new Map(work.byProject);
 	for (const [project, h] of holiday.byProject) {
 		const sum = byProject.get(project) ?? { planned: 0, actual: 0 };
 		byProject.set(project, { planned: sum.planned + h.planned, actual: sum.actual + h.actual });
 	}
 	const rate = (hours: number) => (base > 0 ? hours / base : null);
-	const allocated = allocations.memberRange(member.id, period.start, period.end);
+	const allocated = allocations.memberRange(member, period.start, period.end);
 	const allocatedRate = rate(allocated.total);
 	const plannedRate = rate(work.total.planned);
 	const actualRate = rate(work.total.actual);

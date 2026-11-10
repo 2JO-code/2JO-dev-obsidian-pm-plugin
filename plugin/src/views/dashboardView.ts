@@ -198,7 +198,7 @@ export class DashboardView extends PmView {
 			openMember: (row, el) => formClick(el, () => openMemberForm(this.plugin, row.member.path)),
 			openRow: () => void openView(this.app, MEMBER_STATUS_VIEW_TYPE),
 		});
-		section.createDiv({ cls: 'pm-note', text: `${this.loadScale === 'hours' ? `棒は${LOAD_MODE_LABEL[this.loadMode]}の時間(h)。色は負荷率で付けます。` : ''}負荷率＝${LOAD_MODE_LABEL[this.loadMode]}の時間 ÷ 働ける時間（稼働日 × 1日の通常稼働時間）。配分は月の工数配分を稼働日で割った期間の分。棒にマウスを乗せると配分・予定・実績の時間を出します。メンバー名のクリックでメンバーの入力補助フォーム、ほかの場所のクリックでメンバー状況を開きます` });
+		section.createDiv({ cls: 'pm-note', text: `${this.loadScale === 'hours' ? `棒は${LOAD_MODE_LABEL[this.loadMode]}の時間(h)。色は負荷率で付けます。` : ''}負荷率＝${LOAD_MODE_LABEL[this.loadMode]}の時間 ÷ 働ける時間（勤務日 × 1日の通常稼働時間。勤務日＝稼働日−個人休日）。配分は月の工数配分を勤務日で割った期間の分。棒にマウスを乗せると配分・予定・実績の時間を出します。メンバー名のクリックでメンバーの入力補助フォーム、ほかの場所のクリックでメンバー状況を開きます` });
 	}
 
 	private drawMilestones(parent: HTMLElement, data: Dashboard, mode: Parameters<typeof projectLabel>[1], calendar: WorkCalendar): void {

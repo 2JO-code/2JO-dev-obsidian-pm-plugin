@@ -135,7 +135,7 @@ export function buildHtmlReport(ctx: CalcContext, input: ReportInput): string {
 						data.members.map((row) => [cell(row.member.title), ...LOAD_COLUMNS.map(([p, m]) => loadCell(row[p], m))]),
 						LOAD_COLUMNS.map((_, i) => i + 1),
 					) +
-					'<p class="note">負荷率＝配分・予定・実績の時間 ÷ 基準工数（稼働日数 × 1日の通常稼働時間）。注意＝100%超、警告＝負荷許容率超。数字にマウスを乗せると時間が出ます</p>',
+					'<p class="note">負荷率＝配分・予定・実績の時間 ÷ 基準工数（勤務日数 × 1日の通常稼働時間。勤務日＝稼働日−個人休日）。注意＝100%超、警告＝負荷許容率超。数字にマウスを乗せると時間が出ます</p>',
 	);
 
 	parts.push(`<h3>${MILESTONE_DAYS / 7}週間以内のマイルストーン（${data.milestones.length} 件）</h3>`);

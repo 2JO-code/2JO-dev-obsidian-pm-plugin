@@ -26,7 +26,7 @@ export function dueCell(tr: HTMLElement, calendar: WorkCalendar, row: { task: { 
 }
 
 /**
- * 計算上の開始日・終了日の2つのセル（設計書 9.2）。遅れでずらした日・期限日より後の終了日に印を付ける
+ * 見込み開始日・終了日の2つのセル（設計書 9.2）。遅れでずらした日・期限日より後の終了日に印を付ける
  * @param category ステータスの分類。完了系・停止系なら期限日より後でも赤にしない（期限超過見込みと同じ）
  * @param people 個人休日の印を見るメンバー（担当者など）
  */
@@ -48,7 +48,7 @@ function noSchedule(td: HTMLElement): HTMLElement {
 	return td;
 }
 
-/** 計算上の開始日のセル。遅れでずらした日に印を付ける */
+/** 見込み開始日のセル。遅れでずらした日に印を付ける */
 export function scheduleStartCell(tr: HTMLElement, calendar: WorkCalendar, schedule: ScheduleLike | undefined, people: People = []): HTMLElement {
 	const start = tr.createEl('td', { text: schedule?.start ?? '—' });
 	if (!schedule) return noSchedule(start);
@@ -60,7 +60,7 @@ export function scheduleStartCell(tr: HTMLElement, calendar: WorkCalendar, sched
 	return start;
 }
 
-/** 計算上の終了日のセル。期限日より後なら赤、遅れでずらしたなら橙 */
+/** 見込み終了日のセル。期限日より後なら赤、遅れでずらしたなら橙 */
 export function scheduleEndCell(
 	tr: HTMLElement,
 	calendar: WorkCalendar,

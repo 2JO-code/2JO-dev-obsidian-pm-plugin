@@ -2,7 +2,7 @@ import { findStatus } from '../config/status';
 import type { IsoDate, NoteId, StatusDef, Task } from '../model';
 import type { WorkCalendar } from './workdays';
 
-/** 計算上の日程（要件4.7。ファイルには書かない） */
+/** 見込みの日程（要件4.7。ファイルには書かない） */
 export interface TaskSchedule {
 	start: IsoDate;
 	end: IsoDate;
@@ -61,7 +61,7 @@ export function findCycles(tasks: readonly Task[]): NoteId[][] {
 }
 
 /**
- * 全タスクの計算上の日程（要件4.7「日程計算の細かい決まり」、設計書 11.9）。
+ * 全タスクの見込みの日程（要件4.7「日程計算の細かい決まり」、設計書 11.9）。
  * @param tasks 先行タスクを引くため、アーカイブ内も含めて渡す
  */
 export function computeSchedules(

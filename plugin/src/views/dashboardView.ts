@@ -1,3 +1,4 @@
+import { isLoadMode, isLoadScale, LOAD_MODE_LABEL, LOAD_MODES, LOAD_SCALES, type LoadMode, type LoadScale } from '../calc/load';
 import type { ViewStateResult } from 'obsidian';
 import { compareNumeric } from '../calc/compare';
 import type { CalcContext } from '../calc/context';
@@ -41,12 +42,18 @@ export class DashboardView extends PmView {
 	private loadPeriod: LoadChartPeriod = 'thisWeek';
 	/** 負荷率のグラフの並び順（ビューの状態として保存。初期は名前順） */
 	private loadSort: LoadChartSort = 'name';
+	/** 負荷率のグラフの値（ビューの状態として保存。初期は配分） */
+	private loadMode: LoadMode = 'allocated';
+	/** 負荷率のグラフの横軸（ビューの状態として保存。初期は負荷率） */
+	private loadScale: LoadScale = 'rate';
 
 	getState(): Record<string, unknown> {
 		return {
 			...super.getState(),
 			loadPeriod: this.loadPeriod,
 			loadSort: this.loadSort,
+			loadMode: this.loadMode,
+			loadScale: this.loadScale,
 		};
 	}
 
@@ -55,6 +62,10 @@ export class DashboardView extends PmView {
 		const loadPeriod = field(state, 'loadPeriod');
 		this.loadSort = isLoadChartSort(loadSort) ? loadSort : 'name';
 		this.loadPeriod = isLoadChartPeriod(loadPeriod) ? loadPeriod : 'thisWeek';
+		const loadMode = field(state, 'loadMode');
+		this.loadMode = isLoadMode(loadMode) ? loadMode : 'allocated';
+		const loadScale = field(state, 'loadScale');
+		this.loadScale = isLoadScale(loadScale) ? loadScale : 'rate';
 		await super.setState(state, result);
 	}
 
@@ -120,7 +131,7 @@ export class DashboardView extends PmView {
 			'ステータス',
 			// 期間は開始日と期限日の2列（periodCells）
 			{ label: '期間', colspan: 2 },
-			'終了（計算）',
+			'見込み終了',
 			{ label: '進捗率', numeric: true },
 			{ label: '見積(h)', numeric: true },
 			{ label: '予定(h)', numeric: true },
@@ -150,14 +161,24 @@ export class DashboardView extends PmView {
 		}
 	}
 
-	/** メンバーの予定負荷率の横棒グラフ（設計書 9.5）。期間と並び順を選ぶ */
+	/** メンバーの負荷率の横棒グラフ（設計書 9.5）。値・数値・期間・並び順を選ぶ */
 	private drawMembers(parent: HTMLElement, ctx: CalcContext, members: readonly Member[]): void {
-		const chart = loadChart(ctx, members, this.loadPeriod, this.loadSort);
+		const chart = loadChart(ctx, members, this.loadPeriod, this.loadSort, this.loadMode, this.loadScale);
 		const { period, counts } = chart;
 		const section = parent.createDiv({ cls: 'pm-section' });
 		const head = section.createDiv({ cls: 'pm-section-head' });
 		const range = period.unit === 'month' ? period.key : `${period.start}〜${period.end}`;
 		head.createEl('h4', { text: `メンバーの負荷率（${range}、${chart.rows.length} 人）` });
+		singleSelect(head, '値', this.loadMode, LOAD_MODES.map((value) => ({ value, label: LOAD_MODE_LABEL[value] })), (m) => {
+			this.loadMode = m;
+			this.app.workspace.requestSaveLayout();
+			this.redraw();
+		});
+		singleSelect(head, '数値', this.loadScale, [...LOAD_SCALES], (scale) => {
+			this.loadScale = scale;
+			this.app.workspace.requestSaveLayout();
+			this.redraw();
+		});
 		singleSelect(head, '期間', this.loadPeriod, [...LOAD_CHART_PERIODS], (key) => {
 			this.loadPeriod = key;
 			this.app.workspace.requestSaveLayout();
@@ -177,7 +198,7 @@ export class DashboardView extends PmView {
 			openMember: (row, el) => formClick(el, () => openMemberForm(this.plugin, row.member.path)),
 			openRow: () => void openView(this.app, MEMBER_STATUS_VIEW_TYPE),
 		});
-		section.createDiv({ cls: 'pm-note', text: '予定負荷率＝予定の時間 ÷ 働ける時間（稼働日 × 1日の通常稼働時間）。棒にマウスを乗せると時間を出します。メンバー名のクリックでメンバーの入力補助フォーム、ほかの場所のクリックでメンバー状況を開きます' });
+		section.createDiv({ cls: 'pm-note', text: `${this.loadScale === 'hours' ? `棒は${LOAD_MODE_LABEL[this.loadMode]}の時間(h)。色は負荷率で付けます。` : ''}負荷率＝${LOAD_MODE_LABEL[this.loadMode]}の時間 ÷ 働ける時間（稼働日 × 1日の通常稼働時間）。配分は月の工数配分を稼働日で割った期間の分。棒にマウスを乗せると配分・予定・実績の時間を出します。メンバー名のクリックでメンバーの入力補助フォーム、ほかの場所のクリックでメンバー状況を開きます` });
 	}
 
 	private drawMilestones(parent: HTMLElement, data: Dashboard, mode: Parameters<typeof projectLabel>[1], calendar: WorkCalendar): void {

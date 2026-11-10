@@ -104,7 +104,7 @@ describe('期限超過見込み', () => {
 	const kinds = (x: Task, today: string) =>
 		taskWarnings(x, statuses, summary, today, run([x], today).schedules.get(x.id)).map((w) => w.kind);
 
-	it('計算上の終了日が期限日より後なら出す。期限を過ぎていれば期限超過だけ。完了系・停止系には出さない', () => {
+	it('見込み終了日が期限日より後なら出す。期限を過ぎていれば期限超過だけ。完了系・停止系には出さない', () => {
 		const late = t('A', { start: '2026-11-09', durationDays: 5, due: '2026-11-12' });
 		expect(kinds(late, BEFORE)).toEqual(['overdueRisk']);
 		expect(kinds(late, '2026-11-13')).toEqual(['overdue']);

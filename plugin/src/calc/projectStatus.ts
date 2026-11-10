@@ -11,7 +11,7 @@ export interface Status {
 	progress: CountProgress;
 	workload: Workload;
 	warnings: Warning[];
-	/** タスクの計算上の日程の最も早い開始日〜最も遅い終了日。日程のあるタスクが無ければ undefined */
+	/** タスクの見込みの日程の最も早い開始日〜最も遅い終了日。日程のあるタスクが無ければ undefined */
 	span?: { start: IsoDate; end: IsoDate };
 }
 
@@ -25,7 +25,7 @@ export interface MilestoneRow {
 	milestone: Milestone;
 	/** 連動エピック。指定が無いか見つからなければ undefined */
 	epic?: EpicRow;
-	/** 連動エピックの完了予定日がマイルストーンの日付より後 */
+	/** 連動エピックの期限日がマイルストーンの日付より後 */
 	late: boolean;
 	/** マイルストーンの日付を過ぎたのに、連動エピックが完了系でない */
 	missed: boolean;
@@ -117,7 +117,7 @@ function milestoneRows(project: Project, epics: EpicRow[], today: IsoDate): Mile
 			const missed = !!epic && milestone.date < today && epic.category !== 'done';
 			const notes: string[] = [];
 			if (milestone.epic && !epic) notes.push('連動エピックが見つかりません');
-			if (late) notes.push('完了予定日がマイルストーンより後');
+			if (late) notes.push('期限日がマイルストーンより後');
 			if (missed) notes.push('日付を過ぎたが未完了');
 			return { milestone, ...(epic ? { epic } : {}), late, missed, notes };
 		});

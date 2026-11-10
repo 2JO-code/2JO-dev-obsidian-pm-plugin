@@ -70,8 +70,8 @@ export function epicFormToUpdate(form: EpicForm, statuses: readonly StatusDef[],
 	const status = findStatus(statuses, form.status);
 	if (!status) errors.push('ステータスを選んでください');
 	const start = date(form.start, '開始日', errors);
-	const due = date(form.due, '完了予定日', errors);
-	if (start && due && due < start) warnings.push('完了予定日が開始日より前になっています');
+	const due = date(form.due, '期限日', errors);
+	if (start && due && due < start) warnings.push('期限日が開始日より前になっています');
 
 	warnUnreadable('プロジェクト', [form.project], 'project', warnings);
 	warnUnreadable('担当者', [form.owner], 'user', warnings);

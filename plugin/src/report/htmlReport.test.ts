@@ -76,8 +76,14 @@ describe('buildHtmlReport', () => {
 		expect(html).toContain('<span class="progress"><span class="bar"><span style="width:0%"></span></span><span class="pct">0%</span><span>（0/1）</span></span>');
 	});
 
-	it('負荷の高いメンバーを出す', () => {
-		// 今週（11/2〜8）は稼働5日＝40h に 12h なので出ない。今月も出ない
-		expect(html).toContain('今週・今月に負荷注意・負荷警告のメンバーはいません');
+	it('メンバー全員の今週・今月（配分・予定・実績）と来月（配分・予定）の負荷率', () => {
+		expect(html).toContain('<h3>メンバーの負荷率（1 人）</h3>');
+		expect(html).toContain('<th class="num">今週 配分</th>');
+		expect(html).toContain('<th class="num">来月 予定</th>');
+		expect(html).not.toContain('来月 実績');
+		// 今週（11/2〜8）は稼働5日＝40h。予定 12h で30%
+		expect(html).toContain('<td class="num load-normal"><span title="予定 12h／基準 40h">30%</span></td>');
+		// 配分 10h を11月の稼働21日で按分。今週は5日分
+		expect(html).toContain('<span title="配分 2.38h／基準 40h">6%</span>');
 	});
 });

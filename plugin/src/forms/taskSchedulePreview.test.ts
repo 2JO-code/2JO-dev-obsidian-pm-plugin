@@ -50,11 +50,11 @@ describe('previewTaskSchedule', () => {
 		});
 	});
 
-	it('予定終了日があれば、計算上の終了日との差を添える', () => {
+	it('当初終了日があれば、見込み終了日との差を添える', () => {
 		const f = { start: '2026-11-02', durationDays: '3', planStart: '2026-11-02' };
-		expect(run(form({ ...f, planEnd: '2026-11-02' })).plan).toEqual({ delay: 2, text: '予定 11/2(月) より2日遅れ' });
-		expect(run(form({ ...f, planEnd: '2026-11-06' })).plan).toEqual({ delay: -1, text: '予定 11/2(月)〜11/6(金) より1日早い' });
-		expect(run(form({ ...f, planEnd: '2026-11-05' })).plan).toEqual({ delay: 0, text: '予定 11/2(月)〜11/5(木) のとおり' });
+		expect(run(form({ ...f, planEnd: '2026-11-02' })).plan).toEqual({ delay: 2, text: '当初 11/2(月) より2日遅れ' });
+		expect(run(form({ ...f, planEnd: '2026-11-06' })).plan).toEqual({ delay: -1, text: '当初 11/2(月)〜11/6(金) より1日早い' });
+		expect(run(form({ ...f, planEnd: '2026-11-05' })).plan).toEqual({ delay: 0, text: '当初 11/2(月)〜11/5(木) のとおり' });
 		expect(run(form(f)).plan).toBeUndefined();
 	});
 

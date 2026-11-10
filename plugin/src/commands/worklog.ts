@@ -27,7 +27,7 @@ const UNIT_KEY = 'project-manager:worklog-unit';
 /** 前回の「完了・停止した担当タスクも表示」を覚えておくキー（設計書 6章） */
 const FINISHED_KEY = 'project-manager:worklog-show-finished';
 
-/** 入力画面で計算上の日程を引くための計算用データ。索引が変わるまで使い回す */
+/** 入力画面で見込みの日程を引くための計算用データ。索引が変わるまで使い回す */
 const contextCache = new ContextCache();
 
 export function registerWorklog(plugin: ProjectManagerPlugin): void {

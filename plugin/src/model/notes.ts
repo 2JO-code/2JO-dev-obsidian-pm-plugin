@@ -3,7 +3,7 @@ import type { IsoDate, NoteId, TableRow, TitledNote, YearMonth } from './common'
 export interface Milestone extends TableRow {
 	name: string;
 	date: IsoDate;
-	/** 連動エピック（任意）。指定時はエピックの完了予定日を表示する */
+	/** 連動エピック（任意）。指定時はエピックの期限日を表示する */
 	epic?: NoteId;
 }
 
@@ -36,7 +36,7 @@ export interface Epic extends TitledNote {
 	/** 例：`1.2`。表示順に使う。数値にしない（設計書 2章） */
 	wbs?: string;
 	start?: IsoDate;
-	/** 完了予定日 */
+	/** 期限日 */
 	due?: IsoDate;
 	inputs: string[];
 	outputs: string[];
@@ -68,9 +68,9 @@ export interface Task extends TitledNote {
 	durationDays?: number;
 	/** 期限日（固定値） */
 	due?: IsoDate;
-	/** 予定開始日（最初の計画。固定値） */
+	/** 当初開始日（最初の計画。固定値） */
 	planStart?: IsoDate;
-	/** 予定終了日（最初の計画。固定値）。計算上の終了日と比べて遅れを出す */
+	/** 当初終了日（最初の計画。固定値）。見込み終了日と比べて遅れを出す */
 	planEnd?: IsoDate;
 	subtasks: SubtaskCount;
 }

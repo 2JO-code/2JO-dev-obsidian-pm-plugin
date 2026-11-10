@@ -1,5 +1,6 @@
 import type { Calendar, Epic, IsoDate, Member, NoteId, Project, StatusSets, Task } from '../model';
 import type { VaultIndex } from '../store/vaultIndex';
+import { AllocationSummary } from './allocationLoad';
 import { computeSchedules, type ScheduleResult } from './schedule';
 import { taskWarnings, type Warning } from './warnings';
 import { WorkCalendar } from './workdays';
@@ -11,6 +12,8 @@ export interface CalcContext {
 	statuses: StatusSets;
 	calendar: WorkCalendar;
 	summary: WorkSummary;
+	/** 工数配分の集計（負荷の配分。11.5） */
+	allocations: AllocationSummary;
 	/** プロジェクトをIDで引く（アーカイブ内も含む） */
 	projects: ReadonlyMap<NoteId, Project>;
 	/** エピック・メンバーをIDで引く（アーカイブ内も含む） */
@@ -20,7 +23,7 @@ export interface CalcContext {
 	byProject: ReadonlyMap<NoteId, ProjectNotes>;
 	/** タスクの警告（11.4）。1つの ctx の中では1回だけ計算する */
 	warningsOf(task: Task): readonly Warning[];
-	/** 計算上の日程（11.9） */
+	/** 見込みの日程（11.9） */
 	schedule: ScheduleResult;
 	today: IsoDate;
 }
@@ -60,13 +63,15 @@ export function buildContext(index: VaultIndex, statuses: StatusSets, calendar: 
 	const summary = new WorkSummary(index.worklogs(), tasks);
 	const schedule = computeSchedules(tasks, statuses.task, work, today);
 	const warnings = new Map<NoteId, readonly Warning[]>();
+	const projects = index.projects(all);
 	return {
 		index,
 		statuses,
 		calendar: work,
 		summary,
+		allocations: new AllocationSummary(projects, work),
 		schedule,
-		projects: new Map(index.projects(all).map((p) => [p.id, p])),
+		projects: new Map(projects.map((p) => [p.id, p])),
 		epics: new Map(epics.map((e) => [e.id, e])),
 		members: new Map(index.members().map((m) => [m.id, m])),
 		byProject: groupByProject(tasks, epics),

@@ -83,7 +83,7 @@ export interface WorklogGridOptions {
 	statuses: readonly string[];
 	/** ステータスの値を現在の名前にそろえる（旧名を新しい名前に） */
 	statusName: (value: string) => string;
-	/** タスクの予定期間と計算上の日程。索引が変わると変わるので毎回取り出す（設計書 4.3） */
+	/** タスクの当初期間と見込みの日程。索引が変わると変わるので毎回取り出す（設計書 4.3） */
 	rangesOf: (task: NoteId) => TaskRanges;
 	/** タスクの行から開いたときの、そのタスク（設計書 4.3） */
 	task?: Task;
@@ -138,6 +138,8 @@ export class WorklogGridModal extends Modal {
 	private focusTask: NoteId | null = null;
 	/** 最初に入るマスの日。1回使ったら消す */
 	private focusDate: IsoDate | null = null;
+	/** 最後に入ったマス。予定・実績を切り替えたあとに戻る */
+	private lastPos: GridPos = { row: 0, col: 0 };
 
 	// 描いた表の部品。値だけを描き直すときに使う
 	/** 見えているタスクの行（キーでの移動の行） */
@@ -259,7 +261,35 @@ export class WorklogGridModal extends Modal {
 		return project ? `${t.title}（${project}）` : t.title;
 	}
 
+	/** スクロール位置（画面の縦と、表の縦横）を保って描き直す（設計書 9章） */
 	private render(): void {
+		const { contentEl } = this;
+		// どの枠がスクロールするかはテーマで変わるので、中身から外側の枠までをすべて保つ
+		const frames: HTMLElement[] = [];
+		for (let el: HTMLElement | null = contentEl; el; el = el.parentElement) frames.push(el);
+		const positions = frames.map((el) => ({ top: el.scrollTop, left: el.scrollLeft }));
+		const oldWrap = contentEl.querySelector<HTMLElement>('.pm-worklog-grid-wrap');
+		const wrapScroll = { top: oldWrap?.scrollTop ?? 0, left: oldWrap?.scrollLeft ?? 0 };
+		this.draw();
+		const restore = () => {
+			frames.forEach((el, i) => {
+				const p = positions[i];
+				if (!p) return;
+				el.scrollTop = p.top;
+				el.scrollLeft = p.left;
+			});
+			const wrap = contentEl.querySelector<HTMLElement>('.pm-worklog-grid-wrap');
+			if (wrap) {
+				wrap.scrollTop = wrapScroll.top;
+				wrap.scrollLeft = wrapScroll.left;
+			}
+		};
+		restore();
+		// 列の幅が決まったあとにもう一度合わせる（幅が足りずに途中で止まることがあるため）
+		window.requestAnimationFrame(restore);
+	}
+
+	private draw(): void {
 		const { contentEl } = this;
 		contentEl.empty();
 		errorBox(contentEl, this.errors);
@@ -271,8 +301,8 @@ export class WorklogGridModal extends Modal {
 		});
 		const legend = contentEl.createDiv({ cls: 'pm-note pm-worklog-grid-legend' });
 		legend.createSpan({ text: 'タスクの作業範囲（ガントと同じ）：' });
-		legend.createSpan({ cls: 'pm-worklog-grid-swatch is-plan', text: '予定期間' });
-		legend.createSpan({ cls: 'pm-worklog-grid-swatch is-schedule', text: '計算上の日程' });
+		legend.createSpan({ cls: 'pm-worklog-grid-swatch is-plan', text: '当初期間' });
+		legend.createSpan({ cls: 'pm-worklog-grid-swatch is-schedule', text: '見込みの日程' });
 		legend.createSpan({ cls: 'pm-worklog-grid-swatch is-start', text: '開始日' });
 		legend.createSpan({ cls: 'pm-worklog-grid-swatch is-due', text: '期限日' });
 		legend.createSpan({ cls: 'pm-worklog-grid-swatch is-edited', text: '保存前の変更' });
@@ -325,7 +355,9 @@ export class WorklogGridModal extends Modal {
 			const b = new ButtonComponent(modes).setButtonText(MODE_LABEL[mode]).onClick(() => {
 				this.mode = mode;
 				this.render();
-				this.focusFirst();
+				// 最後に入っていたマスに、スクロールさせずに戻る
+				const { row, col } = this.lastPos;
+				window.setTimeout(() => this.grid[row]?.[col]?.focus({ preventScroll: true }), 0);
 			});
 			if (mode === this.mode) b.setCta();
 		}
@@ -560,7 +592,10 @@ export class WorklogGridModal extends Modal {
 		}).inputEl;
 		// 文字の欄にする（設計書 4.7）
 		input.inputMode = 'decimal';
-		input.addEventListener('focus', () => input.select());
+		input.addEventListener('focus', () => {
+			this.lastPos = pos;
+			input.select();
+		});
 		input.addEventListener('keydown', (e) => this.onKey(e, input, pos));
 		const ref = td.createSpan({ cls: 'pm-worklog-grid-ref' });
 		ref.setAttr('aria-hidden', 'true');
@@ -734,6 +769,8 @@ export class WorklogGridModal extends Modal {
 		);
 		if (this.errors.length > 0) {
 			this.render();
+			// 上にある誤りの文が見えるようにする
+			this.contentEl.querySelector('.pm-settings-warning')?.scrollIntoView({ block: 'nearest' });
 			return;
 		}
 		if (all.length === 0) {

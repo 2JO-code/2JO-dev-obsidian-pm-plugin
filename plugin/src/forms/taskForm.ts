@@ -84,11 +84,11 @@ export function taskFormToUpdate(form: TaskForm, statuses: readonly StatusDef[],
 	const durationDays = number(form.durationDays, '所要日数', 1, errors);
 	const start = date(form.start, '開始日', errors);
 	const due = date(form.due, '期限日', errors);
-	const planStart = date(form.planStart, '予定開始日', errors);
-	const planEnd = date(form.planEnd, '予定終了日', errors);
+	const planStart = date(form.planStart, '当初開始日', errors);
+	const planEnd = date(form.planEnd, '当初終了日', errors);
 	// 予定は期間として使うので、両方そろえる（要件 3.5）
-	if ((form.planStart.trim() === '') !== (form.planEnd.trim() === '')) errors.push('予定開始日と予定終了日は両方入れてください');
-	if (planStart && planEnd && planEnd < planStart) errors.push('予定終了日が予定開始日より前になっています');
+	if ((form.planStart.trim() === '') !== (form.planEnd.trim() === '')) errors.push('当初開始日と当初終了日は両方入れてください');
+	if (planStart && planEnd && planEnd < planStart) errors.push('当初終了日が当初開始日より前になっています');
 
 	if (start && due && due < start) warnings.push('期限日が開始日より前になっています');
 	if (start && form.dependsOn.length > 0) warnings.push('先行タスクがあるときは、開始日ではなく先行タスクの終了日から日程を計算します');

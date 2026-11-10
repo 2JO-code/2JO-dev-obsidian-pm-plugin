@@ -27,7 +27,7 @@ export async function openMilestoneEditor(plugin: ProjectManagerPlugin, projectI
 		...table,
 		blank: () => ({ name: '', date: '', epic: '' }),
 		toEdits: (rows, initial) => milestoneEdits(rows, initial, (id) => index.title(id)),
-		note: '連動エピックを選ぶと、プロジェクト状況にそのエピックの完了予定日が出ます。変えた行だけをノートに書き換えます',
+		note: '連動エピックを選ぶと、プロジェクト状況にそのエピックの期限日が出ます。変えた行だけをノートに書き換えます',
 		columns: [
 			{ label: '名前', render: (td, row) => textCell(td, row.name, (v) => (row.name = v)) },
 			{ label: '日付', render: (td, row) => textCell(td, row.date, (v) => (row.date = v), 'date') },

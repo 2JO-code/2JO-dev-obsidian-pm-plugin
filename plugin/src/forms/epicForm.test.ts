@@ -98,11 +98,11 @@ describe('epicFormToUpdate', () => {
 			'タイトルを入力してください',
 			'プロジェクトを選んでください',
 			'ステータスを選んでください',
-			'完了予定日の日付が正しくありません',
+			'期限日の日付が正しくありません',
 		]);
 		const late = epicFormToUpdate(form({ start: '2026-11-10', due: '2026-11-01' }), statuses);
 		expect(late.errors).toEqual([]);
-		expect(late.warnings).toEqual(['完了予定日が開始日より前になっています']);
+		expect(late.warnings).toEqual(['期限日が開始日より前になっています']);
 	});
 
 	it('読めない担当者は元のまま書き、知らせる', () => {

@@ -155,7 +155,7 @@ export class ProjectStatusView extends PmView {
 		periodText(item('期間', ''), ctx.calendar, project.start, project.due, membersOf(ctx, project.manager));
 		const late = !!s.span && !!project.due && s.span.end > project.due;
 		item(
-			'計算上の期間',
+			'見込みの期間',
 			s.span ? `${s.span.start} 〜 ${s.span.end}${late ? '（期限日より後に終わる見込み）' : ''}` : '—',
 			late ? 'pm-text-error' : undefined,
 		);
@@ -211,7 +211,7 @@ export class ProjectStatusView extends PmView {
 			return;
 		}
 		const table = section.createEl('table', { cls: 'pm-table' });
-		tableHeader(table, ['日付', '名前', '連動エピック', 'エピックの状況', '完了予定日', '注意']);
+		tableHeader(table, ['日付', '名前', '連動エピック', 'エピックの状況', '期限日', '注意']);
 		const body = table.createEl('tbody');
 		for (const m of s.milestones) {
 			const tr = body.createEl('tr', { cls: 'is-clickable' });
@@ -318,7 +318,7 @@ export class ProjectStatusView extends PmView {
 			TASK_COLUMNS.start,
 			TASK_COLUMNS.end,
 			TASK_COLUMNS.startDate,
-			{ ...TASK_COLUMNS.due, label: '完了予定日／期限日' },
+			{ ...TASK_COLUMNS.due, label: '期限日' },
 			TASK_COLUMNS.warnings,
 			{
 				label: '',

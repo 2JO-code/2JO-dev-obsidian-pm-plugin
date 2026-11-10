@@ -76,18 +76,18 @@ export const TASK_COLUMNS: Readonly<Record<TaskColumnKey, TaskColumn>> = {
 	},
 	status: { label: 'ステータス', cell: (tr, row, env) => env.statusCell(tr, row.status) },
 	assignees: { label: '担当者', cell: (tr, row) => tr.createEl('td', { text: row.assignees.map((m) => m.title).join('、') }) },
-	start: { label: '開始（計算）', cell: (tr, row, env) => scheduleStartCell(tr, env.calendar, row.schedule, row.assignees) },
-	end: { label: '終了（計算）', cell: (tr, row, env) => scheduleEndCell(tr, env.calendar, row, row.category, row.assignees) },
+	start: { label: '見込み開始', cell: (tr, row, env) => scheduleStartCell(tr, env.calendar, row.schedule, row.assignees) },
+	end: { label: '見込み終了', cell: (tr, row, env) => scheduleEndCell(tr, env.calendar, row, row.category, row.assignees) },
 	startDate: { label: '開始日', cell: (tr, row, env) => dateCell(tr, env.calendar, row.task.start, row.assignees) },
 	due: { label: '期限日', cell: (tr, row, env) => dueCell(tr, env.calendar, row) },
 	planDelay: {
-		label: '予定差',
-		// 予定終了日からの遅れ。遅れていればオレンジ（設計書 11.18）
+		label: '当初差',
+		// 当初終了日からの遅れ。遅れていればオレンジ（設計書 11.18）
 		cell: (tr, row) => {
 			const td = tr.createEl('td', { text: row.planDelay !== undefined ? planDelayText(row.planDelay) : '' });
 			if ((row.planDelay ?? 0) > 0) td.addClass('pm-text-warning');
 			const period = taskPlanPeriod(row.task);
-			if (period) td.setAttr('aria-label', `予定 ${period.start}〜${period.end}`);
+			if (period) td.setAttr('aria-label', `当初 ${period.start}〜${period.end}`);
 			return td;
 		},
 	},

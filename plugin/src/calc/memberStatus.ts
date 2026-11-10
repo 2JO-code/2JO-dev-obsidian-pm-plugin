@@ -1,26 +1,28 @@
 import type { IsoDate, Member, NoteId } from '../model';
 import { compareJa } from './compare';
 import type { CalcContext } from './context';
-import { memberLoad, type MemberLoad } from './load';
+import { LOAD_MODES, memberLoad, type LoadScale, type MemberLoad } from './load';
 import { defaultRange, periodsBetween, type Period, type PeriodUnit } from './workdays';
 import { isRecord } from '../parse/values';
 
-export type LoadMode = 'planned' | 'actual';
+import type { LoadMode } from './load';
+export type { LoadMode };
 
 /** メンバー状況だけの表示条件（ビュー共通の絞り込みは ViewFilter） */
 export interface MemberStatusOptions {
 	unit: PeriodUnit;
 	mode: LoadMode;
+	/** 負荷率(%)か工数(h)か */
+	scale: LoadScale;
 	/** 表示期間。無ければ初期値（前月〜3か月先） */
 	start?: IsoDate;
 	end?: IsoDate;
 	activeOnly: boolean;
 }
 
-export const DEFAULT_MEMBER_STATUS: MemberStatusOptions = { unit: 'week', mode: 'planned', activeOnly: true };
+export const DEFAULT_MEMBER_STATUS: MemberStatusOptions = { unit: 'week', mode: 'allocated', scale: 'rate', activeOnly: true };
 
 const UNITS: readonly PeriodUnit[] = ['day', 'week', 'month'];
-const MODES: readonly LoadMode[] = ['planned', 'actual'];
 
 const date = (v: unknown): IsoDate | undefined => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : undefined);
 const pick = <T extends string>(v: unknown, allowed: readonly T[], fallback: T): T =>
@@ -33,7 +35,8 @@ export function parseMemberStatusOptions(raw: unknown): MemberStatusOptions {
 	const end = date(data.end);
 	return {
 		unit: pick(data.unit, UNITS, DEFAULT_MEMBER_STATUS.unit),
-		mode: pick(data.mode, MODES, DEFAULT_MEMBER_STATUS.mode),
+		mode: pick(data.mode, LOAD_MODES, DEFAULT_MEMBER_STATUS.mode),
+		scale: pick(data.scale, ['rate', 'hours'] as const, DEFAULT_MEMBER_STATUS.scale),
 		...(start ? { start } : {}),
 		...(end ? { end } : {}),
 		activeOnly: data.activeOnly !== false,
@@ -91,6 +94,6 @@ export function memberStatusTable(
 	const periods = periodsBetween(range.start, range.end, unit);
 	const rows = [...members]
 		.sort((a, b) => compareJa(a.title, b.title))
-		.map((member) => ({ member, cells: periods.map((p) => memberLoad(member, p, ctx.summary, ctx.calendar)) }));
+		.map((member) => ({ member, cells: periods.map((p) => memberLoad(member, p, ctx.summary, ctx.calendar, ctx.allocations)) }));
 	return { periods, rows };
 }

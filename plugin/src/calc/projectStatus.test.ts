@@ -64,7 +64,7 @@ describe('projectStatus', () => {
 	});
 
 	it('マイルストーンの注意の文を組み立てる', () => {
-		expect(status.milestones.map((m) => m.notes)).toEqual([['日付を過ぎたが未完了'], ['完了予定日がマイルストーンより後'], []]);
+		expect(status.milestones.map((m) => m.notes)).toEqual([['日付を過ぎたが未完了'], ['期限日がマイルストーンより後'], []]);
 		const lost = project(PJT2, { milestones: [{ line: 2, name: '検収', date: '2026-12-01', epic: 'E-NONE' }] });
 		const other = buildContext(indexOf([lost]), defaultStatusSets(), defaultCalendar(), '2026-11-10');
 		expect(projectStatus(other, lost).milestones[0]?.notes).toEqual(['連動エピックが見つかりません']);

@@ -9,10 +9,12 @@ import { periodOf } from './workdays';
 /** マイルストーンを出す日数（今日から2週間。要件4.8b） */
 export const MILESTONE_DAYS = 14;
 
-export interface OverloadedMember {
+/** HTMLレポートの負荷の表の1行（要件4.8b） */
+export interface MemberLoadRow {
 	member: Member;
 	week: MemberLoad;
 	month: MemberLoad;
+	nextMonth: MemberLoad;
 }
 
 export interface UpcomingMilestone extends MilestoneRow {
@@ -21,13 +23,11 @@ export interface UpcomingMilestone extends MilestoneRow {
 
 export interface Dashboard {
 	projects: ProjectStatus[];
-	/** 今週か今月の予定負荷率が注意・警告のメンバー（名前順） */
-	members: OverloadedMember[];
+	/** 負荷を見るメンバー全員の今週・今月・来月の負荷（名前順） */
+	members: MemberLoadRow[];
 	/** 今日〜2週間後のマイルストーン（日付順） */
 	milestones: UpcomingMilestone[];
 }
-
-const isHigh = (load: MemberLoad) => load.plannedLevel === 'caution' || load.plannedLevel === 'warning';
 
 /**
  * ダッシュボード（要件4.8b、設計書 11.10）。
@@ -39,13 +39,10 @@ export function dashboard(ctx: CalcContext, projects: readonly Project[], member
 
 	const week = periodOf(ctx.today, 'week');
 	const month = periodOf(ctx.today, 'month');
-	const overloaded = members
-		.map((member) => ({
-			member,
-			week: memberLoad(member, week, ctx.summary, ctx.calendar),
-			month: memberLoad(member, month, ctx.summary, ctx.calendar),
-		}))
-		.filter((m) => isHigh(m.week) || isHigh(m.month))
+	const nextMonth = periodOf(addDays(month.end, 1), 'month');
+	const load = (member: Member, period: typeof week) => memberLoad(member, period, ctx.summary, ctx.calendar, ctx.allocations);
+	const loads = members
+		.map((member) => ({ member, week: load(member, week), month: load(member, month), nextMonth: load(member, nextMonth) }))
 		.sort((a, b) => compareJa(a.member.title, b.member.title));
 
 	const last: IsoDate = addDays(ctx.today, MILESTONE_DAYS);
@@ -54,5 +51,5 @@ export function dashboard(ctx: CalcContext, projects: readonly Project[], member
 		.filter((m) => m.milestone.date >= ctx.today && m.milestone.date <= last)
 		.sort((a, b) => a.milestone.date.localeCompare(b.milestone.date));
 
-	return { projects: statuses, members: overloaded, milestones };
+	return { projects: statuses, members: loads, milestones };
 }

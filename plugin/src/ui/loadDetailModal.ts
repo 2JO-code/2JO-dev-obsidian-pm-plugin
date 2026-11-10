@@ -11,7 +11,7 @@ export interface LoadDetailOptions {
 	projectName: (id: NoteId) => string;
 }
 
-/** メンバー×期間の負荷の内訳（要件4.8：セルをクリックしてプロジェクト別の内訳） */
+/** メンバー×期間の負荷の内訳（要件4.8：セルをクリックしてプロジェクト別の配分・予定・実績） */
 export class LoadDetailModal extends Modal {
 	constructor(
 		app: App,
@@ -28,6 +28,7 @@ export class LoadDetailModal extends Modal {
 
 		const summary = contentEl.createEl('ul', { cls: 'pm-impact-list' });
 		summary.createEl('li', { text: `基準工数 ${hoursText(load.base)}h（上限 ${hoursText(load.limit)}h、負荷許容率 ${member.loadLimitPct}%）` });
+		summary.createEl('li', { text: `配分 ${hoursText(load.allocated)}h（配分負荷率 ${rateText(load.allocatedRate)}）` });
 		summary.createEl('li', { text: `予定 ${hoursText(load.work.planned)}h（予定負荷率 ${rateText(load.plannedRate)}）` });
 		summary.createEl('li', { text: `実績 ${hoursText(load.work.actual)}h（実績稼働率 ${rateText(load.actualRate)}）` });
 		if (load.holiday.planned > 0 || load.holiday.actual > 0) {
@@ -37,21 +38,33 @@ export class LoadDetailModal extends Modal {
 			});
 		}
 
-		if (load.byProject.size === 0) {
-			contentEl.createDiv({ cls: 'pm-view-empty', text: 'この期間の作業ログはありません' });
+		const ids = new Set([...load.allocatedByProject.keys(), ...load.byProject.keys()]);
+		if (ids.size === 0) {
+			contentEl.createDiv({ cls: 'pm-view-empty', text: 'この期間の配分・作業ログはありません' });
 			return;
 		}
+		const rows = [...ids].map((id) => ({
+			id,
+			allocated: load.allocatedByProject.get(id) ?? 0,
+			...(load.byProject.get(id) ?? { planned: 0, actual: 0 }),
+		}));
+		rows.sort((a, b) => b.allocated - a.allocated || b.planned - a.planned || b.actual - a.actual);
 		const table = contentEl.createEl('table', { cls: 'pm-table' });
-		tableHeader(table, ['プロジェクト', { label: '予定(h)', numeric: true }, { label: '実績(h)', numeric: true }]);
+		tableHeader(table, [
+			'プロジェクト',
+			{ label: '配分(h)', numeric: true },
+			{ label: '予定(h)', numeric: true },
+			{ label: '実績(h)', numeric: true },
+		]);
 		const body = table.createEl('tbody');
-		const rows = [...load.byProject].sort((a, b) => b[1].planned - a[1].planned || b[1].actual - a[1].actual);
-		for (const [id, hours] of rows) {
+		for (const r of rows) {
 			const tr = body.createEl('tr');
-			tr.createEl('td', { text: projectName(id) });
-			tr.createEl('td', { text: hoursText(hours.planned), cls: 'is-numeric' });
-			tr.createEl('td', { text: hoursText(hours.actual), cls: 'is-numeric' });
+			tr.createEl('td', { text: projectName(r.id) });
+			tr.createEl('td', { text: hoursText(r.allocated), cls: 'is-numeric' });
+			tr.createEl('td', { text: hoursText(r.planned), cls: 'is-numeric' });
+			tr.createEl('td', { text: hoursText(r.actual), cls: 'is-numeric' });
 		}
-		contentEl.createDiv({ cls: 'pm-note', text: '内訳には休日の予定・実績も含みます' });
+		contentEl.createDiv({ cls: 'pm-note', text: '配分は月の工数配分を稼働日で割った、この期間の分です。予定・実績には休日の分も含みます' });
 	}
 
 	onClose(): void {

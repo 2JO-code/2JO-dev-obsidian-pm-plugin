@@ -208,7 +208,7 @@ export class WorklogView extends PmView {
 		});
 		notes.createDiv({
 			cls: 'pm-note',
-			text: 'タスクの行の後ろの薄い枠は予定期間、棒は計算上の日程、青の縦線は開始日、赤の縦線は期限日です（ガントと同じ）。棒を指すと日付を出します',
+			text: 'タスクの行の後ろの薄い枠は当初期間、棒は見込みの日程、青の縦線は開始日、赤の縦線は期限日です（ガントと同じ）。棒を指すと日付を出します',
 		});
 
 		if (lines.length === 0) {
@@ -328,7 +328,7 @@ export class WorklogView extends PmView {
 		if (today !== undefined) wrap.createDiv({ cls: 'pm-gantt-today', attr: { 'aria-label': `今日（${ctx.today}）` } }).setCssProps({ '--pm-x': `${today}px` });
 	}
 
-	/** タスクの作業範囲。ガントと同じ予定期間の帯・計算上の日程の棒・開始日と期限日の線を、数字の後ろに描く */
+	/** タスクの作業範囲。ガントと同じ当初期間の帯・見込みの日程の棒・開始日と期限日の線を、数字の後ろに描く */
 	private rangeMarks(track: HTMLElement, scale: GanttScale, task: Task, ctx: CalcContext): void {
 		const plan = taskPlanPeriod(task);
 		if (plan) planBand(track, scale, plan.start, plan.end);

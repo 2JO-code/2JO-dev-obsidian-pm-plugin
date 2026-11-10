@@ -9,7 +9,7 @@ import { sortByWbs, type Numbered } from './wbsOrder';
 
 export interface WbsEpic {
 	row: EpicRow;
-	/** 表示するタスク（絞り込み済み）。番号順、番号の無いものは計算上の開始日の順で後ろ */
+	/** 表示するタスク（絞り込み済み）。番号順、番号の無いものは見込み開始日の順で後ろ */
 	tasks: TaskRow[];
 	/** エピックの全タスク（絞り込まない）。tasks と同じ順。ドラッグでの振り直しに使う */
 	order: Numbered[];
@@ -45,7 +45,7 @@ export function wbsTree(
 	});
 }
 
-/** タスクの行を WBS 番号順に。番号の無いものは計算上の開始日の順で後ろ（設計書 11.17） */
+/** タスクの行を WBS 番号順に。番号の無いものは見込み開始日の順で後ろ（設計書 11.17） */
 export function wbsTaskRows(ctx: CalcContext, tasks: readonly Task[], labels: RowLabels, statusOrder: readonly string[]): TaskRow[] {
 	return sortByWbs(sortTaskRows(taskRows(ctx, tasks), 'start', false, labels, statusOrder), (r) => r.task.wbs);
 }

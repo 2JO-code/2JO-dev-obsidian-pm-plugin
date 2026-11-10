@@ -25,7 +25,7 @@ const shape = (visible?: Set<string>) =>
 	]);
 
 describe('wbsTree', () => {
-	it('エピックは WBS 順、エピックなしは最後。タスクは計算上の開始日の順', () => {
+	it('エピックは WBS 順、エピックなしは最後。タスクは見込み開始日の順', () => {
 		expect(shape()).toEqual([[PJT, [['E2', ['T3']], ['E1', ['T2', 'T1']], ['-', ['T4']]]]]);
 	});
 

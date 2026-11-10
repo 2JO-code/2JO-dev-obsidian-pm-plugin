@@ -93,7 +93,7 @@ export class GanttView extends PmView {
 	}
 
 	protected getDescription(): string {
-		return 'タスクの日程の棒グラフ（計算上の開始日〜終了日）。棒を指すと依存関係の線。左の名前をドラッグすると番号を入れ替え';
+		return 'タスクの日程の棒グラフ（見込み開始日〜終了日）。棒を指すと依存関係の線。左の名前をドラッグすると番号を入れ替え';
 	}
 
 	getState(): Record<string, unknown> {
@@ -181,7 +181,7 @@ export class GanttView extends PmView {
 		legend.createSpan({ cls: 'pm-gantt-bar is-legend is-delayed', text: '遅れを反映' });
 		legend.createSpan({ cls: 'pm-gantt-bar is-legend is-late', text: '期限日より後に終わる見込み' });
 		legend.createSpan({ cls: 'pm-gantt-bar is-legend is-done', text: '完了・停止' });
-		legend.createSpan({ cls: 'pm-gantt-plan is-legend', text: '予定期間' });
+		legend.createSpan({ cls: 'pm-gantt-plan is-legend', text: '当初期間' });
 		legend.createSpan({ cls: 'pm-gantt-start is-legend', text: '開始日' });
 		legend.createSpan({ cls: 'pm-gantt-due is-legend', text: '期限日' });
 		legend.createSpan({ text: '｜ ◆マイルストーン ｜' });
@@ -373,7 +373,7 @@ export class GanttView extends PmView {
 		// 依存のあるタスクは表示名の後ろにも印を出す（棒が表示期間の外でも分かるように）
 		const depText = dep ? [dep.predecessor ? '先行タスクあり' : '', dep.successor ? '後続タスクあり' : ''].filter(Boolean).join('・') : '';
 		if (depText) r.label.createSpan({ cls: 'pm-gantt-dep-mark', text: '⇆', attr: { 'aria-label': depText } });
-		// 予定期間は計算上の日程が無くても出す（棒より先に置き、後ろに描く）
+		// 当初期間は見込みの日程が無くても出す（棒より先に置き、後ろに描く）
 		const plan = taskPlanPeriod(task);
 		if (plan) planBand(r.track, scale, plan.start, plan.end);
 		if (task.start) startMark(r.track, scale, task.start);

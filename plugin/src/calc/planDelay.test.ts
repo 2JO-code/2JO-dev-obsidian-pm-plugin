@@ -20,7 +20,7 @@ describe('planDelayDays', () => {
 		expect(planDelayDays('2026-11-04', '2026-11-06', calendar)).toBe(-2);
 	});
 
-	it('予定終了日が休日でも、次の稼働日に終われば1日遅れ', () => {
+	it('当初終了日が休日でも、次の稼働日に終われば1日遅れ', () => {
 		expect(planDelayDays('2026-11-09', '2026-11-07', calendar)).toBe(1);
 		expect(planDelayDays('2026-11-08', '2026-11-07', calendar)).toBe(0);
 	});
@@ -28,20 +28,20 @@ describe('planDelayDays', () => {
 
 describe('taskPlanDelay', () => {
 	const schedule = { start: '2026-11-02', end: '2026-11-06', startDelayed: false, endDelayed: false };
-	it('予定終了日か日程が無ければ出さない', () => {
+	it('当初終了日か日程が無ければ出さない', () => {
 		expect(taskPlanDelay({}, schedule, calendar)).toBeUndefined();
 		expect(taskPlanDelay({ planEnd: '2026-11-04' }, undefined, calendar)).toBeUndefined();
 	});
-	it('計算上の終了日と比べる', () => {
+	it('見込み終了日と比べる', () => {
 		expect(taskPlanDelay({ planEnd: '2026-11-04' }, schedule, calendar)).toBe(2);
 	});
 });
 
 describe('planDelayText', () => {
-	it('遅れ・前倒し・予定どおり', () => {
+	it('遅れ・前倒し・当初どおり', () => {
 		expect(planDelayText(3)).toBe('3日遅れ');
 		expect(planDelayText(-2)).toBe('2日早い');
-		expect(planDelayText(0)).toBe('予定どおり');
+		expect(planDelayText(0)).toBe('当初どおり');
 	});
 });
 

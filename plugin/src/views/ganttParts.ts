@@ -31,7 +31,7 @@ export interface BarInfo {
 	due?: IsoDate;
 	category?: StatusCategory;
 	delayed?: boolean;
-	/** 予定期間と、予定終了日からの遅れ（稼働日。設計書 11.18） */
+	/** 当初期間と、当初終了日からの遅れ（稼働日。設計書 11.18） */
 	plan?: { start: IsoDate; end: IsoDate; delay?: number };
 }
 
@@ -88,8 +88,8 @@ export function ganttBar(
 	if (closed) bar.addClass('is-done');
 	else if (late) bar.addClass('is-late');
 	else if (info.delayed) bar.addClass('is-delayed');
-	const lines = [name, `${info.start}〜${info.end}（計算）`];
-	if (info.plan) lines.push(`予定 ${info.plan.start}〜${info.plan.end}${info.plan.delay !== undefined ? `（${planDelayText(info.plan.delay)}）` : ''}`);
+	const lines = [name, `${info.start}〜${info.end}（見込み）`];
+	if (info.plan) lines.push(`当初 ${info.plan.start}〜${info.plan.end}${info.plan.delay !== undefined ? `（${planDelayText(info.plan.delay)}）` : ''}`);
 	if (info.due) lines.push(`期限日 ${info.due}`);
 	if (late) lines.push('期限日より後に終わる見込みです');
 	if (info.delayed) lines.push('遅れを反映して、ずらしています');
@@ -99,11 +99,11 @@ export function ganttBar(
 	return bar;
 }
 
-/** 予定期間の薄い帯。棒より先に置き、棒の後ろに描く（要件4.8c） */
+/** 当初期間の薄い帯。棒より先に置き、棒の後ろに描く（要件4.8c） */
 export function planBand(track: HTMLElement, scale: GanttScale, start: IsoDate, end: IsoDate): void {
 	const box = barBox(scale, start, end);
 	if (!box) return;
-	const band = track.createDiv({ cls: 'pm-gantt-plan', attr: { 'aria-label': `予定 ${start}〜${end}` } });
+	const band = track.createDiv({ cls: 'pm-gantt-plan', attr: { 'aria-label': `当初 ${start}〜${end}` } });
 	place(band, box.left, box.width);
 }
 
@@ -131,7 +131,7 @@ export function milestoneMark(track: HTMLElement, scale: GanttScale, m: Mileston
 		notes.push('日付を過ぎたが、連動エピックが完了していません');
 	} else if (m.late) {
 		mark.addClass('is-late');
-		notes.push('連動エピックの完了予定日がこの日より後です');
+		notes.push('連動エピックの期限日がこの日より後です');
 	}
 	mark.setAttr('aria-label', notes.join('\n'));
 }

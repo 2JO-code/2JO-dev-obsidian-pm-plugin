@@ -61,8 +61,8 @@ export class EpicFormModal extends FormModal {
 		statusOptions(new DropdownComponent(formField(state, 'ステータス')), options.statuses, form.status).onChange((v) => (form.status = v));
 
 		const schedule = formSection(right, '日程', 2);
-		dateInput(formField(schedule, '開始日（任意）', { hint: '表示用。計算上の日程はタスクから求めます' }), form.start, (v) => (form.start = v));
-		dateInput(formField(schedule, '完了予定日（任意）', { hint: 'マイルストーンと連動できます' }), form.due, (v) => (form.due = v));
+		dateInput(formField(schedule, '開始日（任意）', { hint: '表示用。見込みの日程はタスクから求めます' }), form.start, (v) => (form.start = v));
+		dateInput(formField(schedule, '期限日（任意）', { hint: 'マイルストーンと連動できます' }), form.due, (v) => (form.due = v));
 
 		const io = formSection(right, 'インプット・アウトプット', 2);
 		this.listInput(formField(io, 'インプット（任意）', { hint: '1行に1つ' }), form.inputs, (v) => (form.inputs = v));

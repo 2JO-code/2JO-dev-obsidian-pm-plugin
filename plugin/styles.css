@@ -677,6 +677,12 @@ td .pm-progress-pct {
 	border-radius: var(--radius-s);
 }
 
+/* 休稼の印は文字の行より低くし、配分・予定・実績を切り替えても行の高さを変えない（設計書 9.3） */
+.pm-load-cell .pm-load-holiday-mark {
+	line-height: 1.2;
+	vertical-align: middle;
+}
+
 .pm-load-none {
 	color: var(--text-faint);
 }
@@ -1660,6 +1666,25 @@ td .pm-progress-pct {
 .pm-loadchart-bar.is-warning,
 .pm-loadchart-swatch.is-warning {
 	background: rgba(var(--color-red-rgb), 0.3);
+}
+
+/* 工数で見るときは人ごとに働ける時間が違うので、全員共通の 100% の線を消して行ごとに引く */
+.pm-loadchart.is-hours .pm-loadchart-row:not(.pm-loadchart-axis) .pm-loadchart-track::after {
+	content: none;
+}
+
+.pm-loadchart-full {
+	position: absolute;
+	left: var(--pm-x);
+	top: 0;
+	bottom: 0;
+	border-left: 1px solid var(--text-muted);
+}
+
+.pm-loadchart-swatch.is-full {
+	width: 0;
+	border-left: 1px solid var(--text-muted);
+	border-radius: 0;
 }
 
 /* その人の負荷許容率の印。棒と重なっても見えるよう背景色の縁を付ける */

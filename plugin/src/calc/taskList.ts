@@ -22,9 +22,9 @@ export interface TaskRow {
 	assignees: Member[];
 	hours: Hours;
 	progress: TaskProgress;
-	/** 計算上の日程。出せなければ undefined（設計書 11.9） */
+	/** 見込みの日程。出せなければ undefined（設計書 11.9） */
 	schedule?: TaskSchedule;
-	/** 予定終了日からの遅れ（稼働日）。予定終了日か日程が無ければ undefined（設計書 11.18） */
+	/** 当初終了日からの遅れ（稼働日）。当初終了日か日程が無ければ undefined（設計書 11.18） */
 	planDelay?: number;
 	warnings: readonly Warning[];
 }

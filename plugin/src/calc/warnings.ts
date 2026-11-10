@@ -34,8 +34,8 @@ export interface Warning {
 const h = (n: number) => `${n}h`;
 
 /**
- * タスクの警告：期限超過（期限日の翌日から）、期限超過見込み（計算上の終了日が期限日より後）、工数超過（設計書 11.4）
- * @param schedule 計算上の日程。無ければ期限超過見込みは判定しない
+ * タスクの警告：期限超過（期限日の翌日から）、期限超過見込み（見込み終了日が期限日より後）、工数超過（設計書 11.4）
+ * @param schedule 見込みの日程。無ければ期限超過見込みは判定しない
  */
 export function taskWarnings(
 	task: Task,
@@ -53,7 +53,7 @@ export function taskWarnings(
 		warnings.push({
 			kind: 'overdueRisk',
 			target,
-			message: `計算上の終了日（${schedule.end}）が期限日（${task.due}）より後です`,
+			message: `見込み終了日（${schedule.end}）が期限日（${task.due}）より後です`,
 		});
 	}
 	const actual = summary.task(task.id).actual;

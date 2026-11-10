@@ -74,7 +74,7 @@ export class WbsView extends PmView {
 	}
 
 	protected getDescription(): string {
-		return 'プロジェクト → エピック → タスクの階層と計算上の日程。▶／▼ を押すと開閉。エピック・タスクの行をドラッグすると番号を入れ替え';
+		return 'プロジェクト → エピック → タスクの階層と見込みの日程。▶／▼ を押すと開閉。エピック・タスクの行をドラッグすると番号を入れ替え';
 	}
 
 	getState(): Record<string, unknown> {

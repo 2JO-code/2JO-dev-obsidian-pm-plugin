@@ -6,12 +6,12 @@ import type { IsoDate, NoteId, StatusDef, Task } from '../model';
 import { isIsoDate } from '../parse/values';
 import type { TaskForm } from './taskForm';
 
-/** フォームに出す計算上の日程（設計書 4.12。ファイルには書かない） */
+/** フォームに出す見込みの日程（設計書 4.12。ファイルには書かない） */
 export interface SchedulePreview {
 	/** ok：期限内、late：期限日を過ぎる、none：計算できない */
 	kind: 'ok' | 'late' | 'none';
 	text: string;
-	/** 予定との差。予定終了日と計算上の日程があるときだけ（設計書 11.18） */
+	/** 当初との差。当初終了日と見込みの日程があるときだけ（設計書 11.18） */
 	plan?: { delay: number; text: string };
 }
 
@@ -27,7 +27,7 @@ const dateOf = (value: string): IsoDate | undefined => (isIsoDate(value) ? value
 const shortDate = (date: IsoDate) => `${monthDayText(date)}(${WEEKDAYS[dayOfWeek(date)] ?? ''})`;
 
 /**
- * 入力中の値で、そのタスクの計算上の日程を出す（設計書 4.12）。
+ * 入力中の値で、そのタスクの見込みの日程を出す（設計書 4.12）。
  * @param self 編集中のタスク（索引の値）。フォームの日程の値で置き換えて計算する
  * @param tasks 先行タスクを引くため、アーカイブ内も含めて渡す
  */
@@ -73,7 +73,7 @@ const rangeText = (start: IsoDate, end: IsoDate) => (start === end ? shortDate(s
 /** 例：予定 11/2(月)〜11/4(水) より2日遅れ */
 function planLine(planStart: IsoDate | undefined, planEnd: IsoDate, delay: number): { delay: number; text: string } {
 	const range = planStart && planStart <= planEnd ? rangeText(planStart, planEnd) : shortDate(planEnd);
-	return { delay, text: delay === 0 ? `予定 ${range} のとおり` : `予定 ${range} より${planDelayText(delay)}` };
+	return { delay, text: delay === 0 ? `当初 ${range} のとおり` : `当初 ${range} より${planDelayText(delay)}` };
 }
 
 /** 日程が出せない理由 */

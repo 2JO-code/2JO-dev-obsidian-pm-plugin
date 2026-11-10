@@ -5,7 +5,7 @@ import { chooseMemberForHolidays } from '../commands/editHolidays';
 import { openMemberForm } from '../commands/editTask';
 import { openWorklogModal } from '../commands/worklog';
 import { dayOfWeek, WEEKDAYS } from '../calc/dates';
-import type { MemberLoad } from '../calc/load';
+import { LOAD_MODE_LABEL, LOAD_SCALES, loadHoursText, loadValue, type MemberLoad } from '../calc/load';
 import {
 	DEFAULT_MEMBER_STATUS,
 	displayRange,
@@ -39,8 +39,9 @@ const UNIT_CHOICES: { value: PeriodUnit; label: string }[] = [
 ];
 
 const MODE_CHOICES: { value: LoadMode; label: string }[] = [
-	{ value: 'planned', label: '予定負荷率' },
-	{ value: 'actual', label: '実績稼働率' },
+	{ value: 'allocated', label: '配分' },
+	{ value: 'planned', label: '予定' },
+	{ value: 'actual', label: '実績' },
 ];
 
 /** メンバー状況のビューと、開くコマンドを登録する */
@@ -112,7 +113,7 @@ export class MemberStatusView extends PmView {
 					checkbox(bar, '在籍者のみ', options.activeOnly, (activeOnly) => this.setOptions({ ...options, activeOnly }));
 				},
 				onClear: () => {
-					this.options = { ...DEFAULT_MEMBER_STATUS, unit: options.unit, mode: options.mode };
+					this.options = { ...DEFAULT_MEMBER_STATUS, unit: options.unit, mode: options.mode, scale: options.scale };
 				},
 			},
 			(filter) => this.setFilter(filter),
@@ -120,6 +121,7 @@ export class MemberStatusView extends PmView {
 
 		singleSelect(settings, '単位', options.unit, UNIT_CHOICES, (unit) => this.setOptions({ ...options, unit }));
 		singleSelect(settings, '表示', options.mode, MODE_CHOICES, (m) => this.setOptions({ ...options, mode: m }));
+		singleSelect(settings, '数値', options.scale, [...LOAD_SCALES], (scale) => this.setOptions({ ...options, scale }));
 		actionButtons(actions, [
 			{ text: '作業ログを入力', onClick: () => openWorklogModal(this.plugin) },
 			{ text: '個人休日を編集', onClick: () => chooseMemberForHolidays(this.plugin) },
@@ -130,6 +132,10 @@ export class MemberStatusView extends PmView {
 		legend.createSpan({ cls: 'pm-load-cell pm-load-caution', text: '注意（100%超）' });
 		legend.createSpan({ cls: 'pm-load-cell pm-load-warning', text: '警告（負荷許容率超）' });
 		legend.createSpan({ cls: 'pm-mark is-tinted pm-load-holiday-mark', text: '休稼＝休日稼働あり' });
+		notes.createDiv({
+			cls: 'pm-note',
+			text: `${options.scale === 'hours' ? `マスは${LOAD_MODE_LABEL[options.mode]}の時間(h)。色は負荷率で付けます。` : ''}負荷率＝${LOAD_MODE_LABEL[options.mode]}の時間 ÷ 基準工数（稼働日 × 1日の通常稼働時間）。配分は月の工数配分を稼働日で割って期間の分を足したもの。マスにマウスを乗せると配分・予定・実績の時間が出ます`,
+		});
 
 		let members = ctx.index.members().filter((m) => !options.activeOnly || m.active);
 		if (this.filter.projects.length > 0) {
@@ -163,16 +169,11 @@ export class MemberStatusView extends PmView {
 	}
 
 	private drawCell(tr: HTMLElement, member: Member, load: MemberLoad, ctx: CalcContext): void {
-		const planned = this.options.mode === 'planned';
-		const rate = planned ? load.plannedRate : load.actualRate;
-		const level = planned ? load.plannedLevel : load.actualLevel;
-		const holiday = planned ? load.holiday.planned : load.holiday.actual;
-
+		const { hours, rate, level, holiday } = loadValue(load, this.options.mode);
 		const td = tr.createEl('td', { cls: `is-numeric is-clickable pm-load-cell pm-load-${level}` });
-		td.setText(rateText(rate));
+		td.setText(this.options.scale === 'hours' ? (load.base > 0 || hours > 0 ? hoursText(hours) : '—') : rateText(rate));
 		if (holiday > 0) td.createSpan({ cls: 'pm-mark is-tinted pm-load-holiday-mark', text: '休稼' });
-		const hours = planned ? load.work.planned : load.work.actual;
-		td.setAttr('aria-label', `${planned ? '予定' : '実績'} ${hoursText(hours)}h／基準 ${hoursText(load.base)}h${holiday > 0 ? `（休日 ${hoursText(holiday)}h）` : ''}`);
+		td.setAttr('aria-label', loadHoursText(load));
 
 		td.addEventListener('click', () => {
 			const mode = this.plugin.personal.projectDisplayName;

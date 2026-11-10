@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { AllocationSummary } from './allocationLoad';
 import { defaultStatusSets } from '../config/defaults';
 import { memberLoad } from './load';
 import { member, PJT, project, task, USER, USER2, worklog } from './testData';
@@ -8,6 +9,7 @@ import { WorkSummary } from './worklogSummary';
 
 const statuses = defaultStatusSets().task;
 const calendar = new WorkCalendar({ weekendsOff: true, holidays: [] });
+const noAllocations = new AllocationSummary([], calendar);
 const kinds = (ws: { kind: string }[]) => ws.map((w) => w.kind);
 
 describe('taskWarnings', () => {
@@ -60,9 +62,9 @@ describe('loadWarnings', () => {
 	const m = member(USER);
 
 	it('100%超は負荷注意、負荷許容率超は負荷警告。100%以下は出さない', () => {
-		expect(kinds(loadWarnings(m, memberLoad(m, periodOf('2026-11-02', 'day'), summary, calendar)))).toEqual(['loadCaution']);
-		expect(kinds(loadWarnings(m, memberLoad(m, periodOf('2026-11-04', 'day'), summary, calendar)))).toEqual(['loadWarning']);
-		expect(kinds(loadWarnings(m, memberLoad(m, periodOf('2026-11-03', 'day'), summary, calendar)))).toEqual([]);
+		expect(kinds(loadWarnings(m, memberLoad(m, periodOf('2026-11-02', 'day'), summary, calendar, noAllocations)))).toEqual(['loadCaution']);
+		expect(kinds(loadWarnings(m, memberLoad(m, periodOf('2026-11-04', 'day'), summary, calendar, noAllocations)))).toEqual(['loadWarning']);
+		expect(kinds(loadWarnings(m, memberLoad(m, periodOf('2026-11-03', 'day'), summary, calendar, noAllocations)))).toEqual([]);
 	});
 });
 

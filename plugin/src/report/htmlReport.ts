@@ -1,7 +1,7 @@
 import { compareJa, compareNumeric } from '../calc/compare';
 import type { CalcContext } from '../calc/context';
 import { dashboard, MILESTONE_DAYS } from '../calc/dashboard';
-import type { MemberLoad } from '../calc/load';
+import { LOAD_MODE_LABEL, loadValue, type LoadMode, type MemberLoad } from '../calc/load';
 import { cellKey, type ProjectStatus } from '../calc/projectStatus';
 import { isFinished } from '../config/status';
 import { statusColor } from '../config/statusColor';
@@ -105,7 +105,7 @@ export function buildHtmlReport(ctx: CalcContext, input: ReportInput): string {
 		data.projects.length === 0
 			? empty('クローズしていないプロジェクトはありません')
 			: table(
-					['プロジェクト', 'ステータス', '期間', '終了（計算）', '進捗率', '見積(h)', '予定(h)', '実績(h)', '警告'],
+					['プロジェクト', 'ステータス', '期間', '見込み終了', '進捗率', '見積(h)', '予定(h)', '実績(h)', '警告'],
 					data.projects.map((s) => {
 						const late = !!s.span && !!s.project.due && s.span.end > s.project.due;
 						return [
@@ -125,15 +125,17 @@ export function buildHtmlReport(ctx: CalcContext, input: ReportInput): string {
 	);
 
 	const first = data.members[0];
-	parts.push(`<h3>負荷の高いメンバー（今週・今月、${data.members.length} 人）</h3>`);
+	parts.push(`<h3>メンバーの負荷率（${data.members.length} 人）</h3>`);
 	parts.push(
 		!first
-			? empty('今週・今月に負荷注意・負荷警告のメンバーはいません')
-			: table(
-					['メンバー', `今週（${first.week.period.start}〜）`, `今月（${first.month.period.key}）`],
-					data.members.map((m) => [cell(m.member.title), loadCell(m.week), loadCell(m.month)]),
-					[1, 2],
-				) + '<p class="note">予定負荷率（予定工数 ÷ 基準工数）。注意＝100%超、警告＝負荷許容率超</p>',
+			? empty('在籍しているメンバーはいません')
+			: `<p class="note">今週＝${first.week.period.start}〜${first.week.period.end}、今月＝${first.month.period.key}、来月＝${first.nextMonth.period.key}</p>` +
+					table(
+						['メンバー', ...LOAD_COLUMNS.map(([p, m]) => `${PERIOD_LABEL[p]} ${LOAD_MODE_LABEL[m]}`)],
+						data.members.map((row) => [cell(row.member.title), ...LOAD_COLUMNS.map(([p, m]) => loadCell(row[p], m))]),
+						LOAD_COLUMNS.map((_, i) => i + 1),
+					) +
+					'<p class="note">負荷率＝配分・予定・実績の時間 ÷ 基準工数（稼働日数 × 1日の通常稼働時間）。注意＝100%超、警告＝負荷許容率超。数字にマウスを乗せると時間が出ます</p>',
 	);
 
 	parts.push(`<h3>${MILESTONE_DAYS / 7}週間以内のマイルストーン（${data.milestones.length} 件）</h3>`);
@@ -159,8 +161,24 @@ export function buildHtmlReport(ctx: CalcContext, input: ReportInput): string {
 	return page(parts.join('\n'), input.colors);
 }
 
-function loadCell(load: MemberLoad): Cell {
-	return cell(`${rateText(load.plannedRate)}（${hoursText(load.work.planned)}h／${hoursText(load.base)}h）`, `load-${load.plannedLevel}`);
+const PERIOD_LABEL = { week: '今週', month: '今月', nextMonth: '来月' } as const;
+
+/** 負荷の表の列：期間 × 配分・予定・実績（来月は実績なし。要件4.8b） */
+const LOAD_COLUMNS: readonly [keyof typeof PERIOD_LABEL, LoadMode][] = [
+	['week', 'allocated'],
+	['week', 'planned'],
+	['week', 'actual'],
+	['month', 'allocated'],
+	['month', 'planned'],
+	['month', 'actual'],
+	['nextMonth', 'allocated'],
+	['nextMonth', 'planned'],
+];
+
+function loadCell(load: MemberLoad, mode: LoadMode): Cell {
+	const v = loadValue(load, mode);
+	const title = `${LOAD_MODE_LABEL[mode]} ${hoursText(v.hours)}h／基準 ${hoursText(load.base)}h`;
+	return { text: `<span title="${e(title)}">${e(rateText(v.rate))}</span>`, html: true, cls: `load-${v.level}` };
 }
 
 function projectSection(s: ProjectStatus, title: string, name: (id: NoteId) => string, status: StatusCell): string {
@@ -174,7 +192,7 @@ function projectSection(s: ProjectStatus, title: string, name: (id: NoteId) => s
 		['ステータス', project.status ? projectStatus : '—', projectStatus.cls],
 		['責任者', project.manager ? name(project.manager) : '—'],
 		['期間', period(project)],
-		['計算上の期間', s.span ? `${s.span.start} 〜 ${s.span.end}${late ? '（期限日より後に終わる見込み）' : ''}` : '—', late ? 'error' : undefined],
+		['見込みの期間', s.span ? `${s.span.start} 〜 ${s.span.end}${late ? '（期限日より後に終わる見込み）' : ''}` : '—', late ? 'error' : undefined],
 		['進捗率', s.progress.ratio === null ? '対象のタスクなし' : `${pct(s.progress)}（完了 ${s.progress.done} ／ 対象 ${s.progress.total} 件）`],
 		['工数', `見積 ${hoursText(s.workload.estimate)}h ／ 予定 ${hoursText(s.workload.planned)}h ／ 実績 ${hoursText(s.workload.actual)}h`],
 		['警告', s.warnings.length === 0 ? 'なし' : `${s.warnings.length} 件（${warningSummary(s.warnings)}）`, s.warnings.length > 0 ? 'error' : undefined],
@@ -189,7 +207,7 @@ function projectSection(s: ProjectStatus, title: string, name: (id: NoteId) => s
 		s.milestones.length === 0
 			? empty('マイルストーンはありません')
 			: table(
-					['日付', '名前', '連動エピック', 'エピックの状況', '完了予定日', '注意'],
+					['日付', '名前', '連動エピック', 'エピックの状況', '期限日', '注意'],
 					s.milestones.map((m) => [
 						cell(m.milestone.date),
 						cell(m.milestone.name),
@@ -206,7 +224,7 @@ function projectSection(s: ProjectStatus, title: string, name: (id: NoteId) => s
 		s.epics.length === 0
 			? empty('エピック・タスクはありません')
 			: table(
-					['WBS', 'タイトル', 'ステータス', '担当者', '進捗', '見積(h)', '予定(h)', '実績(h)', '開始（計算）', '終了（計算）', '開始日', '完了予定日', '警告'],
+					['WBS', 'タイトル', 'ステータス', '担当者', '進捗', '見積(h)', '予定(h)', '実績(h)', '見込み開始', '見込み終了', '開始日', '期限日', '警告'],
 					s.epics.map((r) => {
 						const open = !isFinished(r.category);
 						const endLate = open && !!r.span && !!r.epic?.due && r.span.end > r.epic.due;

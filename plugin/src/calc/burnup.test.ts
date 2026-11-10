@@ -54,7 +54,7 @@ describe('progressPlan', () => {
 	const c = buildContext(idx, defaultStatusSets(), defaultCalendar(), '2026-11-04');
 	const plan = progressPlan(c, idx.projects()[0]!, { start: '2026-11-02', end: '2026-11-06' });
 
-	it('その日までに計算上の終了日が来るタスクの数', () => {
+	it('その日までに見込み終了日が来るタスクの数', () => {
 		expect(plan.points.map((p) => p.planned)).toEqual([0, 1, 1, 2, 2]);
 	});
 

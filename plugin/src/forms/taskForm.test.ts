@@ -157,11 +157,11 @@ describe('taskFormToUpdate', () => {
 		]);
 	});
 
-	it('予定開始日・予定終了日は両方そろえ、終了日を開始日より前にしない', () => {
+	it('当初開始日・当初終了日は両方そろえ、終了日を開始日より前にしない', () => {
 		const errorsOf = (o: Partial<TaskForm>) => taskFormToUpdate(form(o), statuses, SELF).errors;
-		expect(errorsOf({ planStart: '2026-11-04' })).toEqual(['予定開始日と予定終了日は両方入れてください']);
-		expect(errorsOf({ planEnd: '2026-11-04' })).toEqual(['予定開始日と予定終了日は両方入れてください']);
-		expect(errorsOf({ planStart: '2026-11-05', planEnd: '2026-11-04' })).toEqual(['予定終了日が予定開始日より前になっています']);
+		expect(errorsOf({ planStart: '2026-11-04' })).toEqual(['当初開始日と当初終了日は両方入れてください']);
+		expect(errorsOf({ planEnd: '2026-11-04' })).toEqual(['当初開始日と当初終了日は両方入れてください']);
+		expect(errorsOf({ planStart: '2026-11-05', planEnd: '2026-11-04' })).toEqual(['当初終了日が当初開始日より前になっています']);
 		expect(errorsOf({ planStart: '2026-11-04', planEnd: '2026-11-04' })).toEqual([]);
 	});
 

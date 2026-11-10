@@ -52,13 +52,13 @@ describe('taskRows', () => {
 		expect(row('T2').progress.done).toBe(true);
 	});
 
-	it('計算上の日程を持つ。日付の無いタスクは日程なし', () => {
+	it('見込みの日程を持つ。日付の無いタスクは日程なし', () => {
 		expect(row('T1').schedule).toEqual({ start: '2026-11-05', end: '2026-11-10', startDelayed: false, endDelayed: true });
 		expect(row('T3').schedule).toBeUndefined();
 		expect(ids(sortTaskRows(rows, 'end', false, labels, statusOrder))).toEqual(['T1', 'T2', 'T3', 'T4']);
 	});
 
-	it('予定終了日があれば、計算上の終了日との差（稼働日）を持つ', () => {
+	it('当初終了日があれば、見込み終了日との差（稼働日）を持つ', () => {
 		expect(row('T1').planDelay).toBe(2);
 		expect(row('T2').planDelay).toBe(0);
 		expect(row('T3').planDelay).toBeUndefined();

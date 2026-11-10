@@ -95,6 +95,7 @@ classDiagram
 		+statuses: StatusSets
 		+calendar: WorkCalendar
 		+summary: WorkSummary
+		+allocations: AllocationSummary
 		+projects: Map
 		+epics: Map
 		+members: Map
@@ -119,6 +120,7 @@ classDiagram
 	CalcContext --> VaultIndex
 	CalcContext *-- WorkCalendar
 	CalcContext *-- WorkSummary
+	CalcContext *-- AllocationSummary
 ```
 
 ### 1.2 ノートの型（`model/`）
@@ -459,7 +461,7 @@ sequenceDiagram
 	E->>D: descriptionOf(本文)
 	E->>M: new TaskFormModal(候補は store.index から、説明).open()
 	U->>M: 日付・日数を変える
-	M->>M: previewTaskSchedule()（計算上の日程を出し直す。書かない）
+	M->>M: previewTaskSchedule()（見込みの日程を出し直す。書かない）
 	U->>M: 入力して「保存」
 	M->>M: submit()（保存中なら受け付けない）
 	M->>F: taskFormToUpdate(form, statuses, taskId)

@@ -36,11 +36,13 @@ describe('dashboard', () => {
 		expect(result.projects.map((p) => p.project.id)).toEqual([PJT, PJT2]);
 	});
 
-	it('今週か今月に負荷注意・警告のメンバーだけ、名前順', () => {
+	it('負荷を見るメンバー全員の今週・今月・来月を、名前順', () => {
 		expect(result.members.map((m) => [m.member.title, m.week.plannedLevel, m.month.plannedLevel])).toEqual([
 			['伊藤', 'normal', 'warning'],
 			['佐藤', 'caution', 'normal'],
+			['上田', 'normal', 'normal'],
 		]);
+		expect(result.members[0]?.nextMonth.period.key).toBe('2026-12');
 	});
 
 	it('マイルストーンは今日〜2週間後、日付順', () => {

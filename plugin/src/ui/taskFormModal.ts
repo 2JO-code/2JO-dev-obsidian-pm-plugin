@@ -182,16 +182,16 @@ export class TaskFormModal extends FormModal {
 			onChange((v) => (form.lagDays = v)),
 		);
 		numberInput(formField(grid, '所要日数', { hint: '稼働日' }), form.durationDays, onChange((v) => (form.durationDays = v)));
-		// 予定は最初の計画。計算上の日程と比べて遅れを出す（設計書 11.18）
-		dateInput(formField(grid, '予定開始日', { hint: '最初の計画。遅れを測る基準' }), form.planStart, onChange((v) => (form.planStart = v)));
-		dateInput(formField(grid, '予定終了日', { hint: '計算上の終了日と比べます' }), form.planEnd, onChange((v) => (form.planEnd = v)));
-		const preview = formField(grid, '計算上の日程（保存しません）', { full: true });
+		// 当初は最初の計画。見込みの日程と比べて遅れを出す（設計書 11.18）
+		dateInput(formField(grid, '当初開始日', { hint: '最初の計画。遅れを測る基準' }), form.planStart, onChange((v) => (form.planStart = v)));
+		dateInput(formField(grid, '当初終了日', { hint: '見込み終了日と比べます' }), form.planEnd, onChange((v) => (form.planEnd = v)));
+		const preview = formField(grid, '見込みの日程（保存しません）', { full: true });
 		this.previewEl = preview.createDiv({ cls: 'pm-schedule-preview' });
 		this.planEl = preview.createDiv({ cls: 'pm-schedule-preview is-plan' });
 		this.updatePreview();
 	}
 
-	/** 計算上の日程を入力中の値で出し直す */
+	/** 見込みの日程を入力中の値で出し直す */
 	private updatePreview(): void {
 		const { form, options, previewEl, planEl } = this;
 		if (!previewEl) return;
@@ -203,7 +203,7 @@ export class TaskFormModal extends FormModal {
 		previewEl.toggleClass('is-late', preview.kind === 'late');
 		previewEl.toggleClass('is-none', preview.kind === 'none');
 		if (!planEl) return;
-		// 予定との差は、予定終了日と計算上の日程があるときだけ出す
+		// 当初との差は、当初終了日と見込みの日程があるときだけ出す
 		planEl.toggle(!!preview.plan);
 		planEl.setText(preview.plan?.text ?? '');
 		planEl.toggleClass('is-behind', (preview.plan?.delay ?? 0) > 0);

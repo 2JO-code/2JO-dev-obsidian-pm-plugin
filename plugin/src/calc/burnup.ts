@@ -25,7 +25,7 @@ export interface Burnup {
 
 /**
  * プロジェクトの工数の累積（バーンアップ。設計書 11.15）。
- * 期間はプロジェクトの開始日・期限日、作業ログの最初〜最後の日、タスクの計算上の日程を合わせた範囲。
+ * 期間はプロジェクトの開始日・期限日、作業ログの最初〜最後の日、タスクの見込みの日程を合わせた範囲。
  * 作業ログも日付も無ければ undefined
  */
 export function burnup(ctx: CalcContext, project: Project): Burnup | undefined {
@@ -89,7 +89,7 @@ export interface ProgressPlan {
 }
 
 /**
- * 予定の進捗（設計書 11.15）。その日までに計算上の終了日が来るタスクの数を、期間の毎日について数える。
+ * 予定の進捗（設計書 11.15）。その日までに見込み終了日が来るタスクの数を、期間の毎日について数える。
  * 分母・完了の数え方は進捗率（`countProgress`）と同じ。完了した日は記録が無いので、実績は今日の値だけ
  */
 export function progressPlan(ctx: CalcContext, project: Project, range: { start: IsoDate; end: IsoDate }): ProgressPlan {

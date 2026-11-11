@@ -1,4 +1,5 @@
 /** プラグイン設定（全員共通）と個人の設定の型と既定値（設計書 6章） */
+import { cleanMemberDashboardLayout, defaultMemberDashboardLayout, type MemberDashboardLayout } from './memberDashboardLayout';
 import { isRecord } from './parse/values';
 
 /** ビューでのプロジェクト表示名に使う項目（要件3.5） */
@@ -47,6 +48,8 @@ export interface PersonalSettings {
 	reportFolder: string;
 	/** プロジェクト状況の節の並び順と表示（概要は常に先頭なので含めない） */
 	projectSections: ProjectSectionSetting[];
+	/** メンバーダッシュボードの部品の配置（設計書 9.12） */
+	memberDashboard: MemberDashboardLayout;
 }
 
 /** プロジェクト状況の、並び替え・非表示にできる節 */
@@ -86,6 +89,7 @@ export const DEFAULT_PERSONAL: PersonalSettings = {
 	projectDisplayName: 'title',
 	reportFolder: '',
 	projectSections: PROJECT_SECTIONS.map((id) => ({ id, visible: true })),
+	memberDashboard: defaultMemberDashboardLayout(),
 };
 
 /** 保存された節の並びを整える。知らない節・重複は捨て、足りない節は末尾に表示ありで足す */
@@ -102,8 +106,8 @@ export function cleanProjectSections(raw: unknown): ProjectSectionSetting[] {
 	return result;
 }
 
-/** 節を1つ上（-1）か下（+1）へ動かした並びを返す。端なら変えない */
-export function moveSection(sections: readonly ProjectSectionSetting[], index: number, delta: -1 | 1): ProjectSectionSetting[] {
+/** 節（部品）を1つ上（-1）か下（+1）へ動かした並びを返す。端なら変えない */
+export function moveSection<T>(sections: readonly T[], index: number, delta: -1 | 1): T[] {
 	const list = [...sections];
 	const to = index + delta;
 	const item = list[index];
@@ -170,6 +174,7 @@ export function mergePersonal(raw: unknown, legacy?: unknown): PersonalSettings 
 		projectDisplayName: oneOf(data.projectDisplayName, PROJECT_DISPLAY_NAMES) ?? DEFAULT_PERSONAL.projectDisplayName,
 		reportFolder: typeof data.reportFolder === 'string' ? data.reportFolder.trim() : DEFAULT_PERSONAL.reportFolder,
 		projectSections: cleanProjectSections(data.projectSections),
+		memberDashboard: cleanMemberDashboardLayout(data.memberDashboard),
 	};
 }
 

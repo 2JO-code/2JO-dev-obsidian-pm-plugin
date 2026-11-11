@@ -281,7 +281,10 @@ classDiagram
   - 中身は `draw(el, ctx)` だけを書く。描き直しのきっかけと枠（シェル）は `PmView` が受け持つ
 - 保存して閉じる入力画面は `FormModal` を継ぐ（設計書 4.5, 4.6）
   - 中身は `render()` を書き、保存は `submit(check, write)` に任せる
-- WBS・ガント・プロジェクト状況は `WbsDrag` を1つずつ持ち、行のドラッグで番号を書き換える（設計書 9.7）
+- タスク一覧・作業ログ・ガント・カンバン・WBS の中身は部品（`Panel`）。ビューは部品を1つ載せる（設計書 9.12）
+  - メンバーダッシュボードは、同じ部品を種類ごとに1つずつ作って並べる（設計書 9.11）
+  - 部品は保存・描き直しを置き場所（`PanelHost`）に頼む
+- WBS・ガントの部品とプロジェクト状況は `WbsDrag` を1つずつ持ち、行のドラッグで番号を書き換える（設計書 9.7）
 - 同じ3つは `TreeToggle`（開閉の状態）と `ChildRows`（タスクの行の足し引き）も1つずつ持つ（設計書 9.7）
 
 ```mermaid
@@ -306,6 +309,22 @@ classDiagram
 		+redraw()
 		#shell(el, options) Shell
 		#setFilter(filter)
+		#panelHost() PanelHost
+	}
+	class Panel {
+		<<abstract>>
+		#host: PanelHost
+		+title: string
+		+draw(shell, ctx, scope?)*
+		+getState()*
+		+setState(state)*
+	}
+	class PanelHost {
+		<<interface>>
+		+changed()
+		+save()
+		+redraw()
+		+gridLines() boolean
 	}
 	class FormModal {
 		<<abstract>>
@@ -325,17 +344,38 @@ classDiagram
 	PmView <|-- GanttView
 	PmView <|-- ArchiveView
 	PmView <|-- WorklogView
-	WorklogView ..> WorklogGridModal : 押すと入力フォームを開く
 	PmView <|-- HealthView
-	WbsView *-- WbsDrag : 行のドラッグで番号を入れ替え
-	GanttView *-- WbsDrag
+	PmView <|-- MemberDashboardView
+
+	Panel ..> PanelHost : 保存・描き直しを頼む
+	Panel <|-- TaskListPanel
+	Panel <|-- WorklogPanel
+	Panel <|-- GanttPanel
+	Panel <|-- KanbanPanel
+	Panel <|-- WbsPanel
+	Panel <|-- LoadPanel
+	Panel <|-- AssignedProjectsPanel
+	Panel <|-- MemberTaskListPanel
+	Panel <|-- MonthTasksPanel
+	TaskListView *-- TaskListPanel
+	WorklogView *-- WorklogPanel
+	GanttView *-- GanttPanel
+	KanbanView *-- KanbanPanel
+	WbsView *-- WbsPanel
+	MemberDashboardView *-- Panel : 種類ごとに1つ（createMemberPanel）
+	MemberTaskListPanel *-- TaskListPanel : その月の担当タスクに固定
+	MonthTasksPanel *-- Panel : ガント・カンバン・WBS を包む
+	MemberDashboardView ..> MemberPanelsModal : 部品を選ぶ
+	WorklogPanel ..> WorklogGridModal : 押すと入力フォームを開く
+	WbsPanel *-- WbsDrag : 行のドラッグで番号を入れ替え
+	GanttPanel *-- WbsDrag
 	ProjectStatusView *-- WbsDrag
 	WbsDrag ..> VaultStore : writeMany でまとめて書く
-	WbsView *-- TreeToggle : 開閉の状態
-	GanttView *-- TreeToggle
+	WbsPanel *-- TreeToggle : 開閉の状態
+	GanttPanel *-- TreeToggle
 	ProjectStatusView *-- TreeToggle
-	WbsView *-- ChildRows : タスクの行を足し引き
-	GanttView *-- ChildRows
+	WbsPanel *-- ChildRows : タスクの行を足し引き
+	GanttPanel *-- ChildRows
 	ProjectStatusView *-- ChildRows
 
 	Modal <|-- FormModal
@@ -350,6 +390,7 @@ classDiagram
 	Modal <|-- NewNoteModal
 	Modal <|-- CopyProjectModal
 	Modal <|-- LoadDetailModal
+	Modal <|-- MemberPanelsModal
 	FuzzySuggestModal <|-- ChooseModal
 	PluginSettingTab <|-- ProjectManagerSettingTab
 ```

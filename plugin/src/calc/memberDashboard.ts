@@ -66,9 +66,16 @@ const overlaps = (start: IsoDate, end: IsoDate, from: IsoDate, to: IsoDate) => s
  * タスク＝担当タスク（アーカイブ内を除く）のうち、見込みの日程がその月にかかるか、その月に作業ログがあるもの。完了も含む
  */
 export function memberDashboard(ctx: CalcContext, member: Member, month: YearMonth): MemberDashboard {
-	const from = firstDayOf(month);
-	const to = lastDayOf(month);
+	return { month, load: monthLoad(ctx, member, month), projects: assignedProjects(ctx, member, month), ...memberMonthTasks(ctx, member, month) };
+}
 
+/** その月の負荷（配分・予定・実績と基準工数） */
+export function monthLoad(ctx: CalcContext, member: Member, month: YearMonth): MemberLoad {
+	return memberLoad(member, periodOf(firstDayOf(month), 'month'), ctx.summary, ctx.calendar, ctx.allocations);
+}
+
+/** その月に工数配分のある案件（アーカイブ内も含む）。配分の多い順。同じ案件の行は合算 */
+export function assignedProjects(ctx: CalcContext, member: Member, month: YearMonth): AssignedProjectRow[] {
 	const allocatedByProject = new Map<NoteId, number>();
 	for (const project of ctx.projects.values()) {
 		for (const a of project.allocations) {
@@ -76,13 +83,18 @@ export function memberDashboard(ctx: CalcContext, member: Member, month: YearMon
 			allocatedByProject.set(project.id, (allocatedByProject.get(project.id) ?? 0) + a.hours);
 		}
 	}
-	const projects = [...allocatedByProject]
+	return [...allocatedByProject]
 		.flatMap(([id, allocated]) => {
 			const project = ctx.projects.get(id);
 			return project ? [{ project, allocated, hours: ctx.summary.allocation(id, month, member.id) }] : [];
 		})
 		.sort((a, b) => b.allocated - a.allocated || compareJa(a.project.title, b.project.title));
+}
 
+/** その月にかかる担当タスク（アーカイブ内を除く）。見込みの日程がかかるか、その月に作業ログがあるもの。完了も含む */
+export function memberMonthTasks(ctx: CalcContext, member: Member, month: YearMonth): Pick<MemberDashboard, 'tasks' | 'undatedTasks'> {
+	const from = firstDayOf(month);
+	const to = lastDayOf(month);
 	// このメンバーのその月の作業ログ（タスク別）
 	const logged = new Map<NoteId, Hours>();
 	for (const log of ctx.index.worklogs()) {
@@ -96,10 +108,10 @@ export function memberDashboard(ctx: CalcContext, member: Member, month: YearMon
 		}
 	}
 
-	const assigned = ctx.index.tasks().filter((t) => t.assignees.includes(member.id));
 	const inMonth: Task[] = [];
 	let undatedTasks = 0;
-	for (const t of assigned) {
+	for (const t of ctx.index.tasks()) {
+		if (!t.assignees.includes(member.id)) continue;
 		const s = ctx.schedule.schedules.get(t.id);
 		if ((s && overlaps(s.start, s.end, from, to)) || logged.has(t.id)) inMonth.push(t);
 		else if (!s) undatedTasks++;
@@ -107,14 +119,7 @@ export function memberDashboard(ctx: CalcContext, member: Member, month: YearMon
 	const tasks = taskRows(ctx, inMonth)
 		.map((row) => ({ ...row, monthHours: logged.get(row.task.id) ?? { planned: 0, actual: 0 } }))
 		.sort(compareByDate);
-
-	return {
-		month,
-		load: memberLoad(member, periodOf(from, 'month'), ctx.summary, ctx.calendar, ctx.allocations),
-		projects,
-		tasks,
-		undatedTasks,
-	};
+	return { tasks, undatedTasks };
 }
 
 /** 見込み開始・期限日の早い順。日程の無いものは最後。同じならタイトル順 */

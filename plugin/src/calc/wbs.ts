@@ -64,16 +64,22 @@ export function wbsTreeFor(
 	ctx: CalcContext,
 	filter: ViewFilter,
 	labels: RowLabels,
+	only?: ReadonlySet<NoteId>,
 ): { tree: WbsProject[]; narrowed: boolean } {
 	const projects = filterProjects(ctx.index.projects({ includeArchived: filter.includeArchived }), filter, ctx.statuses).sort((a, b) =>
 		compareNumeric(labels.project(a), labels.project(b)),
 	);
-	const narrowed = filter.members.length > 0 || filter.statuses.length > 0;
+	const narrowed = filter.members.length > 0 || filter.statuses.length > 0 || only !== undefined;
 	const visible = narrowed
-		? new Set(filterTasks(ctx.index.tasks({ includeArchived: true }), { ...filter, includeClosed: true }, ctx.projects, ctx.statuses).map((t) => t.id))
+		? new Set(
+				filterTasks(ctx.index.tasks({ includeArchived: true }), { ...filter, includeClosed: true }, ctx.projects, ctx.statuses)
+					.map((t) => t.id)
+					.filter((id) => !only || only.has(id)),
+			)
 		: undefined;
 	const tree = wbsTree(ctx, projects, visible, labels, ctx.statuses.task.map((s) => s.name));
-	return { tree, narrowed };
+	// 出してよいタスクを決めたときは、表示するタスクの無いプロジェクトも出さない
+	return { tree: only ? tree.filter((p) => p.epics.length > 0) : tree, narrowed };
 }
 
 /** 開閉の状態のキー。プロジェクト・エピック・「エピックなし」を区別する */

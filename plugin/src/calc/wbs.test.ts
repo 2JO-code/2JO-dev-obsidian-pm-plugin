@@ -66,6 +66,13 @@ describe('wbsTreeFor', () => {
 		// T4 は担当者の既定値が USER（testData）
 		expect(tree[0]?.epics.map((e) => e.tasks.map((t) => t.task.id))).toEqual([['T1'], ['T4']]);
 	});
+
+	it('出してよいタスクを渡すと、その中だけ。タスクの無いプロジェクトは出さない', () => {
+		const { tree, narrowed } = wbsTreeFor(ctx, EMPTY_FILTER, labels, new Set(['T4']));
+		expect(narrowed).toBe(true);
+		expect(tree.map((p) => p.epics.map((e) => e.tasks.map((t) => t.task.id)))).toEqual([[['T4']]]);
+		expect(wbsTreeFor(ctx, EMPTY_FILTER, labels, new Set()).tree).toEqual([]);
+	});
 });
 
 describe('開閉の状態', () => {

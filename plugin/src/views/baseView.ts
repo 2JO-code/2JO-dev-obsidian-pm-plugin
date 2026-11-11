@@ -3,11 +3,9 @@ import { ContextCache, type CalcContext } from '../calc/context';
 import { localToday } from '../calc/dates';
 import { EMPTY_FILTER, parseFilter, type ViewFilter } from '../calc/filter';
 import type { RowLabels } from '../calc/taskList';
-import { openChecklistEditor } from '../commands/editChecklist';
-import { statusColor } from '../config/statusColor';
 import type ProjectManagerPlugin from '../main';
 import type { StatusSets } from '../model';
-import { statusBadge } from './badges';
+import { pluginStatusBadge, pluginStatusCell, pluginTaskCellEnv, shellParts, type PanelHost, type Shell } from './panel';
 import type { TaskCellEnv } from './taskColumns';
 import { field } from '../parse/values';
 import { checkbox } from '../ui/controls';
@@ -15,21 +13,7 @@ import { checkbox } from '../ui/controls';
 /** 開いているビューで共有する計算用のデータ（設計書 11章） */
 const contextCache = new ContextCache();
 
-/** シェルの欄（設計書 9.1） */
-export interface Shell {
-	/** 見出しの右：件数・今日など */
-	summary: HTMLElement;
-	/** 絞り込み（`renderFilterBar`） */
-	filters: HTMLElement;
-	/** 表示の設定：単位・グループ・開閉・表示の切り替えなど（左寄せ） */
-	settings: HTMLElement;
-	/** 操作のボタン：作成・入力・書き出し・ほかの画面へ（右寄せ） */
-	actions: HTMLElement;
-	/** 凡例・注意 */
-	notes: HTMLElement;
-	/** スクロールする本体 */
-	body: HTMLElement;
-}
+export type { Shell };
 
 /**
  * このプラグインのビューの土台（設計書 9.1）。
@@ -94,25 +78,31 @@ export abstract class PmView extends ItemView {
 
 	/** ステータスを色の枠で囲んで出す（設計書 9.1） */
 	protected statusBadge(parent: HTMLElement, set: keyof StatusSets, status: string): void {
-		const { config, settings } = this.plugin;
-		statusBadge(parent, status, statusColor(config.statuses[set], settings.statusColors[set], status));
+		pluginStatusBadge(this.plugin, parent, set, status);
 	}
 
 	/** ステータスのセル */
 	protected statusCell(tr: HTMLElement, set: keyof StatusSets, status: string): HTMLElement {
-		const td = tr.createEl('td');
-		this.statusBadge(td, set, status);
-		return td;
+		return pluginStatusCell(this.plugin, tr, set, status);
 	}
 
 	/** タスクの行のセルを描くのに使うもの（`taskCells`）。epicWbs は WBS の列で使うエピックの番号 */
 	protected taskCellEnv(ctx: CalcContext, labels: RowLabels, epicWbs?: string): TaskCellEnv {
+		return pluginTaskCellEnv(this.plugin, ctx, labels, epicWbs);
+	}
+
+	/** このビューに載せる部品（設計書 9.12）に渡すもの */
+	protected panelHost(): PanelHost {
 		return {
-			calendar: ctx.calendar,
-			labels,
-			statusCell: (tr, status) => this.statusCell(tr, 'task', status),
-			openChecklist: (task) => void openChecklistEditor(this.plugin, task.path),
-			...(epicWbs !== undefined ? { epicWbs } : {}),
+			app: this.app,
+			plugin: this.plugin,
+			gridLines: () => this.gridLines,
+			changed: () => {
+				this.app.workspace.requestSaveLayout();
+				this.redraw();
+			},
+			save: () => this.app.workspace.requestSaveLayout(),
+			redraw: () => this.redraw(),
 		};
 	}
 
@@ -135,14 +125,7 @@ export abstract class PmView extends ItemView {
 		header.createSpan({ cls: 'pm-shell-title', text: this.getDisplayText() });
 		const description = this.getDescription();
 		if (description) header.createSpan({ cls: 'pm-shell-description', text: description });
-		const summary = header.createDiv({ cls: 'pm-shell-summary' });
-		const filters = controls.createDiv({ cls: 'pm-shell-filters' });
-		const bar = controls.createDiv({ cls: 'pm-shell-bar' });
-		const settings = bar.createDiv({ cls: 'pm-shell-settings' });
-		// 「罫線を表示」は、ビューが足す表示の設定より後ろの専用の欄に置く
-		const common = bar.createDiv({ cls: 'pm-shell-settings' });
-		const actions = bar.createDiv({ cls: 'pm-shell-actions' });
-		const notes = controls.createDiv({ cls: 'pm-shell-notes' });
+		const { common, ...shell } = shellParts(controls, header, el.createDiv({ cls: 'pm-view-body' }));
 		if (options.grid) {
 			checkbox(common, '罫線を表示', this.gridLines, (on) => {
 				this.gridLines = on;
@@ -150,7 +133,7 @@ export abstract class PmView extends ItemView {
 				this.redraw();
 			});
 		}
-		return { summary, filters, settings, actions, notes, body: el.createDiv({ cls: 'pm-view-body' }) };
+		return shell;
 	}
 
 	/** スクロール位置を保って描き直す。見えていなければ見えたときまで後回し。例外は画面に表示する（設計書 9章） */

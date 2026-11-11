@@ -1,56 +1,20 @@
 import type { ViewStateResult } from 'obsidian';
 import type { CalcContext } from '../calc/context';
 import { addMonths, monthOfDate } from '../calc/dates';
-import { hoursText, membersOf, rateText } from '../calc/format';
-import { loadHoursText } from '../calc/load';
-import {
-	memberDashboard,
-	parseMemberDashboardOptions,
-	pickMember,
-	type MemberDashboard,
-	type MemberDashboardOptions,
-} from '../calc/memberDashboard';
-import type { RowLabels } from '../calc/taskList';
-import { openMemberForm, openTaskForm } from '../commands/editTask';
+import { parseMemberDashboardOptions, pickMember, type MemberDashboardOptions } from '../calc/memberDashboard';
 import { openWorklogModal } from '../commands/worklog';
 import type ProjectManagerPlugin from '../main';
-import type { Member } from '../model';
-import { projectLabel, type ProjectDisplayName } from '../settings';
-import { tableHeader } from '../ui/table';
+import { activePanel, MEMBER_PANEL_LABELS, type MemberDashboardLayout, type MemberPanelKind } from '../memberDashboardLayout';
 import { field } from '../parse/values';
-import { actionButtons, formClick } from './actions';
-import { kindMark, periodCells } from './badges';
+import { MemberPanelsModal } from '../ui/memberPanelsModal';
+import { actionButtons } from './actions';
 import { PmView } from './baseView';
 import { memberChoices } from './choices';
 import { singleSelect } from './filterBar';
+import { createMemberPanel, initialMemberPanelState } from './memberPanels';
 import { openView } from './openView';
-import { TASK_COLUMNS, taskCells, titleColumn, type TaskColumn } from './taskColumns';
-import { MEMBER_DASHBOARD_VIEW_TYPE, MEMBER_STATUS_VIEW_TYPE, PROJECT_STATUS_VIEW_TYPE } from './viewTypes';
-import type { AssignedTaskRow } from '../calc/memberDashboard';
-
-/** 担当タスクの表の列。予定・実績はこのメンバーのその月の分 */
-const TASK_TABLE: TaskColumn[] = [
-	titleColumn(),
-	TASK_COLUMNS.project,
-	TASK_COLUMNS.epic,
-	TASK_COLUMNS.status,
-	TASK_COLUMNS.start,
-	TASK_COLUMNS.end,
-	TASK_COLUMNS.due,
-	TASK_COLUMNS.estimate,
-	{
-		label: '月の予定(h)',
-		numeric: true,
-		cell: (tr, row) => tr.createEl('td', { cls: 'is-numeric', text: hoursText((row as AssignedTaskRow).monthHours.planned) }),
-	},
-	{
-		label: '月の実績(h)',
-		numeric: true,
-		cell: (tr, row) => tr.createEl('td', { cls: 'is-numeric', text: hoursText((row as AssignedTaskRow).monthHours.actual) }),
-	},
-	TASK_COLUMNS.progress,
-	TASK_COLUMNS.warnings,
-];
+import { panelShell, type Panel, type PanelScope } from './panel';
+import { MEMBER_DASHBOARD_VIEW_TYPE, MEMBER_STATUS_VIEW_TYPE } from './viewTypes';
 
 /** メンバーダッシュボードのビューと、開くコマンドを登録する */
 export function registerMemberDashboardView(plugin: ProjectManagerPlugin): void {
@@ -65,6 +29,8 @@ export function registerMemberDashboardView(plugin: ProjectManagerPlugin): void 
 /** メンバーダッシュボード（要件4.14、設計書 9.11） */
 export class MemberDashboardView extends PmView {
 	private options: MemberDashboardOptions = {};
+	/** 作った部品。状態は個人の設定に保存する（設計書 9.12） */
+	private readonly panels = new Map<MemberPanelKind, Panel>();
 
 	getViewType(): string {
 		return MEMBER_DASHBOARD_VIEW_TYPE;
@@ -79,7 +45,7 @@ export class MemberDashboardView extends PmView {
 	}
 
 	protected getDescription(): string {
-		return '1人のメンバーの、月ごとのアサイン案件（工数配分）と担当タスク';
+		return '1人のメンバーの、月ごとのアサイン案件と担当タスク。出す部品と並びは「部品を選ぶ」で各自が決められます';
 	}
 
 	getState(): Record<string, unknown> {
@@ -99,13 +65,13 @@ export class MemberDashboardView extends PmView {
 
 	protected draw(el: HTMLElement, ctx: CalcContext): void {
 		el.addClass('pm-member-dashboard');
-		const mode = this.plugin.personal.projectDisplayName;
 		const { summary, settings, actions, body } = this.shell(el, { grid: true });
 		const member = pickMember(ctx.index.members(), this.options.member);
 		const thisMonth = monthOfDate(ctx.today);
 		const month = this.options.month ?? thisMonth;
 
 		actionButtons(actions, [
+			{ text: '部品を選ぶ', tooltip: '出す部品・並び順・見せ方（タブ／縦並び）を選びます', onClick: () => this.editLayout() },
 			{ text: '作業ログを入力', onClick: () => openWorklogModal(this.plugin) },
 			{ text: 'メンバー状況', onClick: () => void openView(this.app, MEMBER_STATUS_VIEW_TYPE) },
 		]);
@@ -119,12 +85,70 @@ export class MemberDashboardView extends PmView {
 		if (!choices.some((c) => c.value === member.id)) choices.unshift({ value: member.id, label: `${member.title}（在籍なし）` });
 		singleSelect(settings, 'メンバー', member.id, choices, (id) => this.setOptions({ ...this.options, member: id }));
 		this.monthNav(settings, month, thisMonth);
-
-		const data = memberDashboard(ctx, member, month);
 		summary.setText(`${member.title}／${month}`);
-		this.drawLoad(body, member, data);
-		this.drawProjects(body, ctx, data, mode);
-		this.drawTasks(body, ctx, data, mode);
+
+		const scope: PanelScope = { member, month };
+		const layout = this.layout;
+		const visible = layout.panels.filter((p) => p.visible);
+		if (visible.length === 0) {
+			body.createDiv({ cls: 'pm-view-empty', text: '出す部品がありません。「部品を選ぶ」で選んでください' });
+			return;
+		}
+		if (layout.style === 'stack') {
+			for (const p of visible) this.drawPanel(body, p.id, ctx, scope);
+			return;
+		}
+		const active = activePanel(layout);
+		const tabs = body.createDiv({ cls: 'pm-panel-tabs', attr: { role: 'tablist' } });
+		for (const p of visible) {
+			const tab = tabs.createEl('button', { cls: 'pm-panel-tab', text: MEMBER_PANEL_LABELS[p.id], attr: { role: 'tab' } });
+			tab.setAttr('aria-selected', String(p.id === active));
+			if (p.id === active) tab.addClass('is-active');
+			tab.addEventListener('click', () => this.saveLayout({ ...this.layout, active: p.id }));
+		}
+		if (active) this.drawPanel(body, active, ctx, scope);
+	}
+
+	/** 個人の設定の部品の配置 */
+	private get layout(): MemberDashboardLayout {
+		return this.plugin.personal.memberDashboard;
+	}
+
+	private saveLayout(layout: MemberDashboardLayout): void {
+		this.plugin.personal.memberDashboard = layout;
+		this.plugin.savePersonal();
+		this.redraw();
+	}
+
+	private editLayout(): void {
+		new MemberPanelsModal(this.app, this.layout, (layout) => this.saveLayout(layout)).open();
+	}
+
+	/** 部品を1つ描く。初めて使う部品は作って、保存されていた状態を読む */
+	private drawPanel(parent: HTMLElement, kind: MemberPanelKind, ctx: CalcContext, scope: PanelScope): void {
+		let panel = this.panels.get(kind);
+		if (!panel) {
+			const store = (redraw: boolean) => {
+				const layout = this.layout;
+				const state = created.getState();
+				this.plugin.personal.memberDashboard = { ...layout, panels: layout.panels.map((p) => (p.id === kind ? { ...p, state } : p)) };
+				this.plugin.savePersonal();
+				if (redraw) this.redraw();
+			};
+			const created = createMemberPanel(kind, {
+				app: this.app,
+				plugin: this.plugin,
+				gridLines: () => this.gridLines,
+				changed: () => store(true),
+				save: () => store(false),
+				redraw: () => this.redraw(),
+			});
+			const saved = this.layout.panels.find((p) => p.id === kind)?.state ?? {};
+			created.setState(Object.keys(saved).length > 0 ? saved : initialMemberPanelState(kind));
+			this.panels.set(kind, created);
+			panel = created;
+		}
+		panel.draw(panelShell(parent, panel.title), ctx, scope);
 	}
 
 	/** 月の前・次・選択・今月への移動 */
@@ -144,91 +168,5 @@ export class MemberDashboardView extends PmView {
 		next.setAttr('aria-label', '次の月');
 		next.addEventListener('click', () => move(addMonths(month, 1)));
 		nav.createEl('button', { text: '今月' }).addEventListener('click', () => move(thisMonth));
-	}
-
-	/** 月の負荷（配分・予定・実績の時間と負荷率） */
-	private drawLoad(parent: HTMLElement, member: Member, data: MemberDashboard): void {
-		const { load } = data;
-		const section = parent.createDiv({ cls: 'pm-section' });
-		const head = section.createDiv({ cls: 'pm-section-head' });
-		const name = head.createEl('h4', { text: member.title, cls: 'pm-link' });
-		name.setAttr('aria-label', 'メンバーの入力補助フォームを開く');
-		formClick(name, () => openMemberForm(this.plugin, member.path));
-		const line = section.createDiv({ cls: 'pm-member-dashboard-load' });
-		const item = (label: string, hours: number, rate: number | null, level: string) => {
-			const span = line.createSpan({ cls: `pm-load-cell pm-load-${level}` });
-			span.setText(`${label} ${hoursText(hours)}h（${rateText(rate)}）`);
-		};
-		item('配分', load.allocated, load.allocatedRate, load.allocatedLevel);
-		item('予定', load.work.planned, load.plannedRate, load.plannedLevel);
-		item('実績', load.work.actual, load.actualRate, load.actualLevel);
-		line.createSpan({ text: `基準 ${hoursText(load.base)}h` });
-		line.setAttr('aria-label', loadHoursText(load));
-	}
-
-	/** その月にアサインされている案件（工数配分のある案件） */
-	private drawProjects(parent: HTMLElement, ctx: CalcContext, data: MemberDashboard, mode: ProjectDisplayName): void {
-		const section = parent.createDiv({ cls: 'pm-section' });
-		section.createEl('h4', { text: `アサインされている案件（${data.projects.length} 件）` });
-		if (data.projects.length === 0) {
-			section.createDiv({ cls: 'pm-view-empty', text: 'この月の工数配分はありません' });
-			return;
-		}
-		const table = section.createEl('table', { cls: 'pm-table' });
-		tableHeader(table, [
-			'プロジェクト',
-			'案件ID',
-			'ステータス',
-			{ label: '期間', colspan: 2 },
-			'責任者',
-			{ label: '配分(h)', numeric: true },
-			{ label: '予定(h)', numeric: true },
-			{ label: '実績(h)', numeric: true },
-		]);
-		const body = table.createEl('tbody');
-		for (const row of data.projects) {
-			const { project } = row;
-			const tr = body.createEl('tr', { cls: 'is-clickable' });
-			tr.addEventListener('click', () => void openView(this.app, PROJECT_STATUS_VIEW_TYPE, { project: project.id }));
-			kindMark(tr.createEl('td', { text: projectLabel(project, mode) }), 'project');
-			tr.createEl('td', { text: project.caseId });
-			this.statusCell(tr, 'project', project.status);
-			const manager = membersOf(ctx, project.manager);
-			periodCells(tr, ctx.calendar, project.start, project.due, manager);
-			tr.createEl('td', { text: manager.map((m) => m.title).join('、') });
-			tr.createEl('td', { cls: 'is-numeric', text: hoursText(row.allocated) });
-			const planned = tr.createEl('td', { cls: 'is-numeric', text: hoursText(row.hours.planned) });
-			if (row.hours.planned > row.allocated) {
-				planned.addClass('pm-text-error');
-				planned.setAttr('aria-label', '予定が配分を超えています');
-			}
-			tr.createEl('td', { cls: 'is-numeric', text: hoursText(row.hours.actual) });
-		}
-	}
-
-	/** その月にかかる担当タスク */
-	private drawTasks(parent: HTMLElement, ctx: CalcContext, data: MemberDashboard, mode: ProjectDisplayName): void {
-		const section = parent.createDiv({ cls: 'pm-section' });
-		section.createEl('h4', { text: `担当タスク（${data.tasks.length} 件）` });
-		section.createDiv({
-			cls: 'pm-note',
-			text:
-				'見込みの日程がこの月にかかるか、この月に作業ログがあるタスク（完了も含む）。月の予定・実績はこのメンバーのこの月の分' +
-				(data.undatedTasks > 0 ? `。ほかに日程の無い担当タスクが ${data.undatedTasks} 件あります（タスク一覧で確認）` : ''),
-		});
-		if (data.tasks.length === 0) {
-			section.createDiv({ cls: 'pm-view-empty', text: 'この月にかかる担当タスクはありません' });
-			return;
-		}
-		const labels: RowLabels = { project: (p) => projectLabel(p, mode) };
-		const table = section.createEl('table', { cls: 'pm-table' });
-		tableHeader(table, TASK_TABLE);
-		const body = table.createEl('tbody');
-		const env = this.taskCellEnv(ctx, labels);
-		for (const row of data.tasks) {
-			const tr = body.createEl('tr', { cls: 'is-clickable' });
-			formClick(tr, () => openTaskForm(this.plugin, row.task.path));
-			taskCells(tr, row, TASK_TABLE, env);
-		}
 	}
 }

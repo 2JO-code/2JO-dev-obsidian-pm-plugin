@@ -1,6 +1,7 @@
 import { Plugin } from 'obsidian';
 import { registerAliasSync } from './commands/aliasSync';
 import { registerConfigWatcher } from './commands/configWatcher';
+import { registerCopyProject } from './commands/copyProject';
 import { registerCreateCommands } from './commands/createNote';
 import { registerEditChecklist } from './commands/editChecklist';
 import { registerEditHolidays } from './commands/editHolidays';
@@ -21,6 +22,7 @@ import { registerDashboardView } from './views/dashboardView';
 import { registerGanttView } from './views/ganttView';
 import { registerHealthView } from './views/healthView';
 import { registerKanbanView } from './views/kanbanView';
+import { registerMemberDashboardView } from './views/memberDashboardView';
 import { registerMemberStatusView } from './views/memberStatusView';
 import { registerProjectStatusView } from './views/projectStatusView';
 import { registerTaskListView } from './views/taskListView';
@@ -49,6 +51,7 @@ export default class ProjectManagerPlugin extends Plugin {
 		registerKindColors(this);
 		registerReload(this);
 		registerCreateCommands(this);
+		registerCopyProject(this);
 		registerAliasSync(this);
 		registerEditTask(this);
 		registerEditHolidays(this);
@@ -57,6 +60,7 @@ export default class ProjectManagerPlugin extends Plugin {
 		registerHealthView(this);
 		registerTaskListView(this);
 		registerMemberStatusView(this);
+		registerMemberDashboardView(this);
 		registerProjectStatusView(this);
 		registerDashboardView(this);
 		registerKanbanView(this);

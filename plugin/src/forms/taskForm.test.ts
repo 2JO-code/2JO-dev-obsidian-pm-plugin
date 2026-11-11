@@ -20,9 +20,7 @@ const form = (overrides: Partial<TaskForm> = {}): TaskForm => ({
 	assignees: [],
 	estimate: '',
 	dependsOn: [],
-	lagDays: '',
 	start: '',
-	durationDays: '',
 	due: '',
 	planStart: '',
 	planEnd: '',
@@ -101,17 +99,15 @@ describe('taskFormToUpdate', () => {
 			assignees: [`[[${USER}]]`],
 			estimate: 7.5,
 			depends_on: [],
-			lag_days: null,
 			start: '2026-11-04',
-			duration_days: null,
 			due: '2026-11-10',
 			plan_start: '2026-11-04',
 			plan_end: '2026-11-09',
 		});
 	});
 
-	it('書き込むと、日付は YYYY-MM-DD の文字列のまま、キーは決めた順になる', () => {
-		const fm: Record<string, unknown> = { due: '2026-12-01', type: 'task', memo: 'x' };
+	it('書き込むと、日付は YYYY-MM-DD の文字列のまま、キーは決めた順になる。lag_days はそのまま残す', () => {
+		const fm: Record<string, unknown> = { due: '2026-12-01', type: 'task', memo: 'x', lag_days: 2 };
 		applyFrontmatter(fm, 'task', taskFormToUpdate(form({ due: '2026-11-10' }), statuses, SELF).update);
 		expect(fm).toEqual({
 			type: 'task',
@@ -124,9 +120,8 @@ describe('taskFormToUpdate', () => {
 			assignees: [],
 			estimate: null,
 			depends_on: [],
-			lag_days: null,
+			lag_days: 2,
 			start: null,
-			duration_days: null,
 			due: '2026-11-10',
 			plan_start: null,
 			plan_end: null,
@@ -141,7 +136,7 @@ describe('taskFormToUpdate', () => {
 
 	it('入力の誤りを返す', () => {
 		const { errors } = taskFormToUpdate(
-			form({ title: ' ', project: '', status: '謎', wbs: '0', estimate: '0.3', lagDays: '1.5', due: '2026-02-30', dependsOn: [SELF] }),
+			form({ title: ' ', project: '', status: '謎', wbs: '0', estimate: '0.3', due: '2026-02-30', dependsOn: [SELF] }),
 			statuses,
 			SELF,
 		);
@@ -152,7 +147,6 @@ describe('taskFormToUpdate', () => {
 			'先行タスクに自分自身は選べません',
 			'WBS番号は1以上の整数で入力してください',
 			'見積工数は0以上で0.25刻みの数値で入力してください',
-			'相対日数は0以上の整数で入力してください',
 			'期限日の日付が正しくありません',
 		]);
 	});
@@ -171,14 +165,14 @@ describe('taskFormToUpdate', () => {
 		expect(taskFormToUpdate(form({ assignees: [USER, USER] }), statuses, SELF).errors).toEqual([]);
 	});
 
-	it('保存はできるが知らせること（期限日が開始日より前、使われない入力）', () => {
+	it('保存はできるが知らせること（期限日が開始日より前）', () => {
 		const { errors, warnings } = taskFormToUpdate(
-			form({ start: '2026-11-10', due: '2026-11-01', lagDays: '2' }),
+			form({ start: '2026-11-10', due: '2026-11-01', dependsOn: [] }),
 			statuses,
 			SELF,
 		);
 		expect(errors).toEqual([]);
-		expect(warnings).toEqual(['期限日が開始日より前になっています', '相対日数は先行タスクがあるときだけ使われます']);
+		expect(warnings).toEqual(['期限日が開始日より前になっています']);
 	});
 
 	it('読めないリンクは元のまま書き、知らせる（読めるものはリンクにする）', () => {

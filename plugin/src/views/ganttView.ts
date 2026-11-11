@@ -382,7 +382,7 @@ export class GanttView extends PmView {
 		const days = this.hours?.get(task.id);
 		if (days) worklogCells(r.track, scale, days, this.worklogMode, s);
 		if (!s) {
-			r.track.createSpan({ cls: 'pm-gantt-none', text: '日程を計算できません（日付が無い、先行タスクの日程が出せない、または依存関係が循環しています）' });
+			r.track.createSpan({ cls: 'pm-gantt-none', text: '日程を計算できません（開始日も期限日もありません）' });
 			return r.row;
 		}
 		const info: BarInfo = {

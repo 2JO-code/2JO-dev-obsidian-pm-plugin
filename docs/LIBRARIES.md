@@ -29,7 +29,7 @@
 
 | 名前 | 指定 | 実際の版 | ライセンス | 何のためか |
 | --- | --- | --- | --- | --- |
-| `obsidian` | `latest` | 1.12.3 | MIT | Obsidian API の型定義。型チェックと入力補完 |
+| `obsidian` | `1.12.3` | 1.12.3 | MIT | Obsidian API の型定義。型チェックと入力補完 |
 | `typescript` | `^5.8.3` | 5.9.3 | Apache-2.0 | `npm run build` で型チェック（`tsc -noEmit`） |
 | `esbuild` | `0.25.5` | 0.25.5 | MIT | `src/main.ts` から `main.js` を作る（バンドル）。`esbuild.config.mjs` |
 | `@types/node` | `^22.15.17` | 22.19.17 | MIT | Node.js 標準機能（`fs`・`path`）の型定義 |
@@ -57,8 +57,9 @@
 
 ## 5. 気をつけること
 
-- `obsidian` だけ版を `latest`（いつも最新）にしている（公式サンプルのまま）
-  - `npm install` し直すと型定義の版が変わり、型チェックの結果が変わることがある。困ったら版を固定する
+- `obsidian` は版を `^` なしで固定している
+  - 版が変わると型定義が変わり、型チェックの結果が変わるため
+  - 上げるときは版を書き換えて `npm install` し、build・lint・テストを通す
 - `dependencies` に足すと `main.js` が大きくなり、利用者の手元で動くコードが増える
   - 自前で書けないか先に考える。足すときは事前にユーザーに確認する（CLAUDE.md）
 - 開発に使う Node.js：確認時は v26.13.0

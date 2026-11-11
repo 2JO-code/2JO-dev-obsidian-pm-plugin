@@ -996,7 +996,7 @@ td .pm-progress-pct {
 	border-top: 1px solid var(--pm-grid-color);
 }
 
-/* 見出しが2段なので上に固定しない。表計算の見出しのように塗る */
+/* 見出しが2段なので上に固定しない（作業ログの表は下で固定し直す）。表計算の見出しのように塗る */
 .pm-allocation-matrix th,
 .pm-worklog-grid th {
 	position: static;
@@ -1289,6 +1289,35 @@ td .pm-progress-pct {
 .pm-worklog-grid-sum td {
 	background: var(--background-secondary);
 	font-weight: var(--font-semibold);
+}
+
+/* 作業ログの表は枠の中で縦にも流し、日付の見出しを上、日の合計を下に固定する */
+.pm-worklog-grid-wrap {
+	max-height: 60vh;
+	overflow: auto;
+}
+
+.pm-worklog-grid thead th {
+	position: sticky;
+	top: 0;
+	z-index: 4;
+}
+
+.pm-worklog-grid thead th.pm-worklog-grid-task,
+.pm-worklog-grid thead th.pm-worklog-grid-pin {
+	z-index: 5;
+}
+
+.pm-worklog-grid-sum td {
+	position: sticky;
+	bottom: 0;
+	z-index: 2;
+	box-shadow: inset 0 1px 0 var(--background-modifier-border);
+}
+
+.pm-worklog-grid-sum td.pm-worklog-grid-task,
+.pm-worklog-grid-sum td.pm-worklog-grid-pin {
+	z-index: 3;
 }
 
 .pm-worklog-grid-add-row td {
@@ -2387,9 +2416,26 @@ td .pm-progress-pct {
 	background: var(--background-modifier-hover);
 }
 
+/* 日の合計の行は、縦に流しても画面の下に固定する */
+.pm-worklog-sum {
+	position: sticky;
+	bottom: 0;
+	z-index: 3;
+	border-top: 1px solid var(--background-modifier-border);
+}
+
 .pm-worklog-sum .pm-gantt-label,
 .pm-worklog-sum .pm-gantt-person,
 .pm-worklog-sum .pm-gantt-track {
 	background: var(--background-secondary);
 	font-weight: var(--font-semibold);
+}
+
+/* メンバーダッシュボード：月の負荷の一行（設計書 9.11） */
+.pm-member-dashboard-load {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--size-4-2) var(--size-4-3);
+	margin-bottom: var(--size-4-2);
 }

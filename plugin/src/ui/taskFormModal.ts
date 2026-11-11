@@ -154,7 +154,6 @@ export class TaskFormModal extends FormModal {
 	/** 日程のまとまり。使わない方の欄は消さずに薄く出す（設計書 4.12） */
 	private renderSchedule(el: HTMLElement): void {
 		const { form, options } = this;
-		const hasDeps = form.dependsOn.length > 0;
 		const grid = formSection(el, '日程', 2);
 		this.multiSelect(
 			formField(grid, '先行タスク', { full: true }),
@@ -171,17 +170,11 @@ export class TaskFormModal extends FormModal {
 			this.updatePreview();
 		};
 		dateInput(
-			formField(grid, '開始日', { hint: hasDeps ? '先行タスクがあるので使いません' : '先行タスクがないときに使う', unused: hasDeps }),
+			formField(grid, '開始日', { hint: '空なら期限日の1日だけ' }),
 			form.start,
 			onChange((v) => (form.start = v)),
 		);
-		dateInput(formField(grid, '期限日', { hint: '固定の期限' }), form.due, onChange((v) => (form.due = v)));
-		numberInput(
-			formField(grid, '相対日数', { hint: hasDeps ? '先行タスクの終了から何稼働日後に始めるか' : '先行タスクがあるときに使う', unused: !hasDeps }),
-			form.lagDays,
-			onChange((v) => (form.lagDays = v)),
-		);
-		numberInput(formField(grid, '所要日数', { hint: '稼働日' }), form.durationDays, onChange((v) => (form.durationDays = v)));
+		dateInput(formField(grid, '期限日', { hint: '固定の期限。見込み終了日になる' }), form.due, onChange((v) => (form.due = v)));
 		// 当初は最初の計画。見込みの日程と比べて遅れを出す（設計書 11.18）
 		dateInput(formField(grid, '当初開始日', { hint: '最初の計画。遅れを測る基準' }), form.planStart, onChange((v) => (form.planStart = v)));
 		dateInput(formField(grid, '当初終了日', { hint: '見込み終了日と比べます' }), form.planEnd, onChange((v) => (form.planEnd = v)));
@@ -197,7 +190,7 @@ export class TaskFormModal extends FormModal {
 		if (!previewEl) return;
 		const self = options.allTasks.find((t) => t.id === options.taskId);
 		const preview: SchedulePreview = self
-			? previewTaskSchedule(form, self, options.allTasks, options.statuses, options.calendar, options.today)
+			? previewTaskSchedule(form, self, options.statuses, options.calendar, options.today)
 			: { kind: 'none', text: '計算できません' };
 		previewEl.setText(preview.text);
 		previewEl.toggleClass('is-late', preview.kind === 'late');

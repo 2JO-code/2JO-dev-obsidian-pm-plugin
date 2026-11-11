@@ -60,12 +60,8 @@ export interface Task extends TitledNote {
 	estimate?: number;
 	/** 先行タスク */
 	dependsOn: NoteId[];
-	/** 先行タスク終了からの稼働日数 */
-	lagDays?: number;
-	/** 先行タスクがない場合の開始日 */
+	/** 開始日 */
 	start?: IsoDate;
-	/** 所要日数（稼働日） */
-	durationDays?: number;
 	/** 期限日（固定値） */
 	due?: IsoDate;
 	/** 当初開始日（最初の計画。固定値） */

@@ -13,3 +13,4 @@ export const GANTT_VIEW_TYPE = 'pm-gantt';
 export const ARCHIVE_VIEW_TYPE = 'pm-archive';
 export const HEALTH_VIEW_TYPE = 'pm-health';
 export const WORKLOG_VIEW_TYPE = 'pm-worklog';
+export const MEMBER_DASHBOARD_VIEW_TYPE = 'pm-member-dashboard';

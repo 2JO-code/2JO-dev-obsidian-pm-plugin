@@ -6,17 +6,15 @@ import type { WorkCalendar } from './workdays';
 export interface TaskSchedule {
 	start: IsoDate;
 	end: IsoDate;
-	/** 遅れ（自分の遅れか、先行の遅れ）で開始日がずれたか */
+	/** 未着手のまま開始日を過ぎて、開始日をずらしたか */
 	startDelayed: boolean;
 	/** 遅れで終了日がずれたか */
 	endDelayed: boolean;
 }
 
 export interface ScheduleResult {
-	/** 日程を出せないタスク（日付が無い、循環している、先行の日程が出せない）は入らない */
+	/** 日程を出せないタスク（開始日も期限日も無い）は入らない */
 	schedules: Map<NoteId, TaskSchedule>;
-	/** depends_on の循環。1つの循環に入るタスクのID（自分自身への依存も含む） */
-	cycles: NoteId[][];
 }
 
 /** depends_on の循環を探す（Tarjan の強連結成分。設計書 11.9） */
@@ -62,7 +60,7 @@ export function findCycles(tasks: readonly Task[]): NoteId[][] {
 
 /**
  * 全タスクの見込みの日程（要件4.7「日程計算の細かい決まり」、設計書 11.9）。
- * @param tasks 先行タスクを引くため、アーカイブ内も含めて渡す
+ * 先行タスク・相対日数・所要日数は使わない（自分の開始日・期限日だけで決める）
  */
 export function computeSchedules(
 	tasks: readonly Task[],
@@ -70,73 +68,42 @@ export function computeSchedules(
 	calendar: WorkCalendar,
 	today: IsoDate,
 ): ScheduleResult {
-	const byId = new Map(tasks.map((t) => [t.id, t]));
-	const cycles = findCycles(tasks);
-	const inCycle = new Set(cycles.flat());
-	const memo = new Map<NoteId, TaskSchedule | null>();
-
-	const compute = (task: Task): TaskSchedule | null => {
-		const cached = memo.get(task.id);
-		if (cached !== undefined) return cached;
-		const result = inCycle.has(task.id) ? null : scheduleOf(task);
-		memo.set(task.id, result);
-		return result;
-	};
-
-	const scheduleOf = (task: Task): TaskSchedule | null => {
-		const category = findStatus(statuses, task.status)?.category;
-		const duration = task.durationDays !== undefined ? Math.max(task.durationDays, 1) : undefined;
-
-		let start: IsoDate;
-		let startDelayed = false;
-		const preds = task.dependsOn.flatMap((id) => byId.get(id) ?? []);
-		if (preds.length > 0) {
-			// 先行の終了日（遅れは反映済み）の最も遅い日から lag_days 稼働日後
-			let latest: TaskSchedule | undefined;
-			for (const p of preds) {
-				const s = compute(p);
-				if (!s) return null;
-				if (!latest || s.end > latest.end) latest = s;
-			}
-			if (!latest) return null;
-			start = calendar.workdayOnOrAfter(calendar.addWorkdays(latest.end, task.lagDays ?? 0));
-			startDelayed = latest.endDelayed;
-		} else if (task.start) {
-			start = calendar.workdayOnOrAfter(task.start);
-		} else if (task.due) {
-			// 期限日に終わるように逆算する
-			const last = calendar.workdayOnOrAfter(task.due, true);
-			start = duration ? calendar.addWorkdays(last, -(duration - 1)) : last;
-		} else {
-			return null;
-		}
-
-		if (category === 'not_started' && start < today) {
-			start = calendar.workdayOnOrAfter(today);
-			startDelayed = true;
-		}
-
-		// 終了日が開始日から決まるとき（所要日数あり・期限日なし・期限日より遅い開始）は、開始日のずれが伝わる
-		let end: IsoDate;
-		let endFollowsStart = true;
-		if (duration) end = calendar.addWorkdays(start, duration - 1);
-		else if (task.due && task.due >= start) {
-			end = task.due;
-			endFollowsStart = false;
-		} else end = start;
-		let endDelayed = startDelayed && endFollowsStart;
-
-		if (category !== 'done' && end < today) {
-			end = today;
-			endDelayed = true;
-		}
-		return { start, end, startDelayed, endDelayed };
-	};
-
 	const schedules = new Map<NoteId, TaskSchedule>();
 	for (const t of tasks) {
-		const s = compute(t);
+		const s = scheduleOf(t, statuses, calendar, today);
 		if (s) schedules.set(t.id, s);
 	}
-	return { schedules, cycles };
+	return { schedules };
+}
+
+/** 1件の見込みの日程。開始日も期限日も無ければ null */
+function scheduleOf(task: Task, statuses: readonly StatusDef[], calendar: WorkCalendar, today: IsoDate): TaskSchedule | null {
+	const category = findStatus(statuses, task.status)?.category;
+	let start: IsoDate;
+	let startDelayed = false;
+	if (task.start) {
+		start = calendar.workdayOnOrAfter(task.start);
+	} else if (task.due) {
+		// 開始日が無ければ期限日の1日だけ（休日なら前の稼働日）
+		start = calendar.workdayOnOrAfter(task.due, true);
+	} else {
+		return null;
+	}
+
+	if (category === 'not_started' && start < today) {
+		start = calendar.workdayOnOrAfter(today);
+		startDelayed = true;
+	}
+
+	// 終了日は期限日。期限日が無いか開始日より前なら開始日（このときは開始日のずれが伝わる）
+	const due = task.due;
+	const endIsDue = due !== undefined && due >= start;
+	let end: IsoDate = endIsDue ? due : start;
+	let endDelayed = startDelayed && !endIsDue;
+
+	if (category !== 'done' && end < today) {
+		end = today;
+		endDelayed = true;
+	}
+	return { start, end, startDelayed, endDelayed };
 }

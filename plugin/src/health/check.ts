@@ -91,7 +91,7 @@ export function checkHealth(index: VaultIndex, statuses: StatusSets): NoteProble
 		for (const id of cycle) {
 			const task = byId.get(id);
 			if (task) {
-				problems.push(problem(task.path, `depends_on が循環しています（${route}）。日程を計算できません`, 'form'));
+				problems.push(problem(task.path, `depends_on が循環しています（${route}）`, 'form'));
 			}
 		}
 	}

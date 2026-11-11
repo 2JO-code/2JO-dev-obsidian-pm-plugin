@@ -46,9 +46,9 @@ describe('progressPlan', () => {
 	// T1 は 11/2〜11/3、P1 は 11/5 に終わる予定。停止系と日程の無いタスクは線に入らない
 	const idx = indexOf([
 		project(PJT),
-		task('T1', { status: '完了', start: '2026-11-02', durationDays: 2 }),
-		task('P1', { status: '進行中', start: '2026-11-05', durationDays: 1 }),
-		task('S1', { status: '保留', start: '2026-11-02', durationDays: 1 }),
+		task('T1', { status: '完了', start: '2026-11-02', due: '2026-11-03' }),
+		task('P1', { status: '進行中', start: '2026-11-05', due: '2026-11-05' }),
+		task('S1', { status: '保留', start: '2026-11-02', due: '2026-11-02' }),
 		task('N1', { status: '未着手' }),
 	]);
 	const c = buildContext(idx, defaultStatusSets(), defaultCalendar(), '2026-11-04');

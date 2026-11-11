@@ -6,6 +6,7 @@ import type { WorkCalendar } from '../calc/workdays';
 import { dashboard, MILESTONE_DAYS, type Dashboard } from '../calc/dashboard';
 import { filterProjects } from '../calc/filter';
 import { isLoadChartPeriod, isLoadChartSort, loadChart, LOAD_CHART_PERIODS, LOAD_CHART_SORTS, type LoadChartPeriod, type LoadChartSort } from '../calc/loadChart';
+import { openCopyProjectModal } from '../commands/copyProject';
 import { openNewNoteModal } from '../commands/createNote';
 import { openMemberForm } from '../commands/editTask';
 import { exportHtmlReport } from '../commands/htmlReport';
@@ -100,6 +101,7 @@ export class DashboardView extends PmView {
 		actionButtons(actions, [
 			{ text: '作業ログを入力', onClick: () => openWorklogModal(this.plugin) },
 			{ text: '新しいプロジェクト', onClick: () => openNewNoteModal(this.plugin, 'project') },
+			{ text: 'プロジェクトを複製', tooltip: '既存のプロジェクトをひな形にして作ります', onClick: () => openCopyProjectModal(this.plugin) },
 			{
 				text: 'HTMLレポートを書き出す',
 				tooltip: '絞り込みに関係なく、クローズしていない全プロジェクトを書き出します',

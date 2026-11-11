@@ -18,9 +18,7 @@ export interface TaskForm {
 	assignees: NoteId[];
 	estimate: string;
 	dependsOn: NoteId[];
-	lagDays: string;
 	start: string;
-	durationDays: string;
 	due: string;
 	planStart: string;
 	planEnd: string;
@@ -37,9 +35,7 @@ export function taskFormFromFrontmatter(fm: Record<string, unknown>): TaskForm {
 		assignees: links(fm.assignees, 'user'),
 		estimate: text(fm.estimate),
 		dependsOn: links(fm.depends_on, 'task'),
-		lagDays: text(fm.lag_days),
 		start: text(fm.start),
-		durationDays: text(fm.duration_days),
 		due: text(fm.due),
 		planStart: text(fm.plan_start),
 		planEnd: text(fm.plan_end),
@@ -80,8 +76,6 @@ export function taskFormToUpdate(form: TaskForm, statuses: readonly StatusDef[],
 	const wbs = form.wbs.trim();
 	if (wbs !== '' && !TASK_WBS.test(wbs)) errors.push('WBS番号は1以上の整数で入力してください');
 	const estimate = number(form.estimate, '見積工数', 0.25, errors);
-	const lagDays = number(form.lagDays, '相対日数', 1, errors);
-	const durationDays = number(form.durationDays, '所要日数', 1, errors);
 	const start = date(form.start, '開始日', errors);
 	const due = date(form.due, '期限日', errors);
 	const planStart = date(form.planStart, '当初開始日', errors);
@@ -91,8 +85,6 @@ export function taskFormToUpdate(form: TaskForm, statuses: readonly StatusDef[],
 	if (planStart && planEnd && planEnd < planStart) errors.push('当初終了日が当初開始日より前になっています');
 
 	if (start && due && due < start) warnings.push('期限日が開始日より前になっています');
-	if (start && form.dependsOn.length > 0) warnings.push('先行タスクがあるときは、開始日ではなく先行タスクの終了日から日程を計算します');
-	if (lagDays !== undefined && form.dependsOn.length === 0) warnings.push('相対日数は先行タスクがあるときだけ使われます');
 
 	warnUnreadable('プロジェクト', [form.project], 'project', warnings);
 	warnUnreadable('エピック', [form.epic], 'epic', warnings);
@@ -112,9 +104,8 @@ export function taskFormToUpdate(form: TaskForm, statuses: readonly StatusDef[],
 		assignees: form.assignees.length > 0 ? unique(form.assignees).map((v) => linkValue(v, 'user')) : undefined,
 		estimate,
 		depends_on: form.dependsOn.length > 0 ? unique(form.dependsOn).map((v) => linkValue(v, 'task')) : undefined,
-		lag_days: lagDays,
+		// lag_days・duration_days は今は使わないので書き換えない（ファイルの値はそのまま残る。要件 4.7）
 		start,
-		duration_days: durationDays,
 		due,
 		plan_start: planStart,
 		plan_end: planEnd,

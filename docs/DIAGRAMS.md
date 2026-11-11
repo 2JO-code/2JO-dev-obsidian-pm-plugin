@@ -168,9 +168,7 @@ classDiagram
 		+assignees: NoteId[]
 		+estimate?: number
 		+dependsOn: NoteId[]
-		+lagDays?: number
 		+start?: IsoDate
-		+durationDays?: number
 		+due?: IsoDate
 		+planStart?: IsoDate
 		+planEnd?: IsoDate
@@ -350,6 +348,7 @@ classDiagram
 	FormModal <|-- AllocationMatrixModal
 	Modal <|-- WorklogGridModal
 	Modal <|-- NewNoteModal
+	Modal <|-- CopyProjectModal
 	Modal <|-- LoadDetailModal
 	FuzzySuggestModal <|-- ChooseModal
 	PluginSettingTab <|-- ProjectManagerSettingTab

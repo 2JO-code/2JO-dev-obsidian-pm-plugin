@@ -15,7 +15,7 @@ const index = indexOf([
 	project(PJT2, { title: 'B案件', status: '謎' }),
 	member(USER, { title: '佐藤' }),
 	epic(EPIC, { title: '設計', wbs: '1' }),
-	task('T1', { epic: EPIC, due: '2026-11-02', durationDays: 1 }),
+	task('T1', { epic: EPIC, due: '2026-11-02' }),
 	worklog(USER, '2026-11', [['2026-11-04', 'T1', 12, 3]]),
 ]);
 const ctx = buildContext(index, defaultStatusSets(), defaultCalendar(), '2026-11-04');

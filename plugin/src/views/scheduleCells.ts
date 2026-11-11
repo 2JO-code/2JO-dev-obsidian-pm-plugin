@@ -12,7 +12,7 @@ interface ScheduleLike {
 	endDelayed?: boolean;
 }
 
-const DELAYED = '遅れを反映して、ずらしています（未完了の先行・自分は今日まで延びたとみなす）';
+const DELAYED = '遅れを反映して、ずらしています（未着手は今日から始め、未完了は今日まで延びたとみなす）';
 
 /** 期限日のセル。期限超過なら赤にし、マウスを乗せたときに警告の文を出す。休日なら種類の印 */
 export function dueCell(tr: HTMLElement, calendar: WorkCalendar, row: { task: { due?: IsoDate }; warnings: readonly Warning[]; assignees: People }): HTMLElement {
@@ -44,7 +44,7 @@ export function scheduleCells(
 /** 日程が無いときの印。薄い「—」にし、マウスを乗せると理由を出す */
 function noSchedule(td: HTMLElement): HTMLElement {
 	td.addClass('pm-text-faint');
-	td.setAttr('aria-label', '日程を計算できません（日付が無い、先行タスクの日程が出せない、または依存関係が循環しています）');
+	td.setAttr('aria-label', '日程を計算できません（開始日も期限日もありません）');
 	return td;
 }
 

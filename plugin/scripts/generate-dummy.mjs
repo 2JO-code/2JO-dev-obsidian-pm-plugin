@@ -207,7 +207,8 @@ const PROJECT_STATUS = ['進行中', '進行中', '進行中', '進行中', '進
 const tasks = [];
 const projectsData = [];
 
-// 日程はプラグインと同じ決まり（要件4.7）で先に計算し、期限日・ステータスを日程に合わせて決める。
+// 日程（開始日〜期限日。要件4.7）を先に決め、ステータスを日程に合わせる。
+// 先行タスクは日程に使われないが、それらしく見えるよう先行の終了後に始める。
 // こうすると、わざと入れたもの以外に期限超過・期限超過見込みが出ない
 for (let p = 0; p < PROJECT_COUNT; p++) {
 	const [genre, phases] = GENRES[p % GENRES.length];
@@ -234,22 +235,15 @@ for (let p = 0; p < PROJECT_COUNT; p++) {
 				epic,
 				wbs: String(t + 1),
 				assignees: sample(team, 1),
-				duration: int(1, 8),
 				dependsOn: previous && chance(0.4) ? [previous] : [],
 				subtaskCount: int(0, 4),
-				successors: 0,
 				projectStatus: status,
 			};
-			if (task.dependsOn.length > 0) {
-				task.lag = int(0, 2);
-				task.schedStart = nextWorkday(addWorkdays(previous.schedEnd, task.lag));
-				previous.successors++;
-			} else {
-				task.plannedStart = addDays(epic.start, int(0, 40));
-				task.schedStart = nextWorkday(task.plannedStart);
-			}
-			task.schedEnd = addWorkdays(task.schedStart, task.duration - 1);
-			task.due = addDays(task.schedEnd, int(0, 10));
+			task.schedStart =
+				task.dependsOn.length > 0 ? nextWorkday(addWorkdays(previous.schedEnd, int(0, 2))) : nextWorkday(addDays(epic.start, int(0, 40)));
+			// 期限日が見込み終了日になる
+			task.schedEnd = addWorkdays(task.schedStart, int(1, 8) - 1);
+			task.due = task.schedEnd;
 			// ステータスは日程に合わせる（終わっているはず→完了、途中→進行中など、まだ→未着手）
 			task.status =
 				status === 'クローズ' || task.schedEnd < TODAY
@@ -315,10 +309,8 @@ const injected = [];
 for (const pd of projectsData) {
 	if (pd.status === 'クローズ') continue;
 	const own = pd.epics.flatMap((e) => e.tasks);
-	// 後続のあるタスクを遅らせると後続にも期限超過見込みが広がるので、後続の無いタスクを選ぶ
-	const leaf = own.filter((t) => t.successors === 0);
 	const middle = pd.epics[Math.floor(pd.epics.length / 2)];
-	const overdue = sample(leaf.filter((t) => t.status === '完了' && t.due < TODAY && t.epic !== middle), 1)[0];
+	const overdue = sample(own.filter((t) => t.status === '完了' && t.due < TODAY && t.epic !== middle), 1)[0];
 	if (overdue) {
 		overdue.status = '進行中';
 		injected.push(`${pd.title}：期限超過「${overdue.title}」`);
@@ -328,9 +320,10 @@ for (const pd of projectsData) {
 		over.estimate = Math.max(0.25, Math.floor(taskHours.get(over.id).actual * 0.7 * 4) / 4);
 		injected.push(`${pd.title}：工数超過「${over.title}」`);
 	}
-	const risk = sample(leaf.filter((t) => t.status !== '完了' && t.status !== '保留' && t.schedEnd >= addDays(TODAY, 7)), 1)[0];
+	// 期限超過見込みは、期限日が開始日より前のときだけ出る（まだ期限日を過ぎていないもの）
+	const risk = sample(own.filter((t) => t.status !== '完了' && t.status !== '保留' && t.schedStart >= addDays(TODAY, 7)), 1)[0];
 	if (risk) {
-		risk.due = addDays(risk.schedEnd, -int(1, 3));
+		risk.due = addDays(risk.schedStart, -int(1, 3));
 		injected.push(`${pd.title}：期限超過見込み「${risk.title}」`);
 	}
 	pd.overAllocation = OVER_ALLOCATION_PROJECTS.has(pd.index);
@@ -366,9 +359,7 @@ for (const pd of projectsData) {
 					assignees: t.assignees.map((m) => link(m.id)),
 					estimate: t.estimate,
 					depends_on: t.dependsOn.map((d) => link(d.id)),
-					lag_days: t.lag,
-					start: t.plannedStart,
-					duration_days: t.duration,
+					start: t.schedStart,
 					due: t.due,
 				})}\nダミーデータです。\n\n${checklist.join('\n')}`,
 			);

@@ -44,11 +44,6 @@ export interface TableEdit {
 	cells: Record<string, string>;
 }
 
-/** 編集画面を開いたときの表の行。無ければ null */
-export function tableSnapshot(content: string, spec: TableSpec): RawTableRow[] | null {
-	return findTableUnderHeading(content, spec.heading)?.rows ?? null;
-}
-
 /**
  * 編集画面の行で表を書き換える。変えた行だけ書き換え、消した行を除き、新しい行は sortKey の順の位置に入れる（設計書 4.7）
  * 開いたあとに表が変わっていたら、行番号がずれるので例外にする

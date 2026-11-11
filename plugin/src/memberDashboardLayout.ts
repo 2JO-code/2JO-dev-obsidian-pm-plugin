@@ -1,4 +1,4 @@
-import { isRecord } from './parse/values';
+import { isRecord, oneOf } from './parse/values';
 
 /** メンバーダッシュボードに置ける部品（設計書 9.12）。並びは初期の並び */
 export const MEMBER_PANELS = ['load', 'projects', 'taskList', 'worklog', 'gantt', 'kanban', 'wbs'] as const;
@@ -38,14 +38,12 @@ export const defaultMemberDashboardLayout = (): MemberDashboardLayout => ({
 	panels: MEMBER_PANELS.map((id) => ({ id, visible: true, state: {} })),
 });
 
-const oneOf = <T extends string>(v: unknown, list: readonly T[]): T | undefined => list.find((x) => x === v);
-
 /** 保存された配置を整える。知らない部品・重複は捨て、足りない部品は末尾に表示ありで足す */
 export function cleanMemberDashboardLayout(raw: unknown): MemberDashboardLayout {
 	const data = isRecord(raw) ? raw : {};
 	const panels: MemberPanelSetting[] = [];
 	if (Array.isArray(data.panels)) {
-		for (const item of data.panels as unknown[]) {
+		for (const item of data.panels) {
 			if (!isRecord(item)) continue;
 			const id = oneOf(item.id, MEMBER_PANELS);
 			if (!id || panels.some((p) => p.id === id)) continue;

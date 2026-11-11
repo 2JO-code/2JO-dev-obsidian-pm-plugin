@@ -3,6 +3,7 @@ import type { Epic, IsoDate, Member, NoteId, Project, StatusCategory, Task } fro
 import { compareNumeric } from './compare';
 import type { CalcContext } from './context';
 import { currentStatusName } from './filter';
+import { NO_EPIC_LABEL } from './format';
 import { taskProgress, type TaskProgress } from './progress';
 import { taskPlanDelay } from './planDelay';
 import type { TaskSchedule } from './schedule';
@@ -237,7 +238,7 @@ export function groupTaskRows(
 				add(r.task.project, r.project ? labels.project(r.project) : `（見つからないプロジェクト：${r.task.project}）`, r);
 				break;
 			case 'epic':
-				add(r.task.epic ?? '', r.epic ? epicLabel(r.epic) : r.task.epic ? `（見つからないエピック：${r.task.epic}）` : '（エピックなし）', r);
+				add(r.task.epic ?? '', r.epic ? epicLabel(r.epic) : r.task.epic ? `（見つからないエピック：${r.task.epic}）` : NO_EPIC_LABEL, r);
 				break;
 			case 'status':
 				add(r.status, r.status, r);

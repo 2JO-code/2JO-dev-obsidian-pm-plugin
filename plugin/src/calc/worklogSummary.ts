@@ -5,12 +5,19 @@ export interface Hours {
 	actual: number;
 }
 
-const zero = (): Hours => ({ planned: 0, actual: 0 });
+/** 予定・実績が 0 の時間 */
+export const zeroHours = (): Hours => ({ planned: 0, actual: 0 });
 
-function add(map: Map<string, Hours>, key: string, h: Hours): void {
-	const sum = map.get(key) ?? zero();
+/** sum に h の予定・実績を足す（sum を書き換える） */
+export function addHours(sum: Hours, h: Hours): void {
 	sum.planned += h.planned;
 	sum.actual += h.actual;
+}
+
+/** map のキーの時間に h を足す。無ければ作る */
+export function addHoursTo<K>(map: Map<K, Hours>, key: K, h: Hours): void {
+	const sum = map.get(key) ?? zeroHours();
+	addHours(sum, h);
 	map.set(key, sum);
 }
 
@@ -33,23 +40,23 @@ export class WorkSummary {
 			for (const e of log.entries) {
 				const h = { planned: e.planned, actual: e.actual };
 				const project = projectOf.get(e.task) ?? UNKNOWN_PROJECT;
-				add(this.byTask, e.task, h);
+				addHoursTo(this.byTask, e.task, h);
 				const projects = days.get(e.date) ?? new Map<NoteId, Hours>();
 				days.set(e.date, projects);
-				add(projects, project, h);
-				add(this.byAllocation, allocationKey(project, log.month, log.member), h);
+				addHoursTo(projects, project, h);
+				addHoursTo(this.byAllocation, allocationKey(project, log.month, log.member), h);
 			}
 		}
 	}
 
 	/** タスクの予定・実績の合計 */
 	task(id: NoteId): Hours {
-		return { ...(this.byTask.get(id) ?? zero()) };
+		return { ...(this.byTask.get(id) ?? zeroHours()) };
 	}
 
 	/** プロジェクト×月×メンバーの予定・実績の合計（工数配分と比べる。要件4.6） */
 	allocation(project: NoteId, month: YearMonth, member: NoteId): Hours {
-		return { ...(this.byAllocation.get(allocationKey(project, month, member)) ?? zero()) };
+		return { ...(this.byAllocation.get(allocationKey(project, month, member)) ?? zeroHours()) };
 	}
 
 	/** そのプロジェクトに記録のある月×メンバー */
@@ -67,21 +74,15 @@ export class WorkSummary {
 		return this.byMemberDate.get(member)?.get(date) ?? new Map();
 	}
 
-	/** メンバーが記録した日付 */
-	memberDates(member: NoteId): IsoDate[] {
-		return [...(this.byMemberDate.get(member)?.keys() ?? [])];
-	}
-
 	/** メンバーの、ある期間の合計（プロジェクト別と全体） */
 	memberRange(member: NoteId, start: IsoDate, end: IsoDate, include: (date: IsoDate) => boolean = () => true): RangeHours {
-		const total = zero();
+		const total = zeroHours();
 		const byProject = new Map<NoteId, Hours>();
 		for (const [date, projects] of this.byMemberDate.get(member) ?? []) {
 			if (date < start || date > end || !include(date)) continue;
 			for (const [project, h] of projects) {
-				add(byProject, project, h);
-				total.planned += h.planned;
-				total.actual += h.actual;
+				addHoursTo(byProject, project, h);
+				addHours(total, h);
 			}
 		}
 		return { total, byProject };

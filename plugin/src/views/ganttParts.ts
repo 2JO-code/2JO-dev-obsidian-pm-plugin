@@ -243,6 +243,27 @@ export function place(el: HTMLElement, left: number, width: number): void {
 	el.setCssProps({ '--pm-x': `${left}px`, '--pm-w': `${width}px` });
 }
 
+/** WBS 番号の欄の幅（CSS の値）。番号が無ければ 0 */
+export function wbsColumnWidth(chars: number): string {
+	return chars > 0 ? `calc(${chars}ch + var(--size-4-2))` : '0px';
+}
+
+/** 休日の縦の帯。行より先に置き、棒の後ろに描く（設計書 9.8） */
+export function holidayBand(wrap: HTMLElement, left: number, width: number): void {
+	place(wrap.createDiv({ cls: 'pm-gantt-holiday' }), left, width);
+}
+
+/** 期間の区切りの縦線。行より先に置き、棒の後ろに描く（設計書 9.1） */
+export function gridLine(wrap: HTMLElement, x: number): void {
+	wrap.createDiv({ cls: 'pm-gantt-gridline' }).setCssProps({ '--pm-x': `${x}px` });
+}
+
+/** 今日の縦線。表示期間の外なら描かない */
+export function todayLine(wrap: HTMLElement, scale: GanttScale, today: IsoDate): void {
+	const x = markX(scale, today);
+	if (x !== undefined) wrap.createDiv({ cls: 'pm-gantt-today', attr: { 'aria-label': `今日（${today}）` } }).setCssProps({ '--pm-x': `${x}px` });
+}
+
 /** 下の段の見出し。日は「2」（曜日はマウスを乗せると出る）、週は「11/2」、月は「11月」 */
 function periodText(unit: PeriodUnit, start: IsoDate): string {
 	const m = Number(start.slice(5, 7));

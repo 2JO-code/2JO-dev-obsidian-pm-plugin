@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { worklog } from '../calc/testData';
 import { TABLE_SPEC } from '../parse/bodyTables';
-import { applyTableEdits, tableSnapshot } from '../write/markdownTable';
+import { applyTableEdits } from '../write/markdownTable';
 import {
 	cellEdited,
 	changesByMonth,
@@ -53,8 +53,9 @@ const NOTE = [
 const title = (id: string) => (id === T1 ? 'モデリング' : id === T2 ? '設計' : id === T3 ? 'テスト' : '');
 const change = (date: string, task: string, planned: string, actual: string): GridChange => ({ date, task, planned, actual });
 const save = (content: string, changes: GridChange[]) => {
-	const result = worklogGridEdits(worklogRows(content).rows, changes, title);
-	return { ...result, content: applyTableEdits(content, TABLE_SPEC.worklog, 'date', tableSnapshot(content, TABLE_SPEC.worklog), result.edits) };
+	const { rows, snapshot } = worklogRows(content);
+	const result = worklogGridEdits(rows, changes, title);
+	return { ...result, content: applyTableEdits(content, TABLE_SPEC.worklog, 'date', snapshot, result.edits) };
 };
 const tableLines = (content: string) => content.split('\n').slice(6, -1);
 

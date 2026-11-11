@@ -1,10 +1,11 @@
 import { compareJa } from './compare';
 import { addDays, eachDate, firstDayOf, lastDayOf, monthOfDate } from './dates';
-import { missingLabel } from './format';
+import { missingLabel, NO_EPIC_LABEL } from './format';
 import { periodOf } from './workdays';
 import { sortByWbs, taskWbsLabel } from './wbsOrder';
 import type { Epic, IsoDate, NoteId, Task, Worklog, YearMonth } from '../model';
 import { parseHours } from '../parse/values';
+import { addHoursTo, type Hours } from './worklogSummary';
 
 /** 作業ログのマス目（縦タスク×横日付）の値・期間・行の階層。入力画面とビューで使う（設計書 4.3, 9.10） */
 
@@ -90,14 +91,12 @@ export const EMPTY_HOURS: GridHours = { planned: '', actual: '' };
 export function gridHoursOf(logs: readonly Worklog[], member: NoteId, dates: readonly IsoDate[]): Map<string, GridHours> {
 	const months = new Set(dates.map(monthOfDate));
 	const days = new Set(dates);
-	const sums = new Map<string, { planned: number; actual: number }>();
+	const sums = new Map<string, Hours>();
 	for (const log of logs) {
 		if (log.member !== member || !months.has(log.month)) continue;
 		for (const e of log.entries) {
 			if (!days.has(e.date)) continue;
-			const key = gridKey(e.date, e.task);
-			const sum = sums.get(key) ?? { planned: 0, actual: 0 };
-			sums.set(key, { planned: sum.planned + e.planned, actual: sum.actual + e.actual });
+			addHoursTo(sums, gridKey(e.date, e.task), e);
 		}
 	}
 	const text = (h: number) => (h === 0 ? '' : String(h));
@@ -155,10 +154,11 @@ export interface GridLine {
 	wbs: string;
 	/** 配下のタスク（タスクの行はそれ自身） */
 	tasks: NoteId[];
+	/** 「エピックなし」のまとまりの行 */
+	noEpic?: true;
 }
 
 const NO_PROJECT = '（見つからないタスク）';
-const NO_EPIC = '（エピックなし）';
 
 /** タスクを、プロジェクト → エピック → タスクの行に並べる（ガントと同じ順。設計書 9.8） */
 export function gridLines(ids: readonly NoteId[], infoOfId: (id: NoteId) => GridTaskInfo | undefined): GridLine[] {
@@ -193,7 +193,7 @@ export function gridLines(ids: readonly NoteId[], infoOfId: (id: NoteId) => Grid
 			const withEpic = pid !== '';
 			const eKey = `e:${pid}:${eid}`;
 			if (withEpic) {
-				lines.push({ kind: 'epic', key: eKey, depth: 1, parents: [pKey], label: eid ? epic.title : NO_EPIC, wbs: epic.wbs ?? '', tasks: epic.tasks });
+				lines.push({ kind: 'epic', key: eKey, depth: 1, parents: [pKey], label: eid ? epic.title : NO_EPIC_LABEL, wbs: epic.wbs ?? '', tasks: epic.tasks, ...(eid ? {} : { noEpic: true as const }) });
 			}
 			const tasks = sortByWbs(byLabel(epic.tasks, (id) => infoOf(id)?.title ?? id), (id) => infoOf(id)?.wbs);
 			for (const id of tasks) {

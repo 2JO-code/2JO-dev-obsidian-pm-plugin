@@ -1,6 +1,6 @@
 /** プラグイン設定（全員共通）と個人の設定の型と既定値（設計書 6章） */
 import { cleanMemberDashboardLayout, defaultMemberDashboardLayout, type MemberDashboardLayout } from './memberDashboardLayout';
-import { isRecord } from './parse/values';
+import { isRecord, oneOf } from './parse/values';
 
 /** ビューでのプロジェクト表示名に使う項目（要件3.5） */
 export type ProjectDisplayName = 'title' | 'case_id' | 'official_name';
@@ -129,11 +129,6 @@ export function cleanFolderPath(value: string): string | null {
 		.join('/');
 	if (path === '' || path.split('/').includes('..')) return null;
 	return path;
-}
-
-/** 候補のどれかと一致すればその値、そうでなければ undefined */
-export function oneOf<T extends string>(value: unknown, candidates: readonly T[]): T | undefined {
-	return candidates.find((c) => c === value);
 }
 
 /** `loadData()` の結果を既定値と合わせる。不正な値は既定値にする */

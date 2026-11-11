@@ -5,7 +5,7 @@ import { firstDayOf, lastDayOf, monthOfDate } from './dates';
 import { memberLoad, type MemberLoad } from './load';
 import { taskRows, type TaskRow } from './taskList';
 import { periodOf } from './workdays';
-import type { Hours } from './worklogSummary';
+import { addHoursTo, zeroHours, type Hours } from './worklogSummary';
 import { isRecord } from '../parse/values';
 
 /** メンバーダッシュボードの表示条件（要件4.14） */
@@ -38,13 +38,9 @@ export interface AssignedTaskRow extends TaskRow {
 	monthHours: Hours;
 }
 
-export interface MemberDashboard {
-	month: YearMonth;
-	/** その月の負荷（配分・予定・実績と基準工数） */
-	load: MemberLoad;
-	/** その月に工数配分のある案件。配分の多い順 */
-	projects: AssignedProjectRow[];
-	/** その月にかかる担当タスク。見込み開始の早い順 */
+/** その月にかかる担当タスク */
+export interface MemberMonthTasks {
+	/** 見込み開始の早い順 */
 	tasks: AssignedTaskRow[];
 	/** 日程（開始日・期限日）も、その月の作業ログも無い担当タスクの数 */
 	undatedTasks: number;
@@ -59,15 +55,6 @@ export function pickMember(members: readonly Member[], id: NoteId | undefined): 
 
 /** 範囲が重なるか（両端を含む） */
 const overlaps = (start: IsoDate, end: IsoDate, from: IsoDate, to: IsoDate) => start <= to && end >= from;
-
-/**
- * メンバーダッシュボード（要件4.14、設計書 11.23）。
- * 案件＝その月にそのメンバーの工数配分がある案件（アーカイブ内も含む）。
- * タスク＝担当タスク（アーカイブ内を除く）のうち、見込みの日程がその月にかかるか、その月に作業ログがあるもの。完了も含む
- */
-export function memberDashboard(ctx: CalcContext, member: Member, month: YearMonth): MemberDashboard {
-	return { month, load: monthLoad(ctx, member, month), projects: assignedProjects(ctx, member, month), ...memberMonthTasks(ctx, member, month) };
-}
 
 /** その月の負荷（配分・予定・実績と基準工数） */
 export function monthLoad(ctx: CalcContext, member: Member, month: YearMonth): MemberLoad {
@@ -92,7 +79,7 @@ export function assignedProjects(ctx: CalcContext, member: Member, month: YearMo
 }
 
 /** その月にかかる担当タスク（アーカイブ内を除く）。見込みの日程がかかるか、その月に作業ログがあるもの。完了も含む */
-export function memberMonthTasks(ctx: CalcContext, member: Member, month: YearMonth): Pick<MemberDashboard, 'tasks' | 'undatedTasks'> {
+export function memberMonthTasks(ctx: CalcContext, member: Member, month: YearMonth): MemberMonthTasks {
 	const from = firstDayOf(month);
 	const to = lastDayOf(month);
 	// このメンバーのその月の作業ログ（タスク別）
@@ -101,10 +88,7 @@ export function memberMonthTasks(ctx: CalcContext, member: Member, month: YearMo
 		if (log.member !== member.id) continue;
 		for (const e of log.entries) {
 			if (monthOfDate(e.date) !== month) continue;
-			const sum = logged.get(e.task) ?? { planned: 0, actual: 0 };
-			sum.planned += e.planned;
-			sum.actual += e.actual;
-			logged.set(e.task, sum);
+			addHoursTo(logged, e.task, e);
 		}
 	}
 
@@ -117,7 +101,7 @@ export function memberMonthTasks(ctx: CalcContext, member: Member, month: YearMo
 		else if (!s) undatedTasks++;
 	}
 	const tasks = taskRows(ctx, inMonth)
-		.map((row) => ({ ...row, monthHours: logged.get(row.task.id) ?? { planned: 0, actual: 0 } }))
+		.map((row) => ({ ...row, monthHours: logged.get(row.task.id) ?? zeroHours() }))
 		.sort(compareByDate);
 	return { tasks, undatedTasks };
 }

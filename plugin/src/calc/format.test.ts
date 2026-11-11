@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Warning } from './warnings';
-import { hoursText, progressDetail, subtaskText, warningCounts, warningSummary } from './format';
+import { countText, hoursText, pct, subtaskText, warningCounts, warningSummary } from './format';
 
 const w = (kind: Warning['kind']) => ({ kind }) as Warning;
 
@@ -13,10 +13,12 @@ describe('hoursText', () => {
 	});
 });
 
-describe('progressDetail', () => {
-	it('進捗率と件数。対象が無ければ「—」', () => {
-		expect(progressDetail({ done: 54, total: 316, ratio: 54 / 316 })).toBe('17%（54/316）');
-		expect(progressDetail({ done: 0, total: 0, ratio: null })).toBe('—');
+describe('pct / countText', () => {
+	it('進捗率と件数。対象が無ければ「—」と空', () => {
+		const p = { done: 54, total: 316, ratio: 54 / 316 };
+		expect(`${pct(p)}${countText(p)}`).toBe('17%（54/316）');
+		const none = { done: 0, total: 0, ratio: null };
+		expect(`${pct(none)}${countText(none)}`).toBe('—');
 	});
 });
 

@@ -86,6 +86,12 @@ describe('行の階層', () => {
 		expect(lines.find((l) => l.key === 'e:PJT-b:EPIC-2')?.tasks).toEqual([T1, T2]);
 	});
 
+	it('「エピックなし」のまとまりの行だけに noEpic を付ける（同じ名前のエピックとは区別する）', () => {
+		const same = { project: 'PJT-a', projectLabel: 'A案件', epic: 'EPIC-x', epicTitle: '（エピックなし）', title: 'モデリング' };
+		expect(gridLines([T1], () => same).find((l) => l.kind === 'epic')?.noEpic).toBeUndefined();
+		expect(lines.filter((l) => l.noEpic).map((l) => l.key)).toEqual(['e:PJT-a:']);
+	});
+
 	it('たたんだ行の配下は出さない', () => {
 		expect(brief(visibleGridLines(lines, new Set(['p:PJT-a', 'e:PJT-b:EPIC-2'])))).toEqual([
 			'A案件',

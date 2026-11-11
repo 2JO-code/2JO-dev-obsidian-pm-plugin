@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { defaultCalendar, defaultStatusSets } from '../config/defaults';
 import { buildContext } from './context';
-import { memberDashboard, parseMemberDashboardOptions, pickMember } from './memberDashboard';
+import { assignedProjects, memberMonthTasks, monthLoad, parseMemberDashboardOptions, pickMember } from './memberDashboard';
 import { indexOf, member, PJT, PJT2, project, task, USER, USER2, worklog } from './testData';
 
 const today = '2026-11-12';
@@ -39,7 +39,7 @@ const index = indexOf([
 const ctx = buildContext(index, defaultStatusSets(), defaultCalendar(), today);
 const sato = ctx.members.get(USER);
 if (!sato) throw new Error('テストデータの誤り');
-const result = memberDashboard(ctx, sato, '2026-11');
+const result = { load: monthLoad(ctx, sato, '2026-11'), projects: assignedProjects(ctx, sato, '2026-11'), ...memberMonthTasks(ctx, sato, '2026-11') };
 
 describe('memberDashboard', () => {
 	it('その月に工数配分のある案件を、配分の多い順に出す（同じ案件の行は合算）', () => {
@@ -54,7 +54,7 @@ describe('memberDashboard', () => {
 	});
 
 	it('別の月を選ぶと、その月の配分の案件だけ', () => {
-		expect(memberDashboard(ctx, sato, '2026-12').projects.map((p) => p.project.title)).toEqual(['A案件']);
+		expect(assignedProjects(ctx, sato, '2026-12').map((p) => p.project.title)).toEqual(['A案件']);
 	});
 
 	it('担当タスクのうち、日程がその月にかかるか作業ログがあるものを、見込み開始の順に出す（完了も含む）', () => {

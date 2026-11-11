@@ -14,7 +14,7 @@ import { dateCell, kindMark, progressBar } from './badges';
 import { ChildRows } from './childRows';
 import { memberChoices, projectChoices, statusChoices } from './choices';
 import { renderFilterBar } from './filterBar';
-import { hoursText, membersOf, noteTitle } from '../calc/format';
+import { hoursText, membersOf, NO_EPIC_LABEL, noteTitle } from '../calc/format';
 import { openView } from './openView';
 import { scheduleCells } from './scheduleCells';
 import { tableHeader } from '../ui/table';
@@ -143,7 +143,7 @@ export class WbsPanel extends Panel {
 				const renderTasks = () => e.tasks.map((t) => ({ row: this.taskRow(tbody, t, env, taskGroup) }));
 				// エピックの開閉は表全体を描き直さず、タスクの行だけを足す・消す（設計書 9.7）
 				const er = this.groupRow(tbody, 'pm-wbs-epic', open, e.tasks.length > 0, () => this.taskRows.replace(key, er, this.tree.flip(key), renderTasks), epic?.wbs ?? '');
-				const et = er.createEl('td', { cls: 'pm-wbs-indent-1', text: epic ? epic.title : '（エピックなし）' });
+				const et = er.createEl('td', { cls: 'pm-wbs-indent-1', text: epic ? epic.title : NO_EPIC_LABEL });
 				if (epic) {
 					kindMark(et, 'epic');
 					et.addClass('pm-link');

@@ -3,6 +3,7 @@ import type { IsoDate, Project } from '../model';
 import type { CalcContext } from './context';
 import { addDays, eachDate } from './dates';
 import { countProgress } from './progress';
+import { addHoursTo, type Hours } from './worklogSummary';
 
 /** その日までの累積（時間） */
 export interface BurnupPoint {
@@ -31,12 +32,11 @@ export interface Burnup {
 export function burnup(ctx: CalcContext, project: Project): Burnup | undefined {
 	const tasks = ctx.byProject.get(project.id)?.tasks ?? [];
 	const ids = new Set(tasks.map((t) => t.id));
-	const daily = new Map<IsoDate, { planned: number; actual: number }>();
+	const daily = new Map<IsoDate, Hours>();
 	for (const log of ctx.index.worklogs()) {
 		for (const e of log.entries) {
 			if (!ids.has(e.task)) continue;
-			const d = daily.get(e.date) ?? { planned: 0, actual: 0 };
-			daily.set(e.date, { planned: d.planned + e.planned, actual: d.actual + e.actual });
+			addHoursTo(daily, e.date, e);
 		}
 	}
 

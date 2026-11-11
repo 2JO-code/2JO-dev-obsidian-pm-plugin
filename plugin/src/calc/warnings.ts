@@ -1,29 +1,22 @@
 import { isFinished } from '../config/status';
-import type { IsoDate, Member, NoteId, Project, StatusDef, Task, YearMonth } from '../model';
-import type { MemberLoad } from './load';
+import type { IsoDate, NoteId, Project, StatusDef, Task, YearMonth } from '../model';
 import type { TaskSchedule } from './schedule';
 import { categoryOf } from './progress';
-import type { WorkCalendar } from './workdays';
 import type { WorkSummary } from './worklogSummary';
 
-/** 警告の種類（要件4.4） */
-export type WarningKind = 'overdue' | 'overdueRisk' | 'overEstimate' | 'overAllocation' | 'loadCaution' | 'loadWarning' | 'holidayWork';
+/** 警告の種類（要件4.4）。負荷注意・負荷警告・休日稼働は負荷の計算で印を出す（設計書 11.4） */
+export type WarningKind = 'overdue' | 'overdueRisk' | 'overEstimate' | 'overAllocation';
 
 export const WARNING_LABELS: Record<WarningKind, string> = {
 	overdue: '期限超過',
 	overdueRisk: '期限超過見込み',
 	overEstimate: '工数超過',
 	overAllocation: '配分超過',
-	loadCaution: '負荷注意',
-	loadWarning: '負荷警告',
-	holidayWork: '休日稼働',
 };
 
 export type WarningTarget =
 	| { type: 'task'; task: NoteId }
-	| { type: 'allocation'; project: NoteId; month: YearMonth; member: NoteId }
-	| { type: 'memberPeriod'; member: NoteId; periodKey: string }
-	| { type: 'memberDate'; member: NoteId; date: IsoDate };
+	| { type: 'allocation'; project: NoteId; month: YearMonth; member: NoteId };
 
 export interface Warning {
 	kind: WarningKind;
@@ -73,45 +66,6 @@ export function allocationWarnings(project: Project, summary: WorkSummary): Warn
 				kind: 'overAllocation',
 				target: { type: 'allocation', project: project.id, month: a.month, member: a.member },
 				message: `${a.month} の予定 ${h(planned)} が配分 ${h(a.hours)} を超えています`,
-			});
-		}
-	}
-	return warnings;
-}
-
-/** 負荷注意・負荷警告（予定負荷率で判定する） */
-export function loadWarnings(member: Member, load: MemberLoad): Warning[] {
-	if (load.plannedLevel !== 'caution' && load.plannedLevel !== 'warning') return [];
-	const pct = Math.round((load.plannedRate ?? 0) * 100);
-	return [
-		{
-			kind: load.plannedLevel === 'warning' ? 'loadWarning' : 'loadCaution',
-			target: { type: 'memberPeriod', member: member.id, periodKey: load.period.key },
-			message:
-				load.plannedLevel === 'warning'
-					? `予定負荷率 ${pct}% が負荷許容率 ${member.loadLimitPct}% を超えています`
-					: `予定負荷率 ${pct}% が100%を超えています`,
-		},
-	];
-}
-
-/** 休日稼働：勤務日でない日（休日・その人の個人休日）に予定・実績が入っている日（要件4.4） */
-export function holidayWorkWarnings(member: Member, summary: WorkSummary, calendar: WorkCalendar): Warning[] {
-	const warnings: Warning[] = [];
-	const isDuty = calendar.dutyDayOf(member);
-	for (const date of summary.memberDates(member.id).sort()) {
-		if (isDuty(date)) continue;
-		let planned = 0;
-		let actual = 0;
-		for (const hours of summary.memberDay(member.id, date).values()) {
-			planned += hours.planned;
-			actual += hours.actual;
-		}
-		if (planned > 0 || actual > 0) {
-			warnings.push({
-				kind: 'holidayWork',
-				target: { type: 'memberDate', member: member.id, date },
-				message: `休日・個人休日（${date}）に予定 ${h(planned)}／実績 ${h(actual)} が入っています`,
 			});
 		}
 	}

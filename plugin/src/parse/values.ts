@@ -4,6 +4,11 @@ import type { NoteId, NoteType } from '../model';
 /** 配列でないオブジェクトか（外から来た値の中を読む前に確かめる。規約 4章） */
 export const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 
+/** 候補のどれかと一致すればその値、そうでなければ undefined（規約 4章） */
+export function oneOf<T extends string>(value: unknown, candidates: readonly T[]): T | undefined {
+	return candidates.find((c) => c === value);
+}
+
 /** オブジェクトのそのキーの値。オブジェクトでなければ undefined（ビューの状態などを読むとき） */
 export const field = (v: unknown, key: string): unknown => (isRecord(v) ? v[key] : undefined);
 

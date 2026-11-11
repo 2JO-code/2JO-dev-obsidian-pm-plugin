@@ -9,8 +9,8 @@ import {
 import { addStatus, changeCategory, moveStatus, removeStatus, renameStatus } from '../config/status';
 import { CATEGORY_COLORS, removeStatusColor, renameStatusColor, statusColor } from '../config/statusColor';
 import type ProjectManagerPlugin from '../main';
-import type { Calendar, Holiday, StatusCategory, StatusDef, StatusSets } from '../model';
-import { isIsoDate } from '../parse/values';
+import { STATUS_CATEGORIES, type Calendar, type Holiday, type StatusCategory, type StatusDef, type StatusSets } from '../model';
+import { isIsoDate, oneOf } from '../parse/values';
 import { cleanColor } from '../settings';
 import { redrawViews } from '../views/baseView';
 import { confirm } from './confirmModal';
@@ -75,7 +75,7 @@ export class SharedConfigSettings {
 			.addText((text) => text.setPlaceholder('新しいステータス名').onChange((v) => (newName = v)))
 			.addDropdown((dropdown) => {
 				for (const [value, label] of Object.entries(CATEGORY_LABELS)) dropdown.addOption(value, label);
-				dropdown.setValue(newCategory).onChange((v) => (newCategory = v as StatusCategory));
+				dropdown.setValue(newCategory).onChange((v) => (newCategory = oneOf(v, STATUS_CATEGORIES) ?? newCategory));
 			})
 			.addButton((button) =>
 				button
@@ -134,7 +134,8 @@ export class SharedConfigSettings {
 			.addDropdown((dropdown) => {
 				for (const [value, label] of Object.entries(CATEGORY_LABELS)) dropdown.addOption(value, label);
 				dropdown.setValue(def.category).onChange((v) => {
-					const to = v as StatusCategory;
+					const to = oneOf(v, STATUS_CATEGORIES);
+					if (!to) return;
 					void this.updateStatuses(set, (list) => changeCategory(list, def.name, to), () => ({
 						kind: 'category',
 						name: def.name,

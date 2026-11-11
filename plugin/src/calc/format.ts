@@ -23,13 +23,15 @@ export function membersOf(ctx: CalcContext, ...ids: (NoteId | undefined)[]): Mem
 }
 
 /** 進捗率（対象が無ければ「—」） */
+/** エピックの無いタスクのまとまりの名前 */
+export const NO_EPIC_LABEL = '（エピックなし）';
+
 export const pct = (p: CountProgress) => (p.ratio === null ? '—' : `${Math.round(p.ratio * 100)}%`);
 
 /** 進捗率の件数（例：（54/316））。対象が無ければ空 */
 export const countText = (p: CountProgress) => (p.ratio === null ? '' : `（${p.done}/${p.total}）`);
 
 /** 進捗率と件数（例：17%（54/316）） */
-export const progressDetail = (p: CountProgress) => `${pct(p)}${countText(p)}`;
 
 /** 負荷率などの割合（null なら「—」） */
 export const rateText = (rate: number | null) => (rate === null ? '—' : `${Math.round(rate * 100)}%`);
@@ -45,7 +47,7 @@ export const hoursText = (h: number | undefined) => (h === undefined ? '—' : h
 export const cellHoursText = (h: number) => (h === 0 ? '' : hoursText(h));
 
 /** 警告の種類の並び（重いものから。印・件数の表示に使う） */
-export const WARNING_ORDER: readonly WarningKind[] = ['overdue', 'overdueRisk', 'overEstimate', 'overAllocation', 'loadWarning', 'loadCaution', 'holidayWork'];
+export const WARNING_ORDER: readonly WarningKind[] = ['overdue', 'overdueRisk', 'overEstimate', 'overAllocation'];
 
 /** 警告を種類ごとに数える（重いものから） */
 export function warningCounts(warnings: readonly Warning[]): [WarningKind, number][] {

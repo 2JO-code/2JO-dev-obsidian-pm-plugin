@@ -11,12 +11,12 @@ import {
 	type FolderSettings,
 	type KindColors,
 	moveSection,
-	oneOf,
 	PROJECT_DISPLAY_NAMES,
 	type ProjectDisplayName,
 	type ProjectSection,
 	type ProjectSectionSetting,
 } from '../settings';
+import { oneOf } from '../parse/values';
 import { redrawViews } from '../views/baseView';
 
 const SECTION_LABELS: Record<ProjectSection, string> = {

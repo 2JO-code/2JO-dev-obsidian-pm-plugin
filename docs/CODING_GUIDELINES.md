@@ -56,7 +56,7 @@
   - 配列の要素は `undefined` かもしれないものとして扱う（`list[0]?.name`、`?? ''`）
 - `any` を使わない。外から来る値（frontmatter、JSON、`loadData()`）は `unknown` で受け、確かめてから使う
 - `as` による型の決めつけは避ける
-  - 外から来る値は確かめてから使う（例：候補の一覧と照らす `oneOf()`）
+  - 外から来る値は確かめてから使う（例：候補の一覧と照らす `oneOf()`。`parse/values.ts`）
   - オブジェクトの中は `isRecord` で確かめ、キーの値は `field(v, 'key')` で読む（`parse/values.ts`）
   - ビューの状態（`setState`）も同じ。`isRecord` をファイルごとに書かない
   - Obsidian の `TFile` などは `instanceof` で確かめる

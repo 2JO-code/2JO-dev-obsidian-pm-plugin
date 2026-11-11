@@ -1,6 +1,6 @@
 import { Notice } from 'obsidian';
 import type { CalcContext } from '../calc/context';
-import { barBox, DEFAULT_GANTT, dependencyFlags, fitRange, GANTT_LABEL_WIDTH, ganttLabelWidthOf, ganttScale, markX, parseGanttOptions, xOf, type GanttOptions, type GanttScale } from '../calc/gantt';
+import { barBox, DEFAULT_GANTT, dependencyFlags, fitRange, GANTT_LABEL_WIDTH, ganttLabelWidthOf, ganttScale, parseGanttOptions, xOf, type GanttOptions, type GanttScale } from '../calc/gantt';
 import { parseGanttWorklogMode, sumDayHours, taskDayHours, type GanttWorklogMode, type TaskDayHours } from '../calc/ganttWorklog';
 import { displayRange } from '../calc/memberStatus';
 import { EMPTY_FILTER, parseFilter, type ViewFilter } from '../calc/filter';
@@ -19,10 +19,26 @@ import { projectLabel } from '../settings';
 import { formClick, rowButton } from './actions';
 import { kindMark } from './badges';
 import { ChildRows } from './childRows';
-import { membersOf, warningCounts } from '../calc/format';
+import { membersOf, NO_EPIC_LABEL, warningCounts } from '../calc/format';
 import { memberChoices, projectChoices, statusChoices } from './choices';
 import { dateRange, renderFilterBar, singleSelect } from './filterBar';
-import { assigneeCell, dependencyLines, dueMark, ganttBar, ganttHeader, LINK_HINT, milestoneMark, planBand, startMark, worklogCells, type BarInfo } from './ganttParts';
+import {
+	assigneeCell,
+	dependencyLines,
+	dueMark,
+	ganttBar,
+	ganttHeader,
+	gridLine,
+	holidayBand,
+	LINK_HINT,
+	milestoneMark,
+	planBand,
+	startMark,
+	todayLine,
+	wbsColumnWidth,
+	worklogCells,
+	type BarInfo,
+} from './ganttParts';
 import { openView } from './openView';
 import { WbsDrag, type WbsDragGroup } from './wbsDrag';
 import { field } from '../parse/values';
@@ -201,7 +217,7 @@ export class GanttPanel extends Panel {
 		if (worklogMode === 'both') wrap.addClass('is-worklog-both');
 		const wbsWidth = Math.max(0, ...tree.flatMap((p) => p.epics.flatMap((e) => e.tasks.map((t) => taskWbsLabel(e.row.epic?.wbs, t.task.wbs).length))));
 		wrap.setCssProps({
-			'--pm-gantt-wbs': wbsWidth > 0 ? `calc(${wbsWidth}ch + var(--size-4-2))` : '0px',
+			'--pm-gantt-wbs': wbsColumnWidth(wbsWidth),
 			'--pm-gantt-width': `${scale.width}px`,
 			'--pm-gantt-label': `${this.labelWidth}px`,
 		});
@@ -210,11 +226,11 @@ export class GanttPanel extends Panel {
 		for (const p of scale.periods) {
 			if (p.unit !== 'day' || ctx.calendar.isWorkday(p.start)) continue;
 			const box = barBox(scale, p.start, p.end);
-			if (box) wrap.createDiv({ cls: 'pm-gantt-holiday' }).setCssProps({ '--pm-x': `${box.left}px`, '--pm-w': `${box.width}px` });
+			if (box) holidayBand(wrap, box.left, box.width);
 		}
 		// 期間の区切りの縦線。行より先に置き、棒の後ろに描く
 		if (this.host.gridLines()) {
-			for (const p of scale.periods.slice(1)) wrap.createDiv({ cls: 'pm-gantt-gridline' }).setCssProps({ '--pm-x': `${xOf(scale, p.start)}px` });
+			for (const p of scale.periods.slice(1)) gridLine(wrap, xOf(scale, p.start));
 		}
 
 		const bars = new Map<NoteId, HTMLElement>();
@@ -254,7 +270,7 @@ export class GanttPanel extends Panel {
 					e.tasks.map((t) => ({ row: this.taskRow(wrap, scale, t, bars, flags.get(t.task.id), epic?.wbs, taskGroup), id: t.task.id }));
 				// エピックの開閉は全体を描き直さず、タスクの行だけを足す・消す（設計書 9.7・9.8）
 				const er = this.row(wrap, 'pm-gantt-epic', open, e.tasks.length > 0, () => this.taskRows.replace(key, er.row, this.tree.flip(key), renderTasks));
-				const name = epic ? `${epic.wbs ? `${epic.wbs} ` : ''}${epic.title}` : '（エピックなし）';
+				const name = epic ? `${epic.wbs ? `${epic.wbs} ` : ''}${epic.title}` : NO_EPIC_LABEL;
 				const et = er.label.createSpan({ cls: 'pm-gantt-title', text: name });
 				if (epic) {
 					kindMark(et, 'epic');
@@ -275,8 +291,7 @@ export class GanttPanel extends Panel {
 			}
 		}
 
-		const today = markX(scale, ctx.today);
-		if (today !== undefined) wrap.createDiv({ cls: 'pm-gantt-today', attr: { 'aria-label': `今日（${ctx.today}）` } }).setCssProps({ '--pm-x': `${today}px` });
+		todayLine(wrap, scale, ctx.today);
 		this.watchBar = dependencyLines(wrap, allTasks, bars, linkNote);
 	}
 

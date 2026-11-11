@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { TABLE_SPEC } from '../parse/bodyTables';
-import { applyTableEdits, tableSnapshot } from '../write/markdownTable';
+import { applyTableEdits } from '../write/markdownTable';
 import { allocationRows, milestoneEdits, milestoneRows } from './projectTables';
 
 const U = (n: number) => `0192f3a0-1234-7abc-8def-${String(n).padStart(12, '0')}`;
@@ -98,7 +98,7 @@ describe('マイルストーンの書き換え', () => {
 	});
 
 	it('開いたあとに表が変わっていたら書き換えない', () => {
-		const snapshot = tableSnapshot(NOTE, TABLE_SPEC.milestones);
+		const { snapshot } = milestoneRows(NOTE);
 		const changed = NOTE.replace('納品', '最終納品');
 		expect(() => applyTableEdits(changed, TABLE_SPEC.milestones, 'date', snapshot, [])).toThrow('画面を開き直してください');
 	});

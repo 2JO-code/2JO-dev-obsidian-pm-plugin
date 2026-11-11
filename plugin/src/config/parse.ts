@@ -1,6 +1,6 @@
-import { STATUS_CATEGORIES, type Calendar, type Holiday, type StatusCategory, type StatusDef, type StatusSets } from '../model';
+import { STATUS_CATEGORIES, type Calendar, type Holiday, type StatusDef, type StatusSets } from '../model';
 import { defaultCalendar, defaultStatusSets } from './defaults';
-import { isRecord } from '../parse/values';
+import { isRecord, oneOf } from '../parse/values';
 import { errorMessage } from '../errors';
 
 /** 読み取り結果。problems があれば一部が使えなかった */
@@ -33,7 +33,8 @@ function parseStatusList(raw: unknown, label: string, problems: string[]): Statu
 			return;
 		}
 		const name = item.name.trim();
-		if (!STATUS_CATEGORIES.includes(item.category as StatusCategory)) {
+		const category = oneOf(item.category, STATUS_CATEGORIES);
+		if (!category) {
 			problems.push(`${where}（${name}）: 分類が不正です`);
 			return;
 		}
@@ -44,7 +45,7 @@ function parseStatusList(raw: unknown, label: string, problems: string[]): Statu
 			if (seen.has(n)) problems.push(`${where}: 「${n}」が重複しています`);
 			seen.add(n);
 		}
-		list.push({ name, category: item.category as StatusCategory, aliases });
+		list.push({ name, category, aliases });
 	});
 	if (list.length === 0) {
 		problems.push(`${label}: 有効なステータスがありません`);

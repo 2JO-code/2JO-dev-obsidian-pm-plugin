@@ -8,7 +8,7 @@ import { statusColor } from '../config/statusColor';
 import type { Member, NoteId, Project, StatusSets } from '../model';
 import { cleanColor, DEFAULT_SETTINGS, type KindColors, projectLabel, type ProjectDisplayName, type StatusColors } from '../settings';
 import { WARNING_LABELS, type Warning } from '../calc/warnings';
-import { countText, hoursText, pct, rateText, warningCounts, warningSummary } from '../calc/format';
+import { countText, hoursText, NO_EPIC_LABEL, pct, rateText, warningCounts, warningSummary } from '../calc/format';
 
 /** HTMLレポートのファイル名（出力先のフォルダに上書きする。設計書 13章） */
 export const REPORT_FILE_NAME = 'project-report.html';
@@ -230,7 +230,7 @@ function projectSection(s: ProjectStatus, title: string, name: (id: NoteId) => s
 						const endLate = open && !!r.span && !!r.epic?.due && r.span.end > r.epic.due;
 						return [
 							cell(r.epic?.wbs ?? ''),
-							r.epic ? { text: `${kind('epic')}${e(r.epic.title)}`, html: true } : cell('（エピックなし）'),
+							r.epic ? { text: `${kind('epic')}${e(r.epic.title)}`, html: true } : cell(NO_EPIC_LABEL),
 							status('task', r.epic?.status ?? ''),
 							cell(r.epic?.owner ? name(r.epic.owner) : ''),
 							progressCell(r),
@@ -311,7 +311,7 @@ th, th.num { text-align: center; }
 .badge.overdue { background: #fdecec; border-color: #e34948; }
 .badge.overdueRisk { background: #fdf0e8; border-color: #eb6834; }
 .badge.overEstimate { background: #fdf5e0; border-color: #eda100; }
-.badge.overAllocation, .badge.loadWarning, .badge.loadCaution, .badge.holidayWork { background: #efedfb; border-color: #6250d6; }
+.badge.overAllocation { background: #efedfb; border-color: #6250d6; }
 dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; margin: 8px 0; }
 dt { color: #666; }
 dd { margin: 0; }

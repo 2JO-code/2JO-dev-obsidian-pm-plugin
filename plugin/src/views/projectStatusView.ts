@@ -26,7 +26,7 @@ import { singleSelect } from './filterBar';
 import { checkbox, toggleMark } from '../ui/controls';
 import { renderBurnup, renderProgress } from './burnupChart';
 import { burnup, progressPlan } from '../calc/burnup';
-import { hoursText, membersOf, noteTitle, pct } from '../calc/format';
+import { hoursText, membersOf, NO_EPIC_LABEL, noteTitle, pct } from '../calc/format';
 import { openView } from './openView';
 import { warningLink } from './warningLink';
 import { WbsDrag, type WbsDragGroup } from './wbsDrag';
@@ -268,7 +268,7 @@ export class ProjectStatusView extends PmView {
 			// 開閉は表全体を描き直さず、タスクの行だけを足す・消す（設計書 9.4）
 			toggleMark(tr.createEl('td'), open, r.tasks.length > 0, () => this.taskRows.replace(key, tr, this.tree.flip(key), renderTasks));
 			tr.createEl('td', { text: epic?.wbs ?? '' });
-			const title = tr.createEl('td', { text: epic ? epic.title : '（エピックなし）' });
+			const title = tr.createEl('td', { text: epic ? epic.title : NO_EPIC_LABEL });
 			if (epic) {
 				kindMark(title, 'epic');
 				title.addClass('pm-link');

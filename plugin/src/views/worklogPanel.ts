@@ -18,7 +18,7 @@ import type { CalcContext } from '../calc/context';
 import { currentStatusName, EMPTY_FILTER, parseFilter, type ViewFilter } from '../calc/filter';
 import { firstDayOf } from '../calc/dates';
 import { cellHoursText, hoursText, membersOf, missingLabel } from '../calc/format';
-import { ganttScale, markX, xOf, type GanttScale } from '../calc/gantt';
+import { ganttScale, xOf, type GanttScale } from '../calc/gantt';
 import { taskPlanDelay, taskPlanPeriod } from '../calc/planDelay';
 import {
 	DEFAULT_WORKLOG_VIEW,
@@ -41,7 +41,7 @@ import { actionButtons, formClick } from './actions';
 import { kindMark } from './badges';
 import { memberChoices, projectChoices, statusChoices } from './choices';
 import { renderFilterBar, singleSelect } from './filterBar';
-import { assigneeCell, dueMark, ganttBar, ganttHeader, place, planBand, startMark } from './ganttParts';
+import { assigneeCell, dueMark, ganttBar, ganttHeader, gridLine, holidayBand, place, planBand, startMark, todayLine, wbsColumnWidth } from './ganttParts';
 import { Panel, type PanelScope, type Shell } from './panel';
 import { toggleMark, checkbox } from '../ui/controls';
 
@@ -229,7 +229,7 @@ export class WorklogPanel extends Panel {
 			'--pm-gantt-width': `${scale.width}px`,
 			'--pm-worklog-total': `${totalPart * columns.length}px`,
 			'--pm-worklog-estimate': `${estimateWidth}px`,
-			'--pm-gantt-wbs': wbsWidth > 0 ? `calc(${wbsWidth}ch + var(--size-4-2))` : '0px',
+			'--pm-gantt-wbs': wbsColumnWidth(wbsWidth),
 		});
 		const head = ganttHeader(wrap, scale, ctx).parentElement;
 		// 見積・合計の欄は担当者の右（横軸の前）に置く
@@ -243,8 +243,8 @@ export class WorklogPanel extends Panel {
 		for (const date of dates) {
 			const x = xOf(scale, date);
 			const holiday = !ctx.calendar.isWorkday(date);
-			if (holiday) wrap.createDiv({ cls: 'pm-gantt-holiday' }).setCssProps({ '--pm-x': `${x}px`, '--pm-w': `${dayWidth}px` });
-			if (this.host.gridLines() && date !== first) wrap.createDiv({ cls: 'pm-gantt-gridline' }).setCssProps({ '--pm-x': `${x}px` });
+			if (holiday) holidayBand(wrap, x, dayWidth);
+			if (this.host.gridLines() && date !== first) gridLine(wrap, x);
 			if (columns.length < 2 || !headTrack) continue;
 			columns.forEach((m, i) => {
 				const sub = headTrack.createDiv({ cls: 'pm-gantt-cell is-sub', text: MODE_LABEL[m].slice(0, 1), attr: { 'aria-label': MODE_LABEL[m] } });
@@ -266,7 +266,7 @@ export class WorklogPanel extends Panel {
 			}
 			if (line.kind === 'project' || line.kind === 'epic') {
 				const title = label.createSpan({ cls: 'pm-gantt-title', text: line.wbs ? `${line.wbs} ${line.label}` : line.label });
-				if (line.label !== '（エピックなし）') kindMark(title, line.kind);
+				if (!line.noEpic) kindMark(title, line.kind);
 			} else if (line.kind === 'task') {
 				// 番号は幅をそろえた欄に入れる（ガントと同じ。設計書 9.8）
 				const title = label.createSpan({ cls: 'pm-gantt-title pm-action-link' });
@@ -308,8 +308,7 @@ export class WorklogPanel extends Panel {
 		this.totalParts(sumRow.createDiv({ cls: 'pm-worklog-total' }), grandTotal);
 		this.dayCells(sumRow.createDiv({ cls: 'pm-gantt-track' }), totals, dates, columns, scale, cellWidth);
 
-		const today = markX(scale, ctx.today);
-		if (today !== undefined) wrap.createDiv({ cls: 'pm-gantt-today', attr: { 'aria-label': `今日（${ctx.today}）` } }).setCssProps({ '--pm-x': `${today}px` });
+		todayLine(wrap, scale, ctx.today);
 	}
 
 	/** タスクの作業範囲。ガントと同じ当初期間の帯・見込みの日程の棒・開始日と期限日の線を、数字の後ろに描く */

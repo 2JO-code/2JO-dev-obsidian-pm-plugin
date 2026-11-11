@@ -1,6 +1,7 @@
 import { monthOfDate } from './dates';
 import { cellHoursText } from './format';
 import type { IsoDate, NoteId, Worklog } from '../model';
+import { addHoursTo } from './worklogSummary';
 
 /** ガントに出す作業ログの値（設計書 9.8）。出さない・実績・予定・両方 */
 export type GanttWorklogMode = 'none' | 'actual' | 'planned' | 'both';
@@ -32,8 +33,7 @@ export function taskDayHours(logs: readonly Worklog[], start: IsoDate, end: IsoD
 			if (e.date < start || e.date > end || (e.planned === 0 && e.actual === 0)) continue;
 			let days = out.get(e.task);
 			if (!days) out.set(e.task, (days = new Map<IsoDate, DayHours>()));
-			const sum = days.get(e.date) ?? { planned: 0, actual: 0 };
-			days.set(e.date, { planned: sum.planned + e.planned, actual: sum.actual + e.actual });
+			addHoursTo(days, e.date, e);
 		}
 	}
 	return out;
@@ -44,8 +44,7 @@ export function sumDayHours(hours: TaskDayHours, tasks: readonly NoteId[]): Map<
 	const out = new Map<IsoDate, DayHours>();
 	for (const id of tasks) {
 		for (const [date, h] of hours.get(id) ?? []) {
-			const sum = out.get(date) ?? { planned: 0, actual: 0 };
-			out.set(date, { planned: sum.planned + h.planned, actual: sum.actual + h.actual });
+			addHoursTo(out, date, h);
 		}
 	}
 	return out;

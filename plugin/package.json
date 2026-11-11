@@ -1,6 +1,6 @@
 {
 	"name": "obsidian-project-manager",
-	"version": "0.2.0",
+	"version": "0.3.0",
 	"description": "複数プロジェクトを横断して進捗とメンバー負荷を可視化するObsidianプラグイン",
 	"main": "main.js",
 	"type": "module",

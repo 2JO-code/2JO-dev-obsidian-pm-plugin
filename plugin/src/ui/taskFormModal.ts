@@ -1,20 +1,20 @@
 import { missingLabel } from '../calc/format';
-import { type App, ButtonComponent, DropdownComponent, TextAreaComponent, TextComponent, type TFile } from 'obsidian';
+import { type App, ButtonComponent, DropdownComponent, TextAreaComponent, TextComponent } from 'obsidian';
 import { compareJa } from '../calc/compare';
 import type { WorkCalendar } from '../calc/workdays';
 import { nextTaskWbsIn } from '../calc/wbsOrder';
 import type { ChecklistRow } from '../forms/checklist';
 import { taskFormToUpdate, type TaskForm } from '../forms/taskForm';
-import { applyDescription, descriptionErrors } from '../forms/taskDescription';
+import { DESCRIPTION_KEY } from '../forms/noteChanges';
+import { descriptionErrors, normalizeDescription } from '../forms/taskDescription';
 import { previewTaskSchedule, type SchedulePreview } from '../forms/taskSchedulePreview';
 import type { Epic, IsoDate, Member, NoteId, NoteType, Project, StatusDef, Task } from '../model';
 import type { ProjectDisplayName } from '../settings';
-import { writeFrontmatter } from '../write/frontmatterFile';
-import { FormModal } from './formModal';
+import { FormModal, type FormNote } from './formModal';
 import { dateInput, epicOptions, errorBox, formColumns, formField, formSection, hoursInput, memberOptions, numberInput, projectOptions, statusOptions } from './formParts';
 
 export interface TaskFormModalOptions {
-	file: TFile;
+	note: FormNote;
 	taskId: NoteId;
 	form: TaskForm;
 	projects: readonly Project[];
@@ -252,17 +252,14 @@ export class TaskFormModal extends FormModal {
 
 	private async save(): Promise<void> {
 		const { options } = this;
-		await this.submit(
+		await this.submitNote(
+			options.note,
 			() => {
 				const result = taskFormToUpdate(this.form, options.statuses, options.taskId);
 				const dropped = this.droppedAssignees.length > 0 ? [`担当者は1人までのため、${this.memberNames(this.droppedAssignees)} を外しました`] : [];
 				return { ...result, errors: [...result.errors, ...descriptionErrors(this.description)], warnings: [...result.warnings, ...dropped] };
 			},
-			async (result) => {
-				// 開いたあとに説明が変わっていたら、プロパティも書かずに止める
-				await this.app.vault.process(options.file, (content) => applyDescription(content, options.description, this.description));
-				await writeFrontmatter(this.app, options.file, 'task', result.update);
-			},
+			(result) => ({ ...result.update, [DESCRIPTION_KEY]: normalizeDescription(this.description) }),
 		);
 	}
 }

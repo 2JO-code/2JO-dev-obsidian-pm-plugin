@@ -332,6 +332,7 @@ classDiagram
 		#render()*
 		#footer(onSave)
 		#submit(check, write)
+		#submitNote(note, check, items)
 	}
 
 	ItemView <|-- PmView
@@ -477,7 +478,7 @@ sequenceDiagram
 	end
 ```
 
-### 2.3 入力補助フォームでの書き込み（設計書 4.1, 4.5, 4.6, 4.11）
+### 2.3 入力補助フォームでの書き込み（設計書 4.1, 4.5, 4.6, 4.11, 4.15）
 
 - タスクの例。エピック・プロジェクト・メンバーも同じ流れ（本文の説明はタスクだけ）
 - 画面の更新は書き込みの後、2.2 の流れで起こる
@@ -489,31 +490,40 @@ sequenceDiagram
 	participant F as taskForm.ts（純粋）
 	participant D as taskDescription.ts（純粋）
 	participant M as TaskFormModal
-	participant W as writeFrontmatter
-	participant O as Obsidian（fileManager）
+	participant C as noteChanges.ts（純粋）
+	participant Q as NoteChangedModal
+	participant W as noteFile.ts
+	participant O as Obsidian（vault・fileManager）
 	participant A as applyFrontmatter（純粋）
 
 	U->>E: ビューの行のクリック（コマンド・右クリックも）
-	E->>E: formSource()（索引の準備と frontmatter を確かめる）
-	E->>F: taskFormFromFrontmatter(fm)
+	E->>W: formSource() → readNoteItems()（ファイルから frontmatter と説明を読む）
+	W->>D: descriptionOf(本文)
+	W-->>E: 開いたときの写し
+	E->>F: taskFormFromFrontmatter(写し)
 	F-->>E: TaskForm
-	E->>O: vault.read(file)
-	E->>D: descriptionOf(本文)
-	E->>M: new TaskFormModal(候補は store.index から、説明).open()
+	E->>M: new TaskFormModal(候補は store.index から、写し).open()
 	U->>M: 日付・日数を変える
 	M->>M: previewTaskSchedule()（見込みの日程を出し直す。書かない）
 	U->>M: 入力して「保存」
-	M->>M: submit()（保存中なら受け付けない）
+	M->>M: submitNote()（保存中なら受け付けない）
 	M->>F: taskFormToUpdate(form, statuses, taskId)
 	F-->>M: errors・warnings・update
 	M->>D: descriptionErrors(説明)
 	alt errors がある
 		M->>M: errors を表示して render()
 	else errors が無い
-		M->>O: vault.process(file, applyDescription)（説明を変えたときだけ本文が変わる）
-		M->>W: writeFrontmatter(app, file, task, update)
-		W->>O: processFrontMatter(file, callback)
-		O->>A: applyFrontmatter(fm, type, update)
+		M->>W: readNoteItems()（今のノート）
+		M->>C: noteChanges(開いたとき, 今のノート, フォームの値)
+		opt 開いたあとにノートが変わっていた
+			M->>Q: askNoteChanged(差分)
+			Q-->>M: 変えた項目だけ上書き／すべて保存／開き直す／フォームに戻る
+		end
+		M->>C: editedItems()（書く項目だけ）
+		M->>W: writeNoteItems(確かめた写し, 書く項目)
+		W->>O: vault.process(file, applyDescription)（説明を変えたときだけ）
+		W->>O: processFrontMatter(file, callback)（書く項目があるときだけ）
+		O->>A: 確かめた写しと同じか見てから applyFrontmatter(fm, type, update)
 		A-->>O: キーを決めた順に入れ直す
 		alt 書き込みに失敗
 			M-->>U: お知らせ「保存できませんでした」（画面は開いたまま）

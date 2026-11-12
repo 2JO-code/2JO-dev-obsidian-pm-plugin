@@ -1,12 +1,11 @@
-import { type App, Setting, type TFile } from 'obsidian';
+import { type App, Setting } from 'obsidian';
 import { projectFormToUpdate, type ProjectForm } from '../forms/projectForm';
 import type { Member, StatusDef } from '../model';
-import { writeFrontmatter } from '../write/frontmatterFile';
-import { FormModal } from './formModal';
+import { FormModal, type FormNote } from './formModal';
 import { dateSetting, errorBox, memberSetting, statusSetting } from './formParts';
 
 export interface ProjectFormModalOptions {
-	file: TFile;
+	note: FormNote;
 	form: ProjectForm;
 	members: readonly Member[];
 	statuses: StatusDef[];
@@ -51,9 +50,10 @@ export class ProjectFormModal extends FormModal {
 
 	private async save(): Promise<void> {
 		const { options } = this;
-		await this.submit(
+		await this.submitNote(
+			options.note,
 			() => projectFormToUpdate(this.form, options.statuses),
-			(result) => writeFrontmatter(this.app, options.file, 'project', result.update),
+			(result) => result.update,
 		);
 	}
 }

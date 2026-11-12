@@ -811,6 +811,32 @@ td .pm-progress-pct {
 	resize: vertical;
 }
 
+/* フォームの保存で、開いたあとのノートの更新を知らせるダイアログ（設計書 4.15） */
+.pm-note-changed-modal {
+	width: min(900px, 95vw);
+}
+
+.pm-note-changed {
+	max-height: 50vh;
+	overflow: auto;
+	margin: var(--size-4-2) 0;
+}
+
+.pm-note-changed .pm-note-changed-value {
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+}
+
+.pm-note-changed .pm-note-changed-value.is-changed {
+	background: color-mix(in srgb, var(--color-yellow) 25%, transparent);
+	font-weight: var(--font-bold);
+}
+
+.pm-note-changed-mark {
+	--pm-mark-color: var(--color-orange);
+	margin-left: var(--size-2-2);
+}
+
 /* タスク・エピックのフォームの並び（設計書 4.12）。まとまりを左右の列に分け、まとまりの中は欄を1〜3列で並べる */
 .pm-form-modal {
 	width: min(1100px, 95vw);

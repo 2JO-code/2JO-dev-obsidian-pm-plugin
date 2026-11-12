@@ -1,13 +1,12 @@
-import { type App, DropdownComponent, TextAreaComponent, TextComponent, type TFile } from 'obsidian';
+import { type App, DropdownComponent, TextAreaComponent, TextComponent } from 'obsidian';
 import { epicFormToUpdate, type EpicForm } from '../forms/epicForm';
 import type { Member, NoteId, Project, StatusDef } from '../model';
 import type { ProjectDisplayName } from '../settings';
-import { writeFrontmatter } from '../write/frontmatterFile';
-import { FormModal } from './formModal';
+import { FormModal, type FormNote } from './formModal';
 import { dateInput, errorBox, formColumns, formField, formSection, memberOptions, projectOptions, statusOptions } from './formParts';
 
 export interface EpicFormModalOptions {
-	file: TFile;
+	note: FormNote;
 	form: EpicForm;
 	projects: readonly Project[];
 	members: readonly Member[];
@@ -78,9 +77,10 @@ export class EpicFormModal extends FormModal {
 
 	private async save(): Promise<void> {
 		const { options } = this;
-		await this.submit(
+		await this.submitNote(
+			options.note,
 			() => epicFormToUpdate(this.form, options.statuses, options.fixedProject),
-			(result) => writeFrontmatter(this.app, options.file, 'epic', result.update),
+			(result) => result.update,
 		);
 	}
 }

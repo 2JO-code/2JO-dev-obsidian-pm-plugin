@@ -1,11 +1,10 @@
-import { type App, Setting, type TFile } from 'obsidian';
+import { type App, Setting } from 'obsidian';
 import { memberFormToUpdate, type MemberForm } from '../forms/memberForm';
-import { writeFrontmatter } from '../write/frontmatterFile';
-import { FormModal } from './formModal';
+import { FormModal, type FormNote } from './formModal';
 import { errorBox } from './formParts';
 
 export interface MemberFormModalOptions {
-	file: TFile;
+	note: FormNote;
 	form: MemberForm;
 }
 
@@ -57,9 +56,10 @@ export class MemberFormModal extends FormModal {
 
 	private async save(): Promise<void> {
 		const { options } = this;
-		await this.submit(
+		await this.submitNote(
+			options.note,
 			() => memberFormToUpdate(this.form),
-			(result) => writeFrontmatter(this.app, options.file, 'user', result.update),
+			(result) => result.update,
 		);
 	}
 }

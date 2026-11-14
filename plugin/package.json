@@ -5,9 +5,9 @@
 	"main": "main.js",
 	"type": "module",
 	"scripts": {
-		"dev": "npm run readme && node esbuild.config.mjs",
-		"build": "npm run readme && tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
-		"readme": "node scripts/readme-text.mjs",
+		"dev": "npm run guide && node esbuild.config.mjs",
+		"build": "npm run guide && tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
+		"guide": "node scripts/guide-html.mjs",
 		"deploy": "npm run build && node scripts/deploy.mjs",
 		"package": "npm run build && node scripts/package.mjs",
 		"dummy": "node scripts/generate-dummy.mjs",

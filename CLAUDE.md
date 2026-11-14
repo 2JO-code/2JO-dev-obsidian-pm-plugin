@@ -25,10 +25,10 @@ Obsidian 上で、複数プロジェクト横断の進捗・メンバー負荷�
 | [OBSIDIAN_BEST_PRACTICES.md](docs/OBSIDIAN_BEST_PRACTICES.md) | Obsidian API の使い方（公式と適用方針） | 独自の書き方 |
 | [UI_STYLE_GUIDE.md](docs/UI_STYLE_GUIDE.md) | 見た目の書き方（色・余白・印・リンク・表） | 決めた理由（設計書へ） |
 | [LIBRARIES.md](docs/LIBRARIES.md) | 使うライブラリ（版・ライセンス・用途） | — |
-| [docs/vault/README.md](docs/vault/README.md) | 利用者向けの使い方 | 開発者向けの話 |
+| [docs/vault/guide.html](docs/vault/guide.html) | 利用者向けの使い方（図つきの HTML） | 開発者向けの話 |
 
 - コードを書く前に規約、CSS を書く前に UI_STYLE_GUIDE を読む
-- 実装を変えたら設計書を、画面や操作を変えたら README を、ライブラリを変えたら LIBRARIES を直す
+- 実装を変えたら設計書を、画面や操作を変えたら使い方（guide.html）を、ライブラリを変えたら LIBRARIES を直す
 - クラスや処理の流れを変えたら DIAGRAMS も直す
 - 文書の節番号はコードから参照されているので変えない。節を足すときは末尾に足す
 
@@ -77,9 +77,9 @@ Obsidian 上で、複数プロジェクト横断の進捗・メンバー負荷�
 ## リポジトリの状態
 
 - フォルダ構成
-  - `docs/`：上の文書。`docs/vault/README.md` は Vault の直下に置く利用者向けの使い方の正本
+  - `docs/`：上の文書。`docs/vault/guide.html` は利用者向けの使い方の正本
+    - ビルドで `plugin/src/generated/guideHtml.ts` に変換され、「使い方」のビューに出る（設計書 9.14）
   - `docs/progress/`：日々変わる TASKS.md・HISTORY.md。Git に入れない（手元だけ）
-    - ビルドで `plugin/src/generated/readmeText.ts` に変換され、「使い方を開く」で Vault に書き出す（設計書 9章）
   - `plugin/`：プラグインのソースとビルド設定（公式 `obsidian-sample-plugin` ベース）。npm 関連はすべてここ
   - ルート：CLAUDE.md（ルートにないと読み込まれない）、`.claude/`、`.gitignore`
   - `.tools/`：開発者の手元だけで使う検査ツール（Git に入れない。LIBRARIES.md 7章）
@@ -99,7 +99,7 @@ Obsidian 上で、複数プロジェクト横断の進捗・メンバー負荷�
 ```bash
 npm install
 npm run dev      # esbuild watch。ビルド成功のたびに開発用Vaultへ自動コピー（scripts/deploy.mjs）
-npm run build    # README を TS に変換（npm run readme）し、tsc -noEmit で型チェック後、本番ビルド（minify）
+npm run build    # 使い方の HTML を TS に変換（npm run guide）し、tsc -noEmit で型チェック後、本番ビルド（minify）
 npm run deploy   # 本番ビルドして開発用Vaultへコピー
 npm run package  # 本番ビルドして配布用の release/project-manager-<版>.zip を作る（設計書 12章）
 npm version 0.3.0 --no-git-tag-version   # 版を上げる（manifest.json・versions.json も更新）

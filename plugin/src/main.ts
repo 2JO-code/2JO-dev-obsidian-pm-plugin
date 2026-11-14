@@ -8,7 +8,6 @@ import { registerEditHolidays } from './commands/editHolidays';
 import { registerEditTask } from './commands/editTask';
 import { registerHtmlReport } from './commands/htmlReport';
 import { registerLayouts } from './commands/layouts';
-import { registerReadme } from './commands/readme';
 import { registerReload } from './commands/reload';
 import { registerWorklog } from './commands/worklog';
 import { NO_USAGE, type UsageCounter } from './config/impact';
@@ -30,6 +29,7 @@ import { registerArchiveView } from './views/archiveView';
 import { redrawViews } from './views/baseView';
 import { registerDashboardView } from './views/dashboardView';
 import { registerGanttView } from './views/ganttView';
+import { registerGuideView } from './views/guideView';
 import { registerHealthView } from './views/healthView';
 import { registerKanbanView } from './views/kanbanView';
 import { registerMemberDashboardView } from './views/memberDashboardView';
@@ -82,7 +82,7 @@ export default class ProjectManagerPlugin extends Plugin {
 		registerWorklogView(this);
 		registerHtmlReport(this);
 		registerArchiveView(this);
-		registerReadme(this);
+		registerGuideView(this);
 		registerLayouts(this);
 		registerMainMenu(this);
 

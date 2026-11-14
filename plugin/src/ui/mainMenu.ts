@@ -3,10 +3,10 @@ import { openCopyProjectModal } from '../commands/copyProject';
 import { openNewNoteModal } from '../commands/createNote';
 import { deleteLayout, saveLayout, switchLayout } from '../commands/layouts';
 import { exportHtmlReport } from '../commands/htmlReport';
-import { openReadme } from '../commands/readme';
 import { reloadData } from '../commands/reload';
 import { openWorklogModal } from '../commands/worklog';
 import type ProjectManagerPlugin from '../main';
+import { openGuide } from '../views/guideView';
 import { openView } from '../views/openView';
 import { ARCHIVE_VIEW_TYPE, DASHBOARD_VIEW_TYPE, GANTT_VIEW_TYPE, HEALTH_VIEW_TYPE, KANBAN_VIEW_TYPE, MEMBER_DASHBOARD_VIEW_TYPE, MEMBER_STATUS_VIEW_TYPE, PROJECT_STATUS_VIEW_TYPE, TASK_LIST_VIEW_TYPE, WBS_VIEW_TYPE, WORKLOG_VIEW_TYPE } from '../views/viewTypes';
 
@@ -46,7 +46,7 @@ function showMainMenu(plugin: ProjectManagerPlugin, evt: MouseEvent): void {
 	add('レイアウトを保存', 'save', () => void saveLayout(plugin));
 	add('レイアウトを削除', 'trash-2', () => deleteLayout(plugin));
 	menu.addSeparator();
-	add('使い方（README）', 'help-circle', () => void openReadme(plugin));
+	add('使い方', 'help-circle', () => void openGuide(plugin));
 	add('データを再読み込み', 'refresh-cw', () => void reloadData(plugin));
 	menu.showAtMouseEvent(evt);
 }

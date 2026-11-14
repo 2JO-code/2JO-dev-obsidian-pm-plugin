@@ -50,7 +50,7 @@
 次のスクリプトは、Node.js 標準（`fs`・`path`・`url`）だけで書いている。
 
 - `scripts/deploy.mjs`（開発用 Vault へのコピー）
-- `scripts/readme-text.mjs`（README を TS に変換）
+- `scripts/guide-html.mjs`（使い方の HTML を TS に変換）
 - `scripts/generate-dummy.mjs`（ダミーデータ）
 - `plugin` 直下の `version-bump.mjs`（公式サンプル由来。版の番号を上げる）
 - 詳しくは設計書 12章

@@ -3,7 +3,8 @@ import type { Epic, IsoDate, Milestone, NoteId, Project, StatusCategory, Task, Y
 import { compareNumeric } from './compare';
 import type { CalcContext } from './context';
 import { countProgress, workload, type CountProgress, type Workload } from './progress';
-import { allocationWarnings, type Warning } from './warnings';
+import { allocationWarnings, groupWarnings, type Warning } from './warnings';
+import { isClosed } from './filter';
 
 /** 進捗・工数・警告のまとまり（プロジェクト全体とエピックごとに使う） */
 export interface Status {
@@ -89,18 +90,28 @@ export function projectStatus(ctx: CalcContext, project: Project): ProjectStatus
 		if (group) group.push(t);
 		else byEpic.set(key, [t]);
 	}
+	const { schedules } = ctx.schedule;
+	const groupExtra: Warning[] = [];
 	const epicRows: EpicRow[] = epics
 		.sort((a, b) => compareNumeric(a.wbs ?? '￿', b.wbs ?? '￿') || compareNumeric(a.title, b.title))
 		.map((epic) => {
 			const category = findStatus(ctx.statuses.task, epic.status)?.category;
-			return { epic, ...(category ? { category } : {}), ...status(ctx, byEpic.get(epic.id) ?? []) };
+			const own = byEpic.get(epic.id) ?? [];
+			const extra = groupWarnings({ type: 'epic', id: epic.id, ...(epic.due ? { due: epic.due } : {}) }, category === 'done', own, ctx.statuses.task, schedules);
+			groupExtra.push(...extra);
+			return { epic, ...(category ? { category } : {}), ...status(ctx, own, extra) };
 		});
 	const noEpic = byEpic.get(undefined);
 	if (noEpic) epicRows.push(status(ctx, noEpic));
+	const projectDue = { type: 'project' as const, id: project.id, ...(project.due ? { due: project.due } : {}) };
 
 	return {
 		project,
-		...status(ctx, tasks, allocationWarnings(project, ctx.summary)),
+		...status(ctx, tasks, [
+			...allocationWarnings(project, ctx.summary),
+			...groupWarnings(projectDue, isClosed(project, ctx.statuses), tasks, ctx.statuses.task, schedules),
+			...groupExtra,
+		]),
 		epics: epicRows,
 		milestones: milestoneRows(project, epicRows, ctx.today),
 		allocation: allocationTable(ctx, project),

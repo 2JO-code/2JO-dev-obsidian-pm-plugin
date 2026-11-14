@@ -174,7 +174,7 @@ export class TaskFormModal extends FormModal {
 			form.start,
 			onChange((v) => (form.start = v)),
 		);
-		dateInput(formField(grid, '期限日', { hint: '固定の期限。見込み終了日になる' }), form.due, onChange((v) => (form.due = v)));
+		dateInput(formField(grid, '期限日', { hint: '固定の期限。見込み終了日になる' }), form.due, onChange((v) => (form.due = v)), options.calendar);
 		// 当初は最初の計画。見込みの日程と比べて遅れを出す（設計書 11.18）
 		dateInput(formField(grid, '当初開始日', { hint: '最初の計画。遅れを測る基準' }), form.planStart, onChange((v) => (form.planStart = v)));
 		dateInput(formField(grid, '当初終了日', { hint: '見込み終了日と比べます' }), form.planEnd, onChange((v) => (form.planEnd = v)));

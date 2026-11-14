@@ -80,6 +80,27 @@ describe('projectStatus', () => {
 	});
 });
 
+describe('projectStatus の上位の期限超過見込み', () => {
+	const late = project(PJT, { due: '2026-11-20' });
+	const lateIndex = indexOf([
+		late,
+		epic('E1', { due: '2026-11-13' }),
+		epic('E2', { due: '2026-11-13', status: '完了' }),
+		task('T1', { epic: 'E1', start: '2026-11-11', due: '2026-11-18' }),
+		task('T2', { epic: 'E2', start: '2026-11-11', due: '2026-11-25' }),
+	]);
+	const s = projectStatus(buildContext(lateIndex, defaultStatusSets(), defaultCalendar(), '2026-11-10'), late);
+
+	it('エピックの行に、そのエピックの警告を入れる。完了系のエピックには出さない', () => {
+		expect(s.epics.map((r) => r.warnings.map((w) => w.kind))).toEqual([['groupOverdueRisk'], []]);
+	});
+
+	it('プロジェクト全体には、プロジェクトとエピックの警告を入れる', () => {
+		const targets = s.warnings.filter((w) => w.kind === 'groupOverdueRisk').map((w) => w.target.type);
+		expect(targets.sort()).toEqual(['epic', 'project']);
+	});
+});
+
 describe('buildContext の前もっての計算', () => {
 	it('タスクとエピックをプロジェクトごとに分ける（アーカイブ内も含む）', () => {
 		expect(ctx.byProject.get(PJT)?.tasks.map((t) => t.id)).toEqual(['T1', 'T2', 'T3', 'T4']);

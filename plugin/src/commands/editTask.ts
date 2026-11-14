@@ -119,6 +119,7 @@ export function openEpicForm(plugin: ProjectManagerPlugin, target: TFile | strin
 				members: index.members(),
 				statuses: plugin.config.statuses.task,
 				displayName: plugin.personal.projectDisplayName,
+				calendar: new WorkCalendar(plugin.config.calendar),
 				...(linked ? { fixedProject: form.project } : {}),
 			}).open();
 		}),
@@ -135,6 +136,7 @@ export function openProjectForm(plugin: ProjectManagerPlugin, target: TFile | st
 				form: projectFormFromFrontmatter(src.fm),
 				members: plugin.store.index.members(),
 				statuses: plugin.config.statuses.project,
+				calendar: new WorkCalendar(plugin.config.calendar),
 			}).open();
 		}),
 	);

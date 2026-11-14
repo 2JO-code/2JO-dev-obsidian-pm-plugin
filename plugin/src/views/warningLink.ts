@@ -23,7 +23,8 @@ export async function openTaskWarnings(app: App, target: { project: NoteId; epic
 
 /**
  * 警告の種類ごとの印を cell に入れ、直す場所へのリンクにする（リンクは印だけ。セルの余白は押しても動かない）。
- * タスクの警告があればタスク一覧へ。配分超過はタスクではなくプロジェクトの工数配分の警告なので、onAllocation（プロジェクト状況など）へ
+ * タスクの警告があればタスク一覧へ。配分超過はタスクではなくプロジェクトの工数配分の警告なので、onAllocation（プロジェクト状況など）へ。
+ * 上位の期限超過見込みは、印を指すと文を出す
  */
 export function warningLink(
 	app: App,
@@ -35,16 +36,17 @@ export function warningLink(
 	if (warnings.length === 0) return;
 	const label = warningBadges(cell, warnings);
 	const allocation = warnings.some((w) => w.kind === 'overAllocation');
-	const onTasks = warnings.some((w) => w.kind !== 'overAllocation');
-	const action = onTasks ? () => void openTaskWarnings(app, target) : onAllocation;
+	const onTasks = warnings.some((w) => w.target.type === 'task');
+	// 上位の期限超過見込みは、文を指して読む（直す場所はエピック・プロジェクトのフォーム）
+	const groups = warnings.filter((w) => w.kind === 'groupOverdueRisk').map((w) => w.message);
+	if (groups.length > 0) label.setAttr('aria-label', groups.join('\n'));
+	const action = onTasks ? () => void openTaskWarnings(app, target) : allocation ? onAllocation : undefined;
 	if (!action) return;
 	label.addClass('pm-action-link');
-	label.setAttr(
-		'aria-label',
-		onTasks
-			? `警告のあるタスクをタスク一覧で開く${allocation ? '（配分超過はプロジェクト状況の工数配分にあります）' : ''}`
-			: '配分超過：プロジェクト状況の工数配分を開く',
-	);
+	const link = onTasks
+		? `警告のあるタスクをタスク一覧で開く${allocation ? '（配分超過はプロジェクト状況の工数配分にあります）' : ''}`
+		: '配分超過：プロジェクト状況の工数配分を開く';
+	label.setAttr('aria-label', [link, ...groups].join('\n'));
 	label.addEventListener('click', (evt) => {
 		evt.stopPropagation();
 		action();

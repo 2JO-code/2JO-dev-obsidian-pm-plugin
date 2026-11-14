@@ -104,13 +104,13 @@ function placeTip(tip: HTMLElement, el: SVGSVGElement, px: number): void {
 const percent = (n: number, total: number) => (total > 0 ? `${Math.round((n / total) * 100)}%` : '—');
 
 /**
- * 進捗率の予定の線と今日の実績の点（要件4.8b、設計書 9.5）。
+ * 進捗率の見込みの線と今日の実績の点（要件4.8b、設計書 9.5）。
  * 完了した日は記録が無いので、実績は今日の点だけ。縦軸は 0〜100%
  */
 export function renderProgress(parent: HTMLElement, plan: ProgressPlan, range: { start: IsoDate; end: IsoDate; projectStart?: IsoDate; projectDue?: IsoDate }, today: IsoDate): void {
 	const root = parent.createDiv({ cls: 'pm-burnup' });
 	legendOf(root, [
-		['is-planned', '予定の進捗率（その日までに終わるはずのタスク）'],
+		['is-planned', '見込みの進捗率（その日までに見込み終了日が来るタスク）'],
 		['is-actual-dot', '今日の実際の進捗率'],
 		['is-period', 'プロジェクトの期間（開始日・期限日）'],
 	]);
@@ -158,7 +158,7 @@ export function renderProgress(parent: HTMLElement, plan: ProgressPlan, range: {
 		hover.classList.add('is-shown');
 		tip.empty();
 		tip.createDiv({ cls: 'pm-burnup-tip-date', text: p.date });
-		tip.createDiv({ text: `予定の進捗率 ${percent(p.planned, total)}（${p.planned}／${total} 件）` });
+		tip.createDiv({ text: `見込みの進捗率 ${percent(p.planned, total)}（${p.planned}／${total} 件）` });
 		if (p.date === today) tip.createDiv({ text: `実際の進捗率 ${percent(done, total)}（${done}／${total} 件）` });
 		placeTip(tip, el, px);
 	});

@@ -47,7 +47,7 @@ export const hoursText = (h: number | undefined) => (h === undefined ? '—' : h
 export const cellHoursText = (h: number) => (h === 0 ? '' : hoursText(h));
 
 /** 警告の種類の並び（重いものから。印・件数の表示に使う） */
-export const WARNING_ORDER: readonly WarningKind[] = ['overdue', 'overdueRisk', 'overEstimate', 'overAllocation'];
+export const WARNING_ORDER: readonly WarningKind[] = ['overdue', 'overdueRisk', 'groupOverdueRisk', 'overEstimate', 'overAllocation'];
 
 /** 警告を種類ごとに数える（重いものから） */
 export function warningCounts(warnings: readonly Warning[]): [WarningKind, number][] {

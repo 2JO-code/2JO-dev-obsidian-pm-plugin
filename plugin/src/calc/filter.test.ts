@@ -37,11 +37,6 @@ describe('filterTasks', () => {
 		expect(ids(filterTasks(tasks, f({ statuses: ['レビュー中'] }), projects, renamed))).toEqual(['D']);
 	});
 
-	it('期間は開始日〜期限日と重なるもの。日付の無いタスクは対象外', () => {
-		expect(ids(filterTasks(tasks, f({ start: '2026-11-05', end: '2026-11-30' }), projects, statuses))).toEqual(['A']);
-		expect(ids(filterTasks(tasks, f({ start: '2026-12-01' }), projects, statuses))).toEqual(['B']);
-		expect(ids(filterTasks(tasks, f({ end: '2026-11-01' }), projects, statuses))).toEqual([]);
-	});
 
 	it('担当者が複数のタスクは、誰かが一致すれば対象', () => {
 		const multi = [task('E', { assignees: [USER, USER2] })];
@@ -58,12 +53,15 @@ describe('filterProjects', () => {
 
 describe('parseFilter', () => {
 	it('保存されていた値を読み、不正な値は既定値にする', () => {
-		expect(parseFilter({ projects: [PJT, 3], start: '2026-11-01', end: 'x', includeClosed: true })).toEqual({
+		expect(parseFilter({ projects: [PJT, 3], includeClosed: true })).toEqual({
 			...EMPTY_FILTER,
 			projects: [PJT],
-			start: '2026-11-01',
 			includeClosed: true,
 		});
 		expect(parseFilter(null)).toEqual(EMPTY_FILTER);
+	});
+
+	it('以前に保存された期間は読まない（画面に出ないまま絞り込まないように）', () => {
+		expect(parseFilter({ start: '2026-11-01', end: '2026-11-30' })).toEqual(EMPTY_FILTER);
 	});
 });

@@ -1,3 +1,4 @@
+import type { WorkCalendar } from '../calc/workdays';
 import { emptyValue, type NoteType } from '../model';
 import { isIsoDate, parseLinkId } from '../parse/values';
 import { toLink, type FrontmatterUpdate } from '../write/frontmatter';
@@ -40,4 +41,11 @@ export function date(value: string, label: string, errors: string[]): string | u
 	if (isIsoDate(value)) return value;
 	errors.push(`${label}の日付が正しくありません`);
 	return undefined;
+}
+
+/** 期限日が休日（会社休日・土日）なら注意の文。空・日付でない・稼働日なら空（設計書 4.12） */
+export function holidayDueNote(value: string, calendar: Pick<WorkCalendar, 'isWorkday' | 'holidayMarks'>): string {
+	if (!isIsoDate(value) || calendar.isWorkday(value)) return '';
+	const reason = calendar.holidayMarks(value).map((m) => m.label).join('、');
+	return `休日${reason ? `（${reason}）` : ''}です。このまま保存できます`;
 }

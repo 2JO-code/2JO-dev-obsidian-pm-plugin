@@ -2,6 +2,8 @@ import { type DropdownComponent, Setting, TextComponent } from 'obsidian';
 import { compareJa, compareNumeric } from '../calc/compare';
 import { findStatus } from '../config/status';
 import { missingLabel } from '../calc/format';
+import type { WorkCalendar } from '../calc/workdays';
+import { holidayDueNote } from '../forms/formValues';
 import type { Epic, Member, NoteId, Project, StatusDef } from '../model';
 import { projectLabel, type ProjectDisplayName } from '../settings';
 
@@ -15,14 +17,27 @@ export function errorBox(el: HTMLElement, errors: readonly string[]): void {
 }
 
 /** 日付の入力欄 */
-export function dateSetting(el: HTMLElement, name: string, desc: string, value: string, onChange: (v: string) => void): void {
-	new Setting(el)
-		.setName(name)
-		.setDesc(desc)
-		.addText((t) => {
-			t.inputEl.type = 'date';
-			t.setValue(value).onChange(onChange);
+export function dateSetting(el: HTMLElement, name: string, desc: string, value: string, onChange: (v: string) => void, calendar?: WorkCalendar): void {
+	const setting = new Setting(el).setName(name).setDesc(desc);
+	const note = calendar ? holidayNote(setting.descEl, calendar) : undefined;
+	setting.addText((t) => {
+		t.inputEl.type = 'date';
+		note?.(value);
+		t.setValue(value).onChange((v) => {
+			note?.(v);
+			onChange(v);
 		});
+	});
+}
+
+/** 期限日が休日のときの注意を el に置く。戻り値に入力中の値を渡して出し直す */
+function holidayNote(el: HTMLElement, calendar: WorkCalendar): (value: string) => void {
+	const note = el.createDiv({ cls: 'pm-form-hint pm-text-warning' });
+	return (value) => {
+		const text = holidayDueNote(value, calendar);
+		note.setText(text);
+		note.toggle(text !== '');
+	};
 }
 
 /** 時間の入力欄にする（0.25刻み、0以上） */
@@ -126,11 +141,16 @@ export function formField(grid: HTMLElement, name: string, opts: FieldOptions = 
 	return control;
 }
 
-/** 日付の入力欄（欄の中に置く） */
-export function dateInput(el: HTMLElement, value: string, onChange: (v: string) => void): void {
+/** 日付の入力欄（欄の中に置く）。calendar を渡すと、休日のとき欄の下に注意を出す（期限日に使う） */
+export function dateInput(el: HTMLElement, value: string, onChange: (v: string) => void, calendar?: WorkCalendar): void {
 	const t = new TextComponent(el);
 	t.inputEl.type = 'date';
-	t.setValue(value).onChange(onChange);
+	const note = calendar ? holidayNote(el, calendar) : undefined;
+	note?.(value);
+	t.setValue(value).onChange((v) => {
+		note?.(v);
+		onChange(v);
+	});
 }
 
 /** 0以上（min 以上）の整数の入力欄（欄の中に置く） */

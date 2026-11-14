@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { defaultStatusSets } from '../config/defaults';
 import { PJT, project, task, USER, USER2, worklog } from './testData';
-import { allocationWarnings, taskWarnings } from './warnings';
+import { allocationWarnings, groupWarnings, taskWarnings } from './warnings';
 import { WorkSummary } from './worklogSummary';
 
 const statuses = defaultStatusSets().task;
@@ -48,5 +48,41 @@ describe('allocationWarnings', () => {
 		const ws = allocationWarnings(p, summary);
 		expect(ws).toHaveLength(1);
 		expect(ws[0]?.target).toEqual({ type: 'allocation', project: PJT, month: '2026-11', member: USER });
+	});
+});
+
+describe('groupWarnings', () => {
+	const sched = (end: string) => ({ start: '2026-11-02', end, startDelayed: false, endDelayed: false });
+	const tasks = [task('T1', { title: '設計' }), task('T2', { title: '実装' }), task('T3', { title: '済み', status: '完了' })];
+	const schedules = new Map([
+		['T1', sched('2026-11-20')],
+		['T2', sched('2026-11-25')],
+		['T3', sched('2026-12-10')],
+	]);
+	const epicGroup = { type: 'epic' as const, id: 'E1', due: '2026-11-20' };
+
+	it('期限日より後のタスクがあれば1件。いちばん遅いタスクを文に出す。完了系のタスクは見ない', () => {
+		expect(groupWarnings(epicGroup, false, tasks, statuses, schedules)).toEqual([
+			{
+				kind: 'groupOverdueRisk',
+				target: { type: 'epic', epic: 'E1' },
+				message: '「実装」の見込み終了日（2026-11-25）がエピックの期限日（2026-11-20）より後です',
+			},
+		]);
+	});
+
+	it('期限日と同じ日なら出さない', () => {
+		expect(groupWarnings({ ...epicGroup, due: '2026-11-25' }, false, tasks, statuses, schedules)).toEqual([]);
+	});
+
+	it('期限日が無いか、まとまりが完了系なら出さない', () => {
+		expect(groupWarnings({ type: 'epic', id: 'E1' }, false, tasks, statuses, schedules)).toEqual([]);
+		expect(groupWarnings(epicGroup, true, tasks, statuses, schedules)).toEqual([]);
+	});
+
+	it('プロジェクトの文と対象', () => {
+		const [w] = groupWarnings({ type: 'project', id: PJT, due: '2026-11-24' }, false, tasks, statuses, schedules);
+		expect(w?.target).toEqual({ type: 'project', project: PJT });
+		expect(w?.message).toContain('プロジェクトの期限日（2026-11-24）');
 	});
 });

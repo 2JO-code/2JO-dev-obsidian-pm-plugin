@@ -114,7 +114,8 @@ body {
 	--pm-mark-color: var(--color-red);
 }
 
-.pm-badge.is-overdueRisk {
+.pm-badge.is-overdueRisk,
+.pm-badge.is-groupOverdueRisk {
 	--pm-mark-color: var(--color-orange);
 }
 

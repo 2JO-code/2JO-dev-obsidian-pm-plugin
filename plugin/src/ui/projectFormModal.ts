@@ -1,5 +1,6 @@
 import { type App, Setting } from 'obsidian';
 import { projectFormToUpdate, type ProjectForm } from '../forms/projectForm';
+import type { WorkCalendar } from '../calc/workdays';
 import type { Member, StatusDef } from '../model';
 import { FormModal, type FormNote } from './formModal';
 import { dateSetting, errorBox, memberSetting, statusSetting } from './formParts';
@@ -9,6 +10,8 @@ export interface ProjectFormModalOptions {
 	form: ProjectForm;
 	members: readonly Member[];
 	statuses: StatusDef[];
+	/** 期限日が休日かを確かめる */
+	calendar: WorkCalendar;
 }
 
 /** プロジェクトの入力補助フォーム（設計書 4.5） */
@@ -39,7 +42,7 @@ export class ProjectFormModal extends FormModal {
 		new Setting(contentEl).setName('案件ID').addText((t) => t.setValue(form.caseId).onChange((v) => (form.caseId = v)));
 		statusSetting(contentEl, options.statuses, form.status, (v) => (form.status = v));
 		dateSetting(contentEl, '開始日', '任意', form.start, (v) => (form.start = v));
-		dateSetting(contentEl, '期限日', '任意', form.due, (v) => (form.due = v));
+		dateSetting(contentEl, '期限日', '任意', form.due, (v) => (form.due = v), options.calendar);
 		memberSetting(contentEl, '責任者', '任意。1人', options.members, form.manager, (v) => (form.manager = v));
 
 		this.footer(

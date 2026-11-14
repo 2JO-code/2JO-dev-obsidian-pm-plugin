@@ -13,7 +13,6 @@ export interface FilterBarOptions {
 	/** メンバーの項目名（タスク一覧では「担当者」） */
 	membersLabel?: string;
 	statuses?: Choice[];
-	period?: boolean;
 	closed?: boolean;
 	archived?: boolean;
 	/** ビュー独自の項目を「条件をクリア」の前に足す */
@@ -40,14 +39,6 @@ export function renderFilterBar(
 	}
 	if (options.statuses) {
 		multiSelect(bar, 'ステータス', filter.statuses, options.statuses, (statuses) => update({ statuses }));
-	}
-	if (options.period) {
-		dateRange(bar, '期間', filter.start, filter.end, (start, end) => {
-			const next: ViewFilter = { ...filter };
-			delete next.start;
-			delete next.end;
-			onChange({ ...next, ...(start ? { start } : {}), ...(end ? { end } : {}) });
-		});
 	}
 	if (options.closed) checkbox(bar, 'クローズ済みも表示', filter.includeClosed, (includeClosed) => update({ includeClosed }));
 	if (options.archived) checkbox(bar, 'アーカイブも表示', filter.includeArchived, (includeArchived) => update({ includeArchived }));

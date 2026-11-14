@@ -1,6 +1,7 @@
 import { type App, DropdownComponent, TextAreaComponent, TextComponent } from 'obsidian';
 import { epicFormToUpdate, type EpicForm } from '../forms/epicForm';
 import type { Member, NoteId, Project, StatusDef } from '../model';
+import type { WorkCalendar } from '../calc/workdays';
 import type { ProjectDisplayName } from '../settings';
 import { FormModal, type FormNote } from './formModal';
 import { dateInput, errorBox, formColumns, formField, formSection, memberOptions, projectOptions, statusOptions } from './formParts';
@@ -12,6 +13,8 @@ export interface EpicFormModalOptions {
 	members: readonly Member[];
 	statuses: StatusDef[];
 	displayName: ProjectDisplayName;
+	/** 期限日が休日かを確かめる */
+	calendar: WorkCalendar;
 	/** タスクかマイルストーンの連動があり、プロジェクトを変えられないときの元のプロジェクト */
 	fixedProject?: NoteId;
 }
@@ -61,7 +64,7 @@ export class EpicFormModal extends FormModal {
 
 		const schedule = formSection(right, '日程', 2);
 		dateInput(formField(schedule, '開始日（任意）', { hint: '表示用。見込みの日程はタスクから求めます' }), form.start, (v) => (form.start = v));
-		dateInput(formField(schedule, '期限日（任意）', { hint: 'マイルストーンと連動できます' }), form.due, (v) => (form.due = v));
+		dateInput(formField(schedule, '期限日（任意）', { hint: 'マイルストーンと連動できます' }), form.due, (v) => (form.due = v), options.calendar);
 
 		const io = formSection(right, 'インプット・アウトプット', 2);
 		this.listInput(formField(io, 'インプット（任意）', { hint: '1行に1つ' }), form.inputs, (v) => (form.inputs = v));

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import { WorkCalendar } from '../calc/workdays';
 import {
 	date,
+	holidayDueNote,
 	isReadable,
 	keepFrames,
 	link,
@@ -55,5 +57,20 @@ describe('formValues', () => {
 		expect(date('2026-11-07', '期限日', errors)).toBe('2026-11-07');
 		expect(date('2026-13-01', '期限日', errors)).toBeUndefined();
 		expect(errors).toEqual(['期限日の日付が正しくありません']);
+	});
+});
+
+describe('holidayDueNote', () => {
+	const calendar = new WorkCalendar({ weekendsOff: true, holidays: [{ date: '2026-11-03', name: '文化の日' }] });
+
+	it('会社休日・土日なら理由つきの注意', () => {
+		expect(holidayDueNote('2026-11-03', calendar)).toBe('休日（文化の日）です。このまま保存できます');
+		expect(holidayDueNote('2026-11-07', calendar)).toBe('休日（土曜）です。このまま保存できます');
+	});
+
+	it('稼働日・空・日付でないときは空', () => {
+		expect(holidayDueNote('2026-11-04', calendar)).toBe('');
+		expect(holidayDueNote('', calendar)).toBe('');
+		expect(holidayDueNote('2026-11', calendar)).toBe('');
 	});
 });

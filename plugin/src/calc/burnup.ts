@@ -72,7 +72,7 @@ export function burnup(ctx: CalcContext, project: Project): Burnup | undefined {
 	};
 }
 
-/** その日までに終わるはずのタスクの数（予定の進捗） */
+/** その日までに見込み終了日が来るタスクの数（見込みの進捗） */
 export interface ProgressPoint {
 	date: IsoDate;
 	planned: number;
@@ -89,7 +89,7 @@ export interface ProgressPlan {
 }
 
 /**
- * 予定の進捗（設計書 11.15）。その日までに見込み終了日が来るタスクの数を、期間の毎日について数える。
+ * 見込みの進捗（設計書 11.15）。その日までに見込み終了日が来るタスクの数を、期間の毎日について数える。
  * 分母・完了の数え方は進捗率（`countProgress`）と同じ。完了した日は記録が無いので、実績は今日の値だけ
  */
 export function progressPlan(ctx: CalcContext, project: Project, range: { start: IsoDate; end: IsoDate }): ProgressPlan {

@@ -309,7 +309,7 @@ th, th.num { text-align: center; }
 .bar > span { display: block; height: 100%; background: #2a78d6; }
 .badge { display: inline-block; margin: 0 4px 2px 0; padding: 0 6px; border: 1px solid; border-radius: 4px; font-size: 12px; white-space: nowrap; }
 .badge.overdue { background: #fdecec; border-color: #e34948; }
-.badge.overdueRisk { background: #fdf0e8; border-color: #eb6834; }
+.badge.overdueRisk, .badge.groupOverdueRisk { background: #fdf0e8; border-color: #eb6834; }
 .badge.overEstimate { background: #fdf5e0; border-color: #eda100; }
 .badge.overAllocation { background: #efedfb; border-color: #6250d6; }
 dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; margin: 8px 0; }

@@ -5,24 +5,19 @@ import { cellHoursText, hoursText, missingLabel } from '../calc/format';
 import { inRange, rangeLabel, type TaskRanges } from '../calc/taskRange';
 import type { WorkCalendar } from '../calc/workdays';
 import { gridMove, isGridKey, type GridPos } from '../forms/gridMove';
+import { WorklogGridDraft } from '../forms/worklogGridDraft';
 import {
 	assignedTaskIds,
-	cellEdited,
 	changesByMonth,
-	cellHours,
 	filterGridTasks,
-	gridChanges,
 	gridTaskIds,
-	savedInIndex,
 	validateGridChanges,
 	worklogSavedNotice,
 	type GridChange,
 	type GridFilter,
 } from '../forms/worklogGrid';
 import {
-	gridHoursOf,
 	gridKey,
-	gridKeyDates,
 	gridLines,
 	gridTaskInfo,
 	MODE_LABEL,
@@ -120,10 +115,8 @@ export class WorklogGridModal extends Modal {
 	private status = '';
 	/** 完了・停止した担当タスクも並べるか */
 	private showFinished: boolean;
-	/** 入力したマス。メンバーごとに、週・メンバーを替えても残す */
-	private readonly edits = new Map<NoteId, Map<string, GridHours>>();
-	/** 保存したが索引にまだ載っていないマス。載ったら消す */
-	private readonly saved = new Map<NoteId, Map<string, GridHours>>();
+	/** 保存前と保存済みの値 */
+	private readonly draft: WorklogGridDraft;
 	/** 画面で足したタスク */
 	private readonly extra = new Set<NoteId>();
 	/** たたんだプロジェクト・エピックの行のキー（初めはすべて開く） */
@@ -167,6 +160,7 @@ export class WorklogGridModal extends Modal {
 		this.member = options.members.some((m) => m.id === options.defaultMember && m.active) ? options.defaultMember : '';
 		this.unit = options.defaultUnit;
 		this.showFinished = options.defaultShowFinished;
+		this.draft = new WorklogGridDraft(options.worklogs);
 		this.start = periodStartOf(options.defaultDate ?? localToday(), this.unit);
 		this.focusDate = options.focusDate ?? null;
 		this.mode = options.defaultMode ?? 'actual';
@@ -189,7 +183,7 @@ export class WorklogGridModal extends Modal {
 
 	/** 保存していない入力があれば、確かめてから閉じる */
 	close(): void {
-		const count = this.dirtyCount();
+		const count = this.draft.dirtyCount();
 		if (this.discard || count === 0) {
 			super.close();
 			return;
@@ -219,33 +213,6 @@ export class WorklogGridModal extends Modal {
 	/** 表示している日付の月（月をまたぐ週は2つ） */
 	private get months(): YearMonth[] {
 		return monthsOf(this.dates);
-	}
-
-	private mapOf(store: Map<NoteId, Map<string, GridHours>>, member: NoteId): Map<string, GridHours> {
-		let map = store.get(member);
-		if (!map) {
-			map = new Map();
-			store.set(member, map);
-		}
-		return map;
-	}
-
-	/** 記録の値。保存して索引にまだ載っていない値を上に重ねる */
-	private baseOf(member: NoteId, dates: readonly IsoDate[]): Map<string, GridHours> {
-		const base = gridHoursOf(this.options.worklogs(), member, dates);
-		for (const [key, h] of this.saved.get(member) ?? []) base.set(key, h);
-		return base;
-	}
-
-	/** 保存していないマスの変更（全メンバー・全週） */
-	private allChanges(): { member: NoteId; changes: GridChange[] }[] {
-		return [...this.edits].map(([member, edits]) => {
-			return { member, changes: gridChanges(edits, this.baseOf(member, gridKeyDates(edits.keys()))) };
-		});
-	}
-
-	private dirtyCount(): number {
-		return this.allChanges().reduce((n, c) => n + c.changes.length, 0);
 	}
 
 	private memberOf(id: NoteId): Member | undefined {
@@ -413,9 +380,8 @@ export class WorklogGridModal extends Modal {
 	private table(el: HTMLElement): void {
 		const { member } = this;
 		// 月の合計に表示していない日の記録も使うので、月全体を読む
-		this.base = this.baseOf(member, this.months.flatMap(monthDates));
+		this.base = this.draft.baseOf(member, this.months.flatMap(monthDates));
 		const { base } = this;
-		const edits = this.mapOf(this.edits, member);
 		const assigned = assignedTaskIds(
 			this.options.tasks,
 			member,
@@ -425,7 +391,7 @@ export class WorklogGridModal extends Modal {
 			},
 			this.showFinished,
 		);
-		const ids = gridTaskIds([assigned, tasksWithHours(base), tasksWithHours(edits), [...this.extra]], (id) => id);
+		const ids = gridTaskIds([assigned, tasksWithHours(base), this.draft.editedTasks(member), [...this.extra]], (id) => id);
 		this.allTasks = filterGridTasks(ids, this.filterInfo, this.gridFilter);
 		this.lines = gridLines(this.allTasks, (id) => gridTaskInfo(this.options.taskOf(id), this.options.epicOf, this.options.projectName));
 		// 足したタスクがたたんだ行の中なら開く
@@ -584,9 +550,7 @@ export class WorklogGridModal extends Modal {
 		const key = gridKey(date, task);
 		const td = tr.createEl('td', { cls: 'pm-worklog-grid-input' });
 		const input = new TextComponent(td).onChange((v) => {
-			const edits = this.mapOf(this.edits, this.member);
-			const now = cellHours(key, edits, this.base);
-			edits.set(key, { ...now, [this.mode]: v });
+			this.draft.set(this.member, key, this.mode, v, this.base);
 			this.markEdited(td, key, date, task);
 			this.refreshTotals();
 		}).inputEl;
@@ -611,7 +575,7 @@ export class WorklogGridModal extends Modal {
 		const task = this.tasks[pos.row];
 		const date = this.dates[pos.col];
 		if (!input || !ref || task === undefined || date === undefined) return;
-		const h = cellHours(gridKey(date, task), this.mapOf(this.edits, this.member), this.base);
+		const h = this.draft.hours(this.member, gridKey(date, task), this.base);
 		input.value = h[this.mode];
 		// タスクの作業範囲の中の日に色を付ける
 		const ranges = this.options.rangesOf(task);
@@ -628,7 +592,7 @@ export class WorklogGridModal extends Modal {
 
 	/** 保存前に変えたマスに印を付け、読み上げの文字を作り直す */
 	private markEdited(td: HTMLElement, key: string, date: IsoDate, task: NoteId): void {
-		const edited = cellEdited(key, this.mode, this.mapOf(this.edits, this.member), this.base);
+		const edited = this.draft.edited(this.member, key, this.mode, this.base);
 		td.toggleClass('is-edited', edited);
 		const { start, due } = this.options.taskOf(task) ?? {};
 		const range = [rangeLabel(this.options.rangesOf(task), date, due, start), edited ? '保存前の変更' : ''].filter(Boolean).join('、');
@@ -677,10 +641,9 @@ export class WorklogGridModal extends Modal {
 
 	/** 行・日の合計と、保存していないマスの数を描き直す */
 	private refreshTotals(): void {
-		const edits = this.mapOf(this.edits, this.member);
 		// 月の合計は、表示していない日の記録も含める
 		const months = this.months.map(monthDates);
-		const value = (task: NoteId, date: IsoDate) => cellHours(gridKey(date, task), edits, this.base)[this.mode];
+		const value = (task: NoteId, date: IsoDate) => this.draft.hours(this.member, gridKey(date, task), this.base)[this.mode];
 		const sum = (tasks: readonly NoteId[], dates: readonly IsoDate[]) => cellHoursText(sumHours(tasks.flatMap((t) => dates.map((d) => value(t, d)))));
 		const monthCells = (cells: readonly HTMLElement[] | undefined, tasks: readonly NoteId[]) =>
 			months.forEach((dates, i) => cells?.[i]?.setText(sum(tasks, dates)));
@@ -691,17 +654,14 @@ export class WorklogGridModal extends Modal {
 		}
 		this.dates.forEach((date, col) => this.dayTotals[col]?.setText(sum(this.allTasks, [date])));
 		monthCells(this.monthTotals, this.allTasks);
-		const count = this.dirtyCount();
+		const count = this.draft.dirtyCount();
 		this.dirtyEl?.setText(count > 0 ? `保存していない入力：${count} マス` : '');
 	}
 
 	/** 索引が変わったら、保存済みの重ねた値を片付け、入力中でないマスの値を描き直す */
 	private refreshValues(): void {
-		for (const [member, saved] of this.saved) {
-			const index = gridHoursOf(this.options.worklogs(), member, gridKeyDates(saved.keys()));
-			for (const key of savedInIndex(saved, index)) saved.delete(key);
-		}
-		if (this.member) this.base = this.baseOf(this.member, this.months.flatMap(monthDates));
+		this.draft.pruneSaved();
+		if (this.member) this.base = this.draft.baseOf(this.member, this.months.flatMap(monthDates));
 		const active = activeDocument.activeElement;
 		this.grid.forEach((inputs, row) =>
 			inputs.forEach((input, col) => {
@@ -762,7 +722,7 @@ export class WorklogGridModal extends Modal {
 	private async save(close: boolean): Promise<void> {
 		// 保存中の2回目は受け付けない（設計書 4.6）
 		if (this.saving) return;
-		const all = this.allChanges().filter((c) => c.changes.length > 0);
+		const all = this.draft.changes().filter((c) => c.changes.length > 0);
 		const name = (id: NoteId) => this.memberOf(id)?.title ?? id;
 		this.errors = all.flatMap(({ member, changes }) =>
 			validateGridChanges(changes, (c) => `${name(member)} ${monthDayText(c.date)}「${this.taskTitle(c.task)}」`),
@@ -789,14 +749,7 @@ export class WorklogGridModal extends Modal {
 					merged += result.merged;
 					droppedMemos += result.droppedMemos;
 					count += part.length;
-					// 書けた分は入力から外し、索引に載るまで重ねて出す
-					const edits = this.mapOf(this.edits, member);
-					const saved = this.mapOf(this.saved, member);
-					for (const c of part) {
-						const key = gridKey(c.date, c.task);
-						edits.delete(key);
-						saved.set(key, { planned: c.planned, actual: c.actual });
-					}
+					this.draft.markSaved(member, part);
 				}
 			}
 		} catch (e) {

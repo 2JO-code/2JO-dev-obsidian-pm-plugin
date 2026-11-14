@@ -388,6 +388,7 @@ classDiagram
 	FormModal <|-- ChecklistModal
 	FormModal <|-- AllocationMatrixModal
 	Modal <|-- WorklogGridModal
+	WorklogGridModal *-- WorklogGridDraft : 保存前・保存済みの値
 	Modal <|-- NewNoteModal
 	Modal <|-- CopyProjectModal
 	Modal <|-- LoadDetailModal

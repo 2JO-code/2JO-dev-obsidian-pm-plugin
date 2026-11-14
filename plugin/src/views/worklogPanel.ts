@@ -6,8 +6,6 @@ import {
 	periodDates,
 	periodStartOf,
 	shiftPeriod,
-	sumEstimates,
-	sumHours,
 	UNIT_LABEL,
 	visibleGridLines,
 	type GridHours,
@@ -17,17 +15,18 @@ import {
 import type { CalcContext } from '../calc/context';
 import { currentStatusName, EMPTY_FILTER, parseFilter, type ViewFilter } from '../calc/filter';
 import { firstDayOf } from '../calc/dates';
-import { cellHoursText, hoursText, membersOf, missingLabel } from '../calc/format';
+import { hoursText, membersOf, missingLabel } from '../calc/format';
 import { ganttScale, xOf, type GanttScale } from '../calc/gantt';
 import { taskPlanDelay, taskPlanPeriod } from '../calc/planDelay';
 import {
 	DEFAULT_WORKLOG_VIEW,
 	parseWorklogViewOptions,
-	worklogCellWidth,
+	worklogAssignedTasks,
 	worklogColumns,
 	worklogViewLines,
 	worklogViewMembers,
-	worklogViewTasks,
+	worklogViewPairs,
+	worklogViewTable,
 	type WorklogViewLine,
 	type WorklogViewMode,
 	type WorklogViewOptions,
@@ -130,32 +129,19 @@ export class WorklogPanel extends Panel {
 			return map;
 		};
 		const members = worklogViewMembers(ctx.index.members(), filter.members, (m) => hours(m).size > 0);
-		// メンバーごとの担当の未完了タスク
-		const assignedOf = new Map<NoteId, NoteId[]>();
-		if (options.showAssigned) {
-			for (const t of ctx.index.tasks({ includeArchived: filter.includeArchived })) {
-				if (!options.showFinished && isFinished(findStatus(ctx.statuses.task, t.status)?.category)) continue;
-				for (const a of t.assignees) assignedOf.set(a, [...(assignedOf.get(a) ?? []), t.id]);
-			}
-		}
+		const assignedOf = options.showAssigned
+			? worklogAssignedTasks(ctx.index.tasks({ includeArchived: filter.includeArchived }), options.showFinished, (t) =>
+					isFinished(findStatus(ctx.statuses.task, t.status)?.category),
+				)
+			: new Map<NoteId, NoteId[]>();
 		const taskOf = (id: NoteId): Task | undefined => {
 			const note = ctx.index.get(id);
 			return note?.type === 'task' ? note : undefined;
 		};
-
-		const taskFilterInfo = (id: NoteId) => {
+		const pairs = worklogViewPairs(members, hours, assignedOf, filter, (id) => {
 			const t = taskOf(id);
 			return t ? { project: t.project, status: currentStatusName(t.status, ctx.statuses.task) } : undefined;
-		};
-
-		// タスクごとに、その下に並べるメンバー
-		const pairs = new Map<NoteId, NoteId[]>();
-		for (const m of members) {
-			const assigned = m.active ? (assignedOf.get(m.id) ?? []) : [];
-			for (const task of worklogViewTasks(hours(m.id), assigned, filter, taskFilterInfo)) {
-				pairs.set(task, [...(pairs.get(task) ?? []), m.id]);
-			}
-		}
+		});
 		const lines = worklogViewLines(
 			pairs,
 			(id) =>
@@ -178,13 +164,17 @@ export class WorklogPanel extends Panel {
 		actionButtons(actions, [{ text: '作業ログを入力', onClick: () => openWorklogModal(this.plugin, undefined, this.formAt()) }]);
 
 		const columns = worklogColumns(options.mode);
-		const value = (task: NoteId, member: NoteId, date: IsoDate, m: GridMode) => hours(member).get(gridKey(date, task))?.[m] ?? '';
-		const sum = (line: WorklogViewLine, ds: readonly IsoDate[], m: GridMode) => sumHours(line.pairs.flatMap(([t, mem]) => ds.map((d) => value(t, mem, d, m))));
-		const text = cellHoursText;
-		const projectLines = lines.filter((l) => l.kind === 'project');
-		const total = (ds: readonly IsoDate[], m: GridMode) => projectLines.reduce((s, l) => s + sum(l, ds, m), 0);
+		const visible = visibleGridLines(lines, collapsed);
+		const { cells, dayTotals, rowTotals, grandTotal, grandHours, estimates, grandEstimate, cellWidth, totalWidth, estimateWidth } = worklogViewTable({
+			lines,
+			visible,
+			dates,
+			columns,
+			value: (task, member, date, m) => hours(member).get(gridKey(date, task))?.[m] ?? '',
+			estimateOf: (id) => taskOf(id)?.estimate,
+		});
 		const memberCount = new Set([...pairs.values()].flat()).size;
-		const totalText = columns.map((m) => `${MODE_LABEL[m]} ${hoursText(total(dates, m))}h`).join('・');
+		const totalText = columns.map((m, i) => `${MODE_LABEL[m]} ${hoursText(grandHours[i] ?? 0)}h`).join('・');
 		summary.setText(`タスク ${pairs.size} 件・メンバー ${memberCount} 人・${totalText}`);
 		notes.createDiv({
 			cls: 'pm-note',
@@ -200,25 +190,7 @@ export class WorklogPanel extends Panel {
 			return;
 		}
 
-		// 日のマスの文字（日 × 列）。行の値は配下の合計（その人の行はその人の値）
-		const visible = visibleGridLines(lines, collapsed);
-		const cells = new Map(visible.map((l) => [l.key, dates.map((d) => columns.map((m) => text(sum(l, [d], m))))]));
-		const totals = dates.map((d) => columns.map((m) => text(total([d], m))));
-		const cellWidth = worklogCellWidth([...[...cells.values()].flat(2), ...totals.flat()]);
 		const dayWidth = cellWidth * columns.length;
-		// 合計の欄も、いちばん長い合計に合わせる
-		const rowTotals = new Map(visible.map((l) => [l.key, columns.map((m) => text(sum(l, dates, m)))]));
-		const grandTotal = columns.map((m) => text(total(dates, m)));
-		const totalPart = Math.max(64 / columns.length, worklogCellWidth([...[...rowTotals.values()].flat(), ...grandTotal]));
-		// 見積(h)。プロジェクト・エピックの行と合計は配下のタスクの合計、メンバーの行は空
-		const estimateText = (tasks: readonly NoteId[]) => {
-			const sum = sumEstimates(tasks, (id) => taskOf(id)?.estimate);
-			return sum === null ? '' : hoursText(sum);
-		};
-		const estimates = new Map(visible.map((l) => [l.key, l.kind === 'member' ? '' : estimateText(l.tasks)]));
-		const grandEstimate = estimateText([...pairs.keys()]);
-		const estimateWidth = Math.max(56, worklogCellWidth([...estimates.values(), grandEstimate]));
-
 		// 横軸はガントの単位「日」と同じ見出し・休日の帯・縦線・今日の線（設計書 9.8）
 		const first = dates[0] ?? start;
 		const last = dates[dates.length - 1] ?? start;
@@ -227,7 +199,7 @@ export class WorklogPanel extends Panel {
 		const wrap = body.createDiv({ cls: `pm-gantt pm-worklog-gantt${columns.length > 1 ? ' is-both' : ''}` });
 		wrap.setCssProps({
 			'--pm-gantt-width': `${scale.width}px`,
-			'--pm-worklog-total': `${totalPart * columns.length}px`,
+			'--pm-worklog-total': `${totalWidth * columns.length}px`,
 			'--pm-worklog-estimate': `${estimateWidth}px`,
 			'--pm-gantt-wbs': wbsColumnWidth(wbsWidth),
 		});
@@ -306,7 +278,7 @@ export class WorklogPanel extends Panel {
 		sumRow.createDiv({ cls: 'pm-gantt-person' });
 		sumRow.createDiv({ cls: 'pm-worklog-estimate', text: grandEstimate });
 		this.totalParts(sumRow.createDiv({ cls: 'pm-worklog-total' }), grandTotal);
-		this.dayCells(sumRow.createDiv({ cls: 'pm-gantt-track' }), totals, dates, columns, scale, cellWidth);
+		this.dayCells(sumRow.createDiv({ cls: 'pm-gantt-track' }), dayTotals, dates, columns, scale, cellWidth);
 
 		todayLine(wrap, scale, ctx.today);
 	}

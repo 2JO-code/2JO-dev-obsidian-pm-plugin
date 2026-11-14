@@ -1,6 +1,8 @@
 import {
 	gridLines,
 	parseGridUnit,
+	sumEstimates,
+	sumHours,
 	tasksWithHours,
 	type GridHours,
 	type GridLine,
@@ -9,7 +11,8 @@ import {
 	type GridUnit,
 } from './worklogCells';
 import { compareJa } from './compare';
-import type { Member, NoteId } from '../model';
+import { cellHoursText, hoursText } from './format';
+import type { IsoDate, Member, NoteId, Task } from '../model';
 import { isRecord, stringArray } from '../parse/values';
 
 /** 作業ログのビュー（見るだけ）の行の組み立て（設計書 9.10） */
@@ -109,6 +112,120 @@ export interface WorklogViewLine extends Omit<GridLine, 'kind'> {
 	member: NoteId;
 	/** 値を合計するタスクとメンバーの組 */
 	pairs: [task: NoteId, member: NoteId][];
+}
+
+/**
+ * メンバーごとの担当タスク（記録の無い担当タスクも出すときに使う）
+ * @param isFinished 完了・停止したタスクか。includeFinished が false なら除く
+ */
+export function worklogAssignedTasks<T extends Pick<Task, 'id' | 'assignees'>>(
+	tasks: readonly T[],
+	includeFinished: boolean,
+	isFinished: (task: T) => boolean,
+): Map<NoteId, NoteId[]> {
+	const assigned = new Map<NoteId, NoteId[]>();
+	for (const t of tasks) {
+		if (!includeFinished && isFinished(t)) continue;
+		for (const a of t.assignees) assigned.set(a, [...(assigned.get(a) ?? []), t.id]);
+	}
+	return assigned;
+}
+
+/**
+ * タスクごとに、その下に並べるメンバー（並べるメンバーの順）。担当タスクは在籍者だけに足す
+ * @param assignedOf メンバーごとの担当タスク（worklogAssignedTasks）
+ * @param infoOf タスクのプロジェクトと、ステータスの現在の名前
+ */
+export function worklogViewPairs(
+	members: readonly Pick<Member, 'id' | 'active'>[],
+	hoursOf: (member: NoteId) => ReadonlyMap<string, GridHours>,
+	assignedOf: ReadonlyMap<NoteId, readonly NoteId[]>,
+	filter: WorklogTaskFilter,
+	infoOf: (task: NoteId) => { project: NoteId; status: string } | undefined,
+): Map<NoteId, NoteId[]> {
+	const pairs = new Map<NoteId, NoteId[]>();
+	for (const m of members) {
+		const assigned = m.active ? (assignedOf.get(m.id) ?? []) : [];
+		for (const task of worklogViewTasks(hoursOf(m.id), assigned, filter, infoOf)) {
+			pairs.set(task, [...(pairs.get(task) ?? []), m.id]);
+		}
+	}
+	return pairs;
+}
+
+/** 合計・見積の欄の最小の幅(px)。合計は列（予定・実績）の数で割る */
+const MIN_WIDTH = { total: 64, estimate: 56 };
+
+/** 作業ログのビューの表に出す文字と幅 */
+export interface WorklogViewTable {
+	/** 行ごとの日のマスの文字（日 × 列）。値は配下の合計 */
+	cells: Map<string, string[][]>;
+	/** 日の合計の文字（日 × 列） */
+	dayTotals: string[][];
+	/** 行ごとの期間の合計の文字（列） */
+	rowTotals: Map<string, string[]>;
+	/** 期間全体の合計の文字（列） */
+	grandTotal: string[];
+	/** 期間全体の合計(h)（列） */
+	grandHours: number[];
+	/** 行ごとの見積(h)の文字。メンバーの行と、見積のあるタスクが無い行は空 */
+	estimates: Map<string, string>;
+	/** 並べたすべてのタスクの見積(h)の文字 */
+	grandEstimate: string;
+	/** 予定か実績の1列の幅(px) */
+	cellWidth: number;
+	/** 合計の欄の1列の幅(px) */
+	totalWidth: number;
+	/** 見積の欄の幅(px) */
+	estimateWidth: number;
+}
+
+/**
+ * 作業ログのビューの日・行・全体の合計と見積を出す（設計書 9.10）
+ * @param lines すべての行（全体の合計はプロジェクトの行の合計）
+ * @param visible たたんだ行を除いた、描く行
+ * @param value タスク・メンバー・日の予定か実績(h)の文字
+ */
+export function worklogViewTable(input: {
+	lines: readonly WorklogViewLine[];
+	visible: readonly WorklogViewLine[];
+	dates: readonly IsoDate[];
+	columns: readonly GridMode[];
+	value: (task: NoteId, member: NoteId, date: IsoDate, mode: GridMode) => string;
+	estimateOf: (task: NoteId) => number | undefined;
+}): WorklogViewTable {
+	const { lines, visible, dates, columns, value, estimateOf } = input;
+	const sum = (line: WorklogViewLine, ds: readonly IsoDate[], m: GridMode) => sumHours(line.pairs.flatMap(([t, mem]) => ds.map((d) => value(t, mem, d, m))));
+	const projectLines = lines.filter((l) => l.kind === 'project');
+	const total = (ds: readonly IsoDate[], m: GridMode) => projectLines.reduce((s, l) => s + sum(l, ds, m), 0);
+	const text = cellHoursText;
+
+	const cells = new Map(visible.map((l) => [l.key, dates.map((d) => columns.map((m) => text(sum(l, [d], m))))]));
+	const dayTotals = dates.map((d) => columns.map((m) => text(total([d], m))));
+	const rowTotals = new Map(visible.map((l) => [l.key, columns.map((m) => text(sum(l, dates, m)))]));
+	const grandHours = columns.map((m) => total(dates, m));
+	const grandTotal = grandHours.map(text);
+
+	const estimateText = (tasks: readonly NoteId[]) => {
+		const e = sumEstimates(tasks, estimateOf);
+		return e === null ? '' : hoursText(e);
+	};
+	const estimates = new Map(visible.map((l) => [l.key, l.kind === 'member' ? '' : estimateText(l.tasks)]));
+	const grandEstimate = estimateText(projectLines.flatMap((l) => l.tasks));
+
+	return {
+		cells,
+		dayTotals,
+		rowTotals,
+		grandTotal,
+		grandHours,
+		estimates,
+		grandEstimate,
+		cellWidth: worklogCellWidth([...[...cells.values()].flat(2), ...dayTotals.flat()]),
+		// 合計の欄も、いちばん長い合計に合わせる
+		totalWidth: Math.max(MIN_WIDTH.total / columns.length, worklogCellWidth([...[...rowTotals.values()].flat(), ...grandTotal])),
+		estimateWidth: Math.max(MIN_WIDTH.estimate, worklogCellWidth([...estimates.values(), grandEstimate])),
+	};
 }
 
 /**

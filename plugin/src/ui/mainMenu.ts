@@ -1,6 +1,7 @@
 import { Menu } from 'obsidian';
 import { openCopyProjectModal } from '../commands/copyProject';
 import { openNewNoteModal } from '../commands/createNote';
+import { deleteLayout, saveLayout, switchLayout } from '../commands/layouts';
 import { exportHtmlReport } from '../commands/htmlReport';
 import { openReadme } from '../commands/readme';
 import { reloadData } from '../commands/reload';
@@ -40,6 +41,10 @@ function showMainMenu(plugin: ProjectManagerPlugin, evt: MouseEvent): void {
 	menu.addSeparator();
 	add('HTMLレポートを書き出す', 'file-output', () => void exportHtmlReport(plugin));
 	add('アーカイブ', 'archive', () => void openView(plugin.app, ARCHIVE_VIEW_TYPE));
+	menu.addSeparator();
+	add('レイアウトを切り替え', 'panels-top-left', () => switchLayout(plugin));
+	add('レイアウトを保存', 'save', () => void saveLayout(plugin));
+	add('レイアウトを削除', 'trash-2', () => deleteLayout(plugin));
 	menu.addSeparator();
 	add('使い方（README）', 'help-circle', () => void openReadme(plugin));
 	add('データを再読み込み', 'refresh-cw', () => void reloadData(plugin));

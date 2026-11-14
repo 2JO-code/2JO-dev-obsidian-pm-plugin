@@ -7,6 +7,7 @@ import { registerEditChecklist } from './commands/editChecklist';
 import { registerEditHolidays } from './commands/editHolidays';
 import { registerEditTask } from './commands/editTask';
 import { registerHtmlReport } from './commands/htmlReport';
+import { registerLayouts } from './commands/layouts';
 import { registerReadme } from './commands/readme';
 import { registerReload } from './commands/reload';
 import { registerWorklog } from './commands/worklog';
@@ -81,6 +82,7 @@ export default class ProjectManagerPlugin extends Plugin {
 		registerHtmlReport(this);
 		registerArchiveView(this);
 		registerReadme(this);
+		registerLayouts(this);
 		registerMainMenu(this);
 
 		// 重い処理は起動完了後（設計書 3.2）

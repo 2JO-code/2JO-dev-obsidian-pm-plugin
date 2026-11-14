@@ -12,6 +12,7 @@ import { EpicFormModal } from '../ui/epicFormModal';
 import type { FormNote } from '../ui/formModal';
 import { MemberFormModal } from '../ui/memberFormModal';
 import { ProjectFormModal } from '../ui/projectFormModal';
+import { notifyError } from '../ui/notify';
 import { TaskFormModal } from '../ui/taskFormModal';
 import { readNoteItems } from '../write/noteFile';
 import { openChecklistEditor } from './editChecklist';
@@ -93,10 +94,7 @@ async function formSource(
 
 /** 開くまでに失敗したら知らせる */
 function openForm(work: Promise<void>): void {
-	void work.catch((e: unknown) => {
-		console.error('[project-manager] フォームを開けませんでした', e);
-		new Notice('フォームを開けませんでした');
-	});
+	void work.catch((e: unknown) => notifyError(e, 'フォームを開けませんでした'));
 }
 
 /** エピックの入力補助フォームを開く（ファイルかパス） */

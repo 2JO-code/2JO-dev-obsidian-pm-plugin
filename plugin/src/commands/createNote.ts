@@ -51,6 +51,6 @@ async function createNote(plugin: ProjectManagerPlugin, input: NewNoteInput): Pr
 	const path = normalizePath(plan.path);
 	const { frontmatterWritten } = await createNoteFile(app, path, plan.body, input.kind, plan.frontmatter);
 	// ファイルはできているので画面は閉じ（もう一度作らせない）、作りかけを知らせる（設計書 4.4）
-	if (!frontmatterWritten) new Notice(`ノートは作りましたが、プロパティを書き込めませんでした（${path}）。ノートを開いて確認してください`, 10000);
+	if (!frontmatterWritten) new Notice(`ノートは作りましたが、プロパティを書き込めませんでした（${path}）。警告一覧で確認してください`, 10000);
 	else new Notice(`「${input.title.trim()}」を作成しました`);
 }

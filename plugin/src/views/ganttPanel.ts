@@ -3,13 +3,12 @@ import type { CalcContext } from '../calc/context';
 import { barBox, DEFAULT_GANTT, dependencyFlags, fitRange, GANTT_LABEL_WIDTH, ganttLabelWidthOf, ganttScale, parseGanttOptions, xOf, type GanttOptions, type GanttScale } from '../calc/gantt';
 import { parseGanttWorklogMode, sumDayHours, taskDayHours, type GanttWorklogMode, type TaskDayHours } from '../calc/ganttWorklog';
 import { displayRange } from '../calc/memberStatus';
-import { EMPTY_FILTER, parseFilter, type ViewFilter } from '../calc/filter';
 import { firstDayOf, lastDayOf } from '../calc/dates';
 import { taskPlanPeriod } from '../calc/planDelay';
 import type { RowLabels, TaskRow } from '../calc/taskList';
 import { WARNING_LABELS } from '../calc/warnings';
 import { TreeToggle } from '../calc/treeToggle';
-import { epicOrderOf, wbsKey, wbsTreeFor } from '../calc/wbs';
+import { epicOrderOf, wbsKey, wbsTreeFor, type WbsEpic, type WbsProject } from '../calc/wbs';
 import { taskWbsLabel } from '../calc/wbsOrder';
 import type { PeriodUnit } from '../calc/workdays';
 import { openNewNoteModal } from '../commands/createNote';
@@ -42,7 +41,7 @@ import {
 import { openView } from './openView';
 import { WbsDrag, type WbsDragGroup } from './wbsDrag';
 import { field } from '../parse/values';
-import { Panel, type PanelScope, type Shell } from './panel';
+import { FilteredPanel, type PanelScope, type Shell } from './panel';
 import { PROJECT_STATUS_VIEW_TYPE } from './viewTypes';
 import { toggleMark, checkbox } from '../ui/controls';
 
@@ -59,10 +58,21 @@ const WORKLOG_CHOICES: { value: GanttWorklogMode; label: string }[] = [
 	{ value: 'both', label: '予定と実績' },
 ];
 
+/** 行を描くときに使い回す値 */
+interface RowEnv {
+	ctx: CalcContext;
+	wrap: HTMLElement;
+	scale: GanttScale;
+	labels: RowLabels;
+	/** 表示しているタスクの棒（依存の線を引くため） */
+	bars: Map<NoteId, HTMLElement>;
+	/** 先行・後続の印。依存の印を出さないときは空 */
+	flags: ReadonlyMap<NoteId, { predecessor: boolean; successor: boolean }>;
+}
+
 /** ガントチャートの部品（要件4.8c、設計書 9.8・9.12） */
-export class GanttPanel extends Panel {
+export class GanttPanel extends FilteredPanel {
 	readonly title = 'ガントチャート';
-	private filter: ViewFilter = { ...EMPTY_FILTER };
 	private options: GanttOptions = { ...DEFAULT_GANTT };
 	/** 表示名の欄の幅(px)。見出しの境のドラッグで変え、「条件をクリア」では戻さない */
 	private labelWidth = GANTT_LABEL_WIDTH.initial;
@@ -94,18 +104,13 @@ export class GanttPanel extends Panel {
 	}
 
 	setState(state: unknown): void {
-		this.filter = parseFilter(field(state, 'filter'));
+		this.readFilter(state);
 		const gantt = field(state, 'gantt');
 		this.options = parseGanttOptions(gantt);
 		this.tree.load(field(gantt, 'toggled'));
 		this.labelWidth = ganttLabelWidthOf(field(gantt, 'labelWidth'));
 		this.showAssignees = field(gantt, 'showAssignees') !== false;
 		this.worklogMode = parseGanttWorklogMode(field(gantt, 'worklog'));
-	}
-
-	private setFilter(filter: ViewFilter): void {
-		this.filter = filter;
-		this.host.changed();
 	}
 
 	private setOptions(options: GanttOptions): void {
@@ -118,7 +123,7 @@ export class GanttPanel extends Panel {
 		const labels: RowLabels = { project: (p) => projectLabel(p, mode) };
 		const { options } = this;
 		// 外から固定するときは、その人の担当タスク・その月（設計書 9.12）
-		const filter: ViewFilter = scope ? { ...this.filter, members: [scope.member.id] } : this.filter;
+		const filter = this.filterFor(scope);
 		const range = scope ? { start: firstDayOf(scope.month), end: lastDayOf(scope.month) } : displayRange(options, ctx.today);
 		const { summary, filters, settings, notes, body } = shell;
 
@@ -152,8 +157,40 @@ export class GanttPanel extends Panel {
 		const { tree } = wbsTreeFor(ctx, filter, labels, scope?.taskIds);
 
 		summary.setText(`プロジェクト ${tree.length} 件`);
+		this.drawSettings(settings, tree, !scope);
+		if (scope?.note) notes.createDiv({ cls: 'pm-note', text: scope.note });
+		// 作業ログの数字は1日の幅が広い単位「日」のときだけ出す（設計書 9.8）
+		const worklogMode = options.unit === 'day' ? this.worklogMode : 'none';
+		this.drawLegend(notes, worklogMode);
+		const linkNote = notes.createDiv({ cls: 'pm-note pm-gantt-link-note', text: LINK_HINT });
+
+		if (tree.length === 0) {
+			body.createDiv({ cls: 'pm-view-empty', text: '条件に合うプロジェクトはありません' });
+			return;
+		}
+
+		const scale = ganttScale(range, options.unit);
+		this.hours = worklogMode === 'none' ? undefined : taskDayHours(ctx.index.worklogs(), scale.start, scale.end);
+		const wrap = this.drawFrame(body, ctx, scale, tree, worklogMode);
+
+		const bars = new Map<NoteId, HTMLElement>();
+		this.bars = bars;
+		this.watchBar = undefined;
+		this.taskRows.clear();
+		const allTasks = ctx.index.tasks({ includeArchived: true });
+		const flags = options.showDependencies ? dependencyFlags(allTasks) : new Map<NoteId, { predecessor: boolean; successor: boolean }>();
+		const env: RowEnv = { ctx, wrap, scale, labels, bars, flags };
+		for (const p of tree) this.drawProject(env, p);
+
+		todayLine(wrap, scale, ctx.today);
+		this.watchBar = dependencyLines(wrap, allTasks, bars, linkNote);
+	}
+
+	/** 表示の設定の欄（単位・期間・開閉・依存の印・担当者・作業ログ） */
+	private drawSettings(settings: HTMLElement, tree: readonly WbsProject[], canFit: boolean): void {
+		const { options } = this;
 		singleSelect(settings, '単位', options.unit, UNIT_CHOICES, (unit) => this.setOptions({ ...options, unit }));
-		if (!scope) {
+		if (canFit) {
 			const fit = settings.createEl('button', { text: 'プロジェクトの期間に合わせる' });
 			fit.addEventListener('click', () => {
 				const r = fitRange(tree.map((p) => ({ ...p.status.project, ...(p.status.span ? { span: p.status.span } : {}) })));
@@ -178,7 +215,10 @@ export class GanttPanel extends Panel {
 			this.worklogMode = m;
 			this.host.changed();
 		});
-		if (scope?.note) notes.createDiv({ cls: 'pm-note', text: scope.note });
+	}
+
+	/** 凡例。worklogMode は実際に出す作業ログ（単位が日でなければ none） */
+	private drawLegend(notes: HTMLElement, worklogMode: GanttWorklogMode): void {
 		const legend = notes.createDiv({ cls: 'pm-legend' });
 		legend.createSpan({ cls: 'pm-gantt-bar is-legend', text: '計画どおり' });
 		legend.createSpan({ cls: 'pm-gantt-bar is-legend is-delayed', text: '遅れを反映' });
@@ -188,13 +228,11 @@ export class GanttPanel extends Panel {
 		legend.createSpan({ cls: 'pm-gantt-start is-legend', text: '開始日' });
 		legend.createSpan({ cls: 'pm-gantt-due is-legend', text: '期限日' });
 		legend.createSpan({ text: '｜ ◆マイルストーン ｜' });
-		if (options.showDependencies) {
+		if (this.options.showDependencies) {
 			const dep = legend.createSpan({ cls: 'pm-gantt-bar is-legend has-predecessor has-successor', text: '依存あり' });
 			dep.setAttr('aria-label', '左の丸＝先行タスクあり、右の丸＝後続タスクあり');
 		}
 		legend.createSpan({ text: '棒を指すと依存の線' });
-		// 作業ログの数字は1日の幅が広い単位「日」のときだけ出す（設計書 9.8）
-		const worklogMode = options.unit === 'day' ? this.worklogMode : 'none';
 		if (this.worklogMode !== 'none' && worklogMode === 'none') {
 			legend.createSpan({ cls: 'pm-gantt-log-note', text: '｜ 作業ログの時間は、単位が「日」のときだけ出します' });
 		}
@@ -202,15 +240,10 @@ export class GanttPanel extends Panel {
 			legend.createSpan({ text: `｜ 数字＝その日の${worklogMode === 'both' ? '予定（上）と実績（下）' : WORKLOG_CHOICES.find((c) => c.value === worklogMode)?.label ?? ''}(h)` });
 			if (worklogMode !== 'planned') legend.createSpan({ cls: 'pm-gantt-log-note is-out', text: '赤い数字＝棒の期間の外の実績' });
 		}
-		const linkNote = notes.createDiv({ cls: 'pm-note pm-gantt-link-note', text: LINK_HINT });
+	}
 
-		if (tree.length === 0) {
-			body.createDiv({ cls: 'pm-view-empty', text: '条件に合うプロジェクトはありません' });
-			return;
-		}
-
-		const scale = ganttScale(range, options.unit);
-		this.hours = worklogMode === 'none' ? undefined : taskDayHours(ctx.index.worklogs(), scale.start, scale.end);
+	/** 表の枠・見出し・休日の帯・区切りの縦線 */
+	private drawFrame(body: HTMLElement, ctx: CalcContext, scale: GanttScale, tree: readonly WbsProject[], worklogMode: GanttWorklogMode): HTMLElement {
 		// 担当者を隠すときは列の幅を 0 にして消す（設計書 9.8）
 		const wrap = body.createDiv({ cls: this.showAssignees ? 'pm-gantt' : 'pm-gantt is-hide-person' });
 		if (worklogMode !== 'none') wrap.addClass('has-worklog');
@@ -232,67 +265,64 @@ export class GanttPanel extends Panel {
 		if (this.host.gridLines()) {
 			for (const p of scale.periods.slice(1)) gridLine(wrap, xOf(scale, p.start));
 		}
+		return wrap;
+	}
 
-		const bars = new Map<NoteId, HTMLElement>();
-		this.bars = bars;
-		this.watchBar = undefined;
-		this.taskRows.clear();
-		const allTasks = ctx.index.tasks({ includeArchived: true });
-		const flags = options.showDependencies ? dependencyFlags(allTasks) : new Map<NoteId, { predecessor: boolean; successor: boolean }>();
-		for (const p of tree) {
-			const { project } = p.status;
-			const projectKey = wbsKey.project(project.id);
-			const projectOpen = this.tree.isOpen(projectKey);
-			const pr = this.row(wrap, 'pm-gantt-project', projectOpen, p.epics.length > 0, () => {
-				this.tree.flip(projectKey);
-				this.host.redraw();
-			});
-			const title = pr.label.createSpan({ cls: 'pm-gantt-title pm-action-link', text: labels.project(project) });
-			kindMark(title, 'project');
-			title.setAttr('aria-label', 'プロジェクト状況を開く');
-			title.addEventListener('click', () => void openView(this.app, PROJECT_STATUS_VIEW_TYPE, { project: project.id }));
-			rowButton(pr.label, '＋エピック', () => openNewNoteModal(this.plugin, 'epic', { project: project.id }));
-			if (p.status.span) ganttBar(pr.track, scale, labels.project(project), { ...p.status.span, ...(project.due ? { due: project.due } : {}) }, true);
-			if (project.start) startMark(pr.track, scale, project.start);
-			if (project.due) dueMark(pr.track, scale, project.due);
-			for (const m of p.status.milestones) milestoneMark(pr.track, scale, m);
-			if (this.hours) worklogCells(pr.track, scale, sumDayHours(this.hours, p.epics.flatMap((e) => e.tasks.map((t) => t.task.id))), this.worklogMode);
-			if (!projectOpen) continue;
+	/** プロジェクトの行と、開いていればその下のエピックの行 */
+	private drawProject(env: RowEnv, p: WbsProject): void {
+		const { wrap, scale, labels } = env;
+		const { project } = p.status;
+		const projectKey = wbsKey.project(project.id);
+		const projectOpen = this.tree.isOpen(projectKey);
+		const pr = this.row(wrap, 'pm-gantt-project', projectOpen, p.epics.length > 0, () => {
+			this.tree.flip(projectKey);
+			this.host.redraw();
+		});
+		const title = pr.label.createSpan({ cls: 'pm-gantt-title pm-action-link', text: labels.project(project) });
+		kindMark(title, 'project');
+		title.setAttr('aria-label', 'プロジェクト状況を開く');
+		title.addEventListener('click', () => void openView(this.app, PROJECT_STATUS_VIEW_TYPE, { project: project.id }));
+		rowButton(pr.label, '＋エピック', () => openNewNoteModal(this.plugin, 'epic', { project: project.id }));
+		if (p.status.span) ganttBar(pr.track, scale, labels.project(project), { ...p.status.span, ...(project.due ? { due: project.due } : {}) }, true);
+		if (project.start) startMark(pr.track, scale, project.start);
+		if (project.due) dueMark(pr.track, scale, project.due);
+		for (const m of p.status.milestones) milestoneMark(pr.track, scale, m);
+		if (this.hours) worklogCells(pr.track, scale, sumDayHours(this.hours, p.epics.flatMap((e) => e.tasks.map((t) => t.task.id))), this.worklogMode);
+		if (!projectOpen) return;
 
-			// エピックはプロジェクトの中で入れ替える（WBS と同じ。設計書 9.7）
-			const epicGroup: WbsDragGroup = { kind: 'epic', key: projectKey, order: epicOrderOf(p.status) };
-			for (const e of p.epics) {
-				const { epic } = e.row;
-				const key = wbsKey.epic(project.id, epic?.id);
-				const open = this.tree.isOpen(key);
-				const taskGroup: WbsDragGroup = { kind: 'task', key, order: e.order };
-				const renderTasks = () =>
-					e.tasks.map((t) => ({ row: this.taskRow(wrap, scale, t, bars, flags.get(t.task.id), epic?.wbs, taskGroup), id: t.task.id }));
-				// エピックの開閉は全体を描き直さず、タスクの行だけを足す・消す（設計書 9.7・9.8）
-				const er = this.row(wrap, 'pm-gantt-epic', open, e.tasks.length > 0, () => this.taskRows.replace(key, er.row, this.tree.flip(key), renderTasks));
-				const name = epic ? `${epic.wbs ? `${epic.wbs} ` : ''}${epic.title}` : NO_EPIC_LABEL;
-				const et = er.label.createSpan({ cls: 'pm-gantt-title', text: name });
-				if (epic) {
-					kindMark(et, 'epic');
-					et.addClass('pm-action-link');
-					formClick(et, () => openEpicForm(this.plugin, epic.path));
-					this.drag.attach(er.row, epicGroup, epic.id, epic.title, er.label);
-					assigneeCell(er.person, membersOf(ctx, epic.owner));
-				}
-				rowButton(er.label, '＋タスク', () => openNewNoteModal(this.plugin, 'task', { project: project.id, ...(epic ? { epic: epic.id } : {}) }));
-				if (e.row.span) {
-					const info: BarInfo = { ...e.row.span, ...(epic?.due ? { due: epic.due } : {}), ...(e.row.category ? { category: e.row.category } : {}) };
-					ganttBar(er.track, scale, name, info, true);
-				}
-				if (epic?.start) startMark(er.track, scale, epic.start);
-				if (epic?.due) dueMark(er.track, scale, epic.due);
-				if (this.hours) worklogCells(er.track, scale, sumDayHours(this.hours, e.tasks.map((t) => t.task.id)), this.worklogMode);
-				if (open) this.taskRows.set(key, renderTasks());
-			}
+		// エピックはプロジェクトの中で入れ替える（WBS と同じ。設計書 9.7）
+		const epicGroup: WbsDragGroup = { kind: 'epic', key: projectKey, order: epicOrderOf(p.status) };
+		for (const e of p.epics) this.drawEpic(env, project.id, e, epicGroup);
+	}
+
+	/** エピックの行と、開いていればその下のタスクの行 */
+	private drawEpic(env: RowEnv, projectId: NoteId, e: WbsEpic, epicGroup: WbsDragGroup): void {
+		const { ctx, wrap, scale, bars, flags } = env;
+		const { epic } = e.row;
+		const key = wbsKey.epic(projectId, epic?.id);
+		const open = this.tree.isOpen(key);
+		const taskGroup: WbsDragGroup = { kind: 'task', key, order: e.order };
+		const renderTasks = () => e.tasks.map((t) => ({ row: this.taskRow(wrap, scale, t, bars, flags.get(t.task.id), epic?.wbs, taskGroup), id: t.task.id }));
+		// エピックの開閉は全体を描き直さず、タスクの行だけを足す・消す（設計書 9.7・9.8）
+		const er = this.row(wrap, 'pm-gantt-epic', open, e.tasks.length > 0, () => this.taskRows.replace(key, er.row, this.tree.flip(key), renderTasks));
+		const name = epic ? `${epic.wbs ? `${epic.wbs} ` : ''}${epic.title}` : NO_EPIC_LABEL;
+		const et = er.label.createSpan({ cls: 'pm-gantt-title', text: name });
+		if (epic) {
+			kindMark(et, 'epic');
+			et.addClass('pm-action-link');
+			formClick(et, () => openEpicForm(this.plugin, epic.path));
+			this.drag.attach(er.row, epicGroup, epic.id, epic.title, er.label);
+			assigneeCell(er.person, membersOf(ctx, epic.owner));
 		}
-
-		todayLine(wrap, scale, ctx.today);
-		this.watchBar = dependencyLines(wrap, allTasks, bars, linkNote);
+		rowButton(er.label, '＋タスク', () => openNewNoteModal(this.plugin, 'task', { project: projectId, ...(epic ? { epic: epic.id } : {}) }));
+		if (e.row.span) {
+			const info: BarInfo = { ...e.row.span, ...(epic?.due ? { due: epic.due } : {}), ...(e.row.category ? { category: e.row.category } : {}) };
+			ganttBar(er.track, scale, name, info, true);
+		}
+		if (epic?.start) startMark(er.track, scale, epic.start);
+		if (epic?.due) dueMark(er.track, scale, epic.due);
+		if (this.hours) worklogCells(er.track, scale, sumDayHours(this.hours, e.tasks.map((t) => t.task.id)), this.worklogMode);
+		if (open) this.taskRows.set(key, renderTasks());
 	}
 
 	/**

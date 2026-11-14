@@ -1,5 +1,5 @@
 import type { CalcContext } from '../calc/context';
-import { EMPTY_FILTER, filterTasks, parseFilter, type ViewFilter } from '../calc/filter';
+import { filterTasks, type ViewFilter } from '../calc/filter';
 import {
 	DEFAULT_TASK_LIST,
 	filterTaskRows,
@@ -21,7 +21,7 @@ import { tableHeader } from '../ui/table';
 import { actionButtons, formClick } from './actions';
 import { memberChoices, projectChoices, statusChoices } from './choices';
 import { renderFilterBar, singleSelect } from './filterBar';
-import { Panel, pluginTaskCellEnv, type PanelScope, type Shell } from './panel';
+import { FilteredPanel, pluginTaskCellEnv, type PanelScope, type Shell } from './panel';
 import { TASK_COLUMNS, taskCells, titleColumn, type TaskColumn } from './taskColumns';
 import { taskFilterFields, withTaskFilter } from './taskFilters';
 
@@ -64,9 +64,8 @@ const GROUP_CHOICES: { value: TaskGroupBy; label: string }[] = [
 ];
 
 /** タスク一覧の部品（要件4.8、設計書 9.2・9.12） */
-export class TaskListPanel extends Panel {
+export class TaskListPanel extends FilteredPanel {
 	readonly title = 'タスク一覧';
-	private filter: ViewFilter = { ...EMPTY_FILTER };
 	private options: TaskListOptions = { ...DEFAULT_TASK_LIST };
 	/** 表示している行数。条件を変えたら最初に戻す */
 	private limit = PAGE_SIZE;
@@ -76,7 +75,7 @@ export class TaskListPanel extends Panel {
 	}
 
 	setState(state: unknown): void {
-		this.filter = parseFilter(field(state, 'filter'));
+		this.readFilter(state);
 		this.options = parseTaskListOptions(field(state, 'taskList'));
 		this.limit = PAGE_SIZE;
 	}
@@ -87,10 +86,9 @@ export class TaskListPanel extends Panel {
 		this.host.changed();
 	}
 
-	private setFilter(filter: ViewFilter): void {
-		this.filter = filter;
+	protected override setFilter(filter: ViewFilter): void {
 		this.limit = PAGE_SIZE;
-		this.host.changed();
+		super.setFilter(filter);
 	}
 
 	draw(shell: Shell, ctx: CalcContext, scope?: PanelScope): void {
@@ -124,7 +122,7 @@ export class TaskListPanel extends Panel {
 		);
 		if (scope?.note) notes.createDiv({ cls: 'pm-note', text: scope.note });
 
-		const filter: ViewFilter = scope ? { ...this.filter, members: [scope.member.id] } : this.filter;
+		const filter = this.filterFor(scope);
 		let tasks = filterTasks(ctx.index.tasks({ includeArchived: filter.includeArchived }), filter, ctx.projects, ctx.statuses);
 		const allowed = scope?.taskIds;
 		if (allowed) tasks = tasks.filter((t) => allowed.has(t.id));

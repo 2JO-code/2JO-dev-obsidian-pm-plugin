@@ -1,10 +1,12 @@
 import type { App } from 'obsidian';
 import type { CalcContext } from '../calc/context';
+import { EMPTY_FILTER, parseFilter, type ViewFilter } from '../calc/filter';
 import type { RowLabels } from '../calc/taskList';
 import { openChecklistEditor } from '../commands/editChecklist';
 import { statusColor } from '../config/statusColor';
 import type ProjectManagerPlugin from '../main';
 import type { Member, NoteId, StatusSets, YearMonth } from '../model';
+import { field } from '../parse/values';
 import { statusBadge } from './badges';
 import type { TaskCellEnv, TaskColumn } from './taskColumns';
 
@@ -100,6 +102,27 @@ export abstract class Panel {
 
 	protected get plugin(): ProjectManagerPlugin {
 		return this.host.plugin;
+	}
+}
+
+/** 共通の絞り込み（設計書 9.1）を持つ部品の土台 */
+export abstract class FilteredPanel extends Panel {
+	protected filter: ViewFilter = { ...EMPTY_FILTER };
+
+	/** 保存されていた状態から絞り込みを読む */
+	protected readFilter(state: unknown): void {
+		this.filter = parseFilter(field(state, 'filter'));
+	}
+
+	/** 絞り込みを変え、保存して描き直す */
+	protected setFilter(filter: ViewFilter): void {
+		this.filter = filter;
+		this.host.changed();
+	}
+
+	/** 描くときの絞り込み。メンバーを固定されていれば、担当者をその人にする */
+	protected filterFor(scope?: PanelScope): ViewFilter {
+		return scope ? { ...this.filter, members: [scope.member.id] } : this.filter;
 	}
 }
 

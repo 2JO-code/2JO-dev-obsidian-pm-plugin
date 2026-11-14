@@ -5,6 +5,7 @@ import type { NewNoteInput } from '../commands/newNote';
 import type { ProjectDisplayName } from '../settings';
 import { epicOptions, projectOptions } from './formParts';
 import { notifyError } from './notify';
+import { SaveGuard } from './saveGuard';
 
 const TITLES: Record<IdKind, string> = {
 	project: '新しいプロジェクト',
@@ -36,7 +37,7 @@ export class NewNoteModal extends Modal {
 	private project: NoteId = '';
 	private epic: NoteId = '';
 	private epicSetting: Setting | null = null;
-	private saving = false;
+	private readonly guard = new SaveGuard();
 
 	constructor(
 		app: App,
@@ -122,8 +123,7 @@ export class NewNoteModal extends Modal {
 	}
 
 	private async submit(): Promise<void> {
-		// 作成中の2回目（Enter の連打など）は受け付けない（設計書 4.6）
-		if (this.saving) return;
+		if (this.guard.busy) return;
 		const { kind } = this.options;
 		const input: NewNoteInput =
 			kind === 'project'
@@ -133,14 +133,11 @@ export class NewNoteModal extends Modal {
 					: kind === 'task'
 						? { kind, title: this.title, project: this.project, ...(this.epic ? { epic: this.epic } : {}) }
 						: { kind, title: this.title, familyName: this.familyName, givenName: this.givenName };
-		this.saving = true;
 		try {
-			await this.options.onSubmit(input);
+			await this.guard.run(() => this.options.onSubmit(input));
 			this.close();
 		} catch (e) {
 			notifyError(e);
-		} finally {
-			this.saving = false;
 		}
 	}
 }

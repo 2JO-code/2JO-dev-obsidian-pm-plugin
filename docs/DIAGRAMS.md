@@ -285,6 +285,7 @@ classDiagram
 - タスク一覧・作業ログ・ガント・カンバン・WBS の中身は部品（`Panel`）。ビューは部品を1つ載せる（設計書 9.12）
   - メンバーダッシュボードは、同じ部品を種類ごとに1つずつ作って並べる（設計書 9.11）
   - 部品は保存・描き直しを置き場所（`PanelHost`）に頼む
+  - 共通の絞り込みを持つ部品は `FilteredPanel` を継ぐ（設計書 9.12）
 - WBS・ガントの部品とプロジェクト状況は `WbsDrag` を1つずつ持ち、行のドラッグで番号を書き換える（設計書 9.7）
 - 同じ3つは `TreeToggle`（開閉の状態）と `ChildRows`（タスクの行の足し引き）も1つずつ持つ（設計書 9.7）
 
@@ -323,6 +324,13 @@ classDiagram
 		+getState()*
 		+setState(state)*
 	}
+	class FilteredPanel {
+		<<abstract>>
+		#filter: ViewFilter
+		#readFilter(state)
+		#setFilter(filter)
+		#filterFor(scope?) ViewFilter
+	}
 	class PanelHost {
 		<<interface>>
 		+changed()
@@ -353,11 +361,12 @@ classDiagram
 	PmView <|-- MemberDashboardView
 
 	Panel ..> PanelHost : 保存・描き直しを頼む
-	Panel <|-- TaskListPanel
-	Panel <|-- WorklogPanel
-	Panel <|-- GanttPanel
-	Panel <|-- KanbanPanel
-	Panel <|-- WbsPanel
+	Panel <|-- FilteredPanel
+	FilteredPanel <|-- TaskListPanel
+	FilteredPanel <|-- WorklogPanel
+	FilteredPanel <|-- GanttPanel
+	FilteredPanel <|-- KanbanPanel
+	FilteredPanel <|-- WbsPanel
 	Panel <|-- LoadPanel
 	Panel <|-- AssignedProjectsPanel
 	Panel <|-- MemberTaskListPanel

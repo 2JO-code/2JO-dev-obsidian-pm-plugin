@@ -8,10 +8,10 @@ import { planDelayText } from '../calc/planDelay';
 import { periodsBetween, type PeriodUnit } from '../calc/workdays';
 import { isFinished } from '../config/status';
 import type { IsoDate, Member, NoteId, StatusCategory, Task } from '../model';
+import { svg } from './svg';
 
 /** ガントチャートの部品（見出し・棒・印・依存の線。設計書 9.8） */
 
-const SVG_NS = 'http://www.w3.org/2000/svg';
 export const LINK_HINT = '棒を指すと、先行・後続の件数をここに出します';
 
 /** 矢印の印の ID を、開いているガントごとに変える */
@@ -143,21 +143,14 @@ export function dependencyLines(
 	bars: Map<NoteId, HTMLElement>,
 	note: HTMLElement,
 ): (id: NoteId, bar: HTMLElement) => void {
-	const svg = document.createElementNS(SVG_NS, 'svg');
-	svg.classList.add('pm-gantt-links');
-	const marker = document.createElementNS(SVG_NS, 'marker');
-	marker.id = `pm-gantt-arrow-${++arrowCount}`;
-	for (const [k, v] of Object.entries({ viewBox: '0 0 6 6', refX: '6', refY: '3', markerWidth: '6', markerHeight: '6', orient: 'auto' })) marker.setAttribute(k, v);
-	const head = document.createElementNS(SVG_NS, 'path');
-	head.setAttribute('d', 'M0,0 L6,3 L0,6 Z');
-	marker.appendChild(head);
-	const defs = document.createElementNS(SVG_NS, 'defs');
-	defs.appendChild(marker);
-	svg.appendChild(defs);
-	wrap.appendChild(svg);
+	const root = svg(wrap, 'svg', {}, 'pm-gantt-links');
+	const defs = svg(root, 'defs');
+	const markerId = `pm-gantt-arrow-${++arrowCount}`;
+	const marker = svg(defs, 'marker', { id: markerId, viewBox: '0 0 6 6', refX: 6, refY: 3, markerWidth: 6, markerHeight: 6, orient: 'auto' });
+	svg(marker, 'path', { d: 'M0,0 L6,3 L0,6 Z' });
 
 	const show = (id: NoteId | undefined) => {
-		for (const p of Array.from(svg.querySelectorAll('.pm-gantt-link'))) p.remove();
+		for (const p of Array.from(root.querySelectorAll('.pm-gantt-link'))) p.remove();
 		for (const b of Array.from(wrap.querySelectorAll('.pm-gantt-bar.is-linked, .pm-gantt-bar.is-selected'))) b.removeClasses(['is-linked', 'is-selected']);
 		// 欄の高さが変わると棒の位置がずれるため、空にせず案内を出す
 		note.setText(LINK_HINT);
@@ -167,8 +160,8 @@ export function dependencyLines(
 		self.addClass('is-selected');
 		const { predecessors, successors } = dependencyLinks(tasks, id);
 		const base = wrap.getBoundingClientRect();
-		svg.setAttribute('width', String(wrap.scrollWidth));
-		svg.setAttribute('height', String(wrap.scrollHeight));
+		root.setAttribute('width', String(wrap.scrollWidth));
+		root.setAttribute('height', String(wrap.scrollHeight));
 		let hidden = 0;
 		const line = (from: HTMLElement, to: HTMLElement) => {
 			const a = from.getBoundingClientRect();
@@ -177,11 +170,7 @@ export function dependencyLines(
 			const y1 = a.top + a.height / 2 - base.top;
 			const x2 = b.left - base.left;
 			const y2 = b.top + b.height / 2 - base.top;
-			const path = document.createElementNS(SVG_NS, 'path');
-			path.classList.add('pm-gantt-link');
-			path.setAttribute('d', `M${x1},${y1} H${x1 + 6} V${y2} H${x2}`);
-			path.setAttribute('marker-end', `url(#${marker.id})`);
-			svg.appendChild(path);
+			svg(root, 'path', { d: `M${x1},${y1} H${x1 + 6} V${y2} H${x2}`, 'marker-end': `url(#${markerId})` }, 'pm-gantt-link');
 		};
 		for (const p of predecessors) {
 			const el = bars.get(p);

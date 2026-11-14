@@ -1,5 +1,4 @@
 import type { CalcContext } from '../calc/context';
-import { EMPTY_FILTER, parseFilter, type ViewFilter } from '../calc/filter';
 import type { Status } from '../calc/projectStatus';
 import type { RowLabels, TaskRow } from '../calc/taskList';
 import { TreeToggle } from '../calc/treeToggle';
@@ -22,7 +21,7 @@ import { blankColumn, TASK_COLUMNS, taskCells, titleColumn, wbsColumn, type Task
 import { warningLink } from './warningLink';
 import { WbsDrag, type WbsDragGroup } from './wbsDrag';
 import { field } from '../parse/values';
-import { Panel, pluginStatusCell, pluginTaskCellEnv, type PanelScope, type Shell } from './panel';
+import { FilteredPanel, pluginStatusCell, pluginTaskCellEnv, type PanelScope, type Shell } from './panel';
 import { PROJECT_STATUS_VIEW_TYPE } from './viewTypes';
 import { toggleMark } from '../ui/controls';
 
@@ -42,9 +41,8 @@ const COLUMNS: TaskColumn[] = [
 ];
 
 /** WBS の部品（プロジェクト → エピック → タスク。要件4.8b、設計書 9.7・9.12） */
-export class WbsPanel extends Panel {
+export class WbsPanel extends FilteredPanel {
 	readonly title = 'WBS';
-	private filter: ViewFilter = { ...EMPTY_FILTER };
 	/** 階層の開閉。変えたら状態の保存を頼む */
 	private readonly tree = new TreeToggle(() => this.host.save());
 	/** 開いているエピックのタスクの行（キーは `wbsKey`） */
@@ -57,13 +55,8 @@ export class WbsPanel extends Panel {
 	}
 
 	setState(state: unknown): void {
-		this.filter = parseFilter(field(state, 'filter'));
+		this.readFilter(state);
 		this.tree.load(field(field(state, 'wbs'), 'toggled'));
-	}
-
-	private setFilter(filter: ViewFilter): void {
-		this.filter = filter;
-		this.host.changed();
 	}
 
 	draw(shell: Shell, ctx: CalcContext, scope?: PanelScope): void {
@@ -71,7 +64,7 @@ export class WbsPanel extends Panel {
 		const labels: RowLabels = { project: (p) => projectLabel(p, mode) };
 		const { summary, filters, settings, actions, notes, body } = shell;
 		// 外から固定するときは、その人の担当タスクだけ（設計書 9.12）
-		const filter: ViewFilter = scope ? { ...this.filter, members: [scope.member.id] } : this.filter;
+		const filter = this.filterFor(scope);
 
 		renderFilterBar(
 			filters,

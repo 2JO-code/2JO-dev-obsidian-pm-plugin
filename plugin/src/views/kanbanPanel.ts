@@ -1,7 +1,7 @@
 import { Notice } from 'obsidian';
 import type { CalcContext } from '../calc/context';
 import type { WorkCalendar } from '../calc/workdays';
-import { EMPTY_FILTER, filterTasks, parseFilter, type ViewFilter } from '../calc/filter';
+import { filterTasks } from '../calc/filter';
 import { kanbanColumns, parseDraggedCard, statusMove, UNKNOWN_COLUMN, type DraggedCard, type KanbanColumn } from '../calc/kanban';
 import {
 	EMPTY_TASK_FILTER,
@@ -24,7 +24,7 @@ import { memberChoices, projectChoices, statusChoices } from './choices';
 import { rangeSlider, renderFilterBar } from './filterBar';
 import { taskFilterFields, withTaskFilter } from './taskFilters';
 import { field, stringArray } from '../parse/values';
-import { Panel, type PanelScope, type Shell } from './panel';
+import { FilteredPanel, type PanelScope, type Shell } from './panel';
 import { notifyError } from '../ui/notify';
 
 /** 1列に一度に出すカードの数 */
@@ -47,9 +47,8 @@ const columnWidthOf = (v: unknown): number =>
 	typeof v === 'number' && Number.isFinite(v) ? Math.min(COLUMN_WIDTH.max, Math.max(COLUMN_WIDTH.min, Math.round(v))) : COLUMN_WIDTH.initial;
 
 /** カンバンの部品（要件4.8b・4.8c、設計書 9.6・9.12）。カードを列へ動かすとステータスを書き換える */
-export class KanbanPanel extends Panel {
+export class KanbanPanel extends FilteredPanel {
 	readonly title = 'カンバン';
-	private filter: ViewFilter = { ...EMPTY_FILTER };
 	private options: KanbanOptions = { ...EMPTY_TASK_FILTER, toggled: [], columnWidth: COLUMN_WIDTH.initial };
 	/** 列ごとに出しているカードの数。保存しない */
 	private limits = new Map<string, number>();
@@ -59,7 +58,7 @@ export class KanbanPanel extends Panel {
 	}
 
 	setState(state: unknown): void {
-		this.filter = parseFilter(field(state, 'filter'));
+		this.readFilter(state);
 		const raw = field(state, 'kanban');
 		const { epics, dueFrom, dueTo, warningsOnly } = parseTaskListOptions(raw);
 		const toggled = field(raw, 'toggled');
@@ -72,11 +71,6 @@ export class KanbanPanel extends Panel {
 			columnWidth: columnWidthOf(field(raw, 'columnWidth')),
 		};
 		this.limits.clear();
-	}
-
-	private setFilter(filter: ViewFilter): void {
-		this.filter = filter;
-		this.host.changed();
 	}
 
 	private setOptions(options: KanbanOptions): void {
@@ -117,7 +111,7 @@ export class KanbanPanel extends Panel {
 		);
 
 		if (scope?.note) notes.createDiv({ cls: 'pm-note', text: scope.note });
-		const filter: ViewFilter = scope ? { ...this.filter, members: [scope.member.id] } : this.filter;
+		const filter = this.filterFor(scope);
 		let tasks = filterTasks(ctx.index.tasks({ includeArchived: filter.includeArchived }), filter, ctx.projects, ctx.statuses);
 		const allowed = scope?.taskIds;
 		if (allowed) tasks = tasks.filter((t) => allowed.has(t.id));

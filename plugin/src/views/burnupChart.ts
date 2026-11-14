@@ -2,8 +2,8 @@ import { monthTicks, niceTicks, type Burnup, type BurnupPoint, type ProgressPlan
 import { daysBetween, monthDayText as md } from '../calc/dates';
 import type { IsoDate } from '../model';
 import { hoursText } from '../calc/format';
+import { svg } from './svg';
 
-const SVG_NS = 'http://www.w3.org/2000/svg';
 /** 描く範囲（viewBox の座標）。右は線の端のラベルの分を空ける */
 const W = 720;
 const H = 240;
@@ -13,14 +13,6 @@ const LABEL_GAP = 14;
 
 /** 時間の表示（例：8,123.5h） */
 const hours = (h: number) => `${hoursText(h)}h`;
-
-function svg<K extends keyof SVGElementTagNameMap>(parent: Element, tag: K, attrs: Record<string, string | number>, cls?: string): SVGElementTagNameMap[K] {
-	const el = document.createElementNS(SVG_NS, tag);
-	for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, String(v));
-	if (cls) el.classList.add(...cls.split(' '));
-	parent.appendChild(el);
-	return el;
-}
 
 /** 凡例。色の見本と名前を並べる */
 function legendOf(root: HTMLElement, items: readonly (readonly [string, string])[]): void {

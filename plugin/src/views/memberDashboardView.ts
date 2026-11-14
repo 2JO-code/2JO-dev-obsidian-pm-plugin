@@ -5,6 +5,7 @@ import { openWorklogModal } from '../commands/worklog';
 import type ProjectManagerPlugin from '../main';
 import { activePanel, MEMBER_PANEL_LABELS, type MemberDashboardLayout, type MemberPanelKind } from '../memberDashboardLayout';
 import { field } from '../parse/values';
+import { stepNav } from '../ui/controls';
 import { MemberPanelsModal } from '../ui/memberPanelsModal';
 import { actionButtons } from './actions';
 import { PmView } from './baseView';
@@ -151,20 +152,15 @@ export class MemberDashboardView extends PmView {
 
 	/** 月の前・次・選択・今月への移動 */
 	private monthNav(settings: HTMLElement, month: string, thisMonth: string): void {
-		const nav = settings.createDiv({ cls: 'pm-filter-field' });
-		nav.createSpan({ cls: 'pm-filter-label', text: '月' });
-		const move = (m: string) => this.setOptions({ ...this.options, month: m });
-		const prev = nav.createEl('button', { text: '◀' });
-		prev.setAttr('aria-label', '前の月');
-		prev.addEventListener('click', () => move(addMonths(month, -1)));
-		const input = nav.createEl('input', { type: 'month', value: month });
-		input.setAttr('aria-label', '月を選ぶ');
-		input.addEventListener('change', () => {
-			if (/^\d{4}-\d{2}$/.test(input.value)) move(input.value);
+		const nav = stepNav(settings, {
+			input: 'month',
+			value: month,
+			labels: { prev: '前の月', next: '次の月', now: '今月', pick: '月を選ぶ' },
+			shift: (n) => addMonths(month, n),
+			now: thisMonth,
+			pick: (v) => (/^\d{4}-\d{2}$/.test(v) ? v : undefined),
+			move: (m) => this.setOptions({ ...this.options, month: m }),
 		});
-		const next = nav.createEl('button', { text: '▶' });
-		next.setAttr('aria-label', '次の月');
-		next.addEventListener('click', () => move(addMonths(month, 1)));
-		nav.createEl('button', { text: '今月' }).addEventListener('click', () => move(thisMonth));
+		nav.prepend(nav.createSpan({ cls: 'pm-filter-label', text: '月' }));
 	}
 }

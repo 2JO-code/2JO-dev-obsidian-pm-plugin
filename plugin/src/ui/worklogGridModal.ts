@@ -1,4 +1,4 @@
-import { type App, ButtonComponent, DropdownComponent, Modal, Notice, TextComponent } from 'obsidian';
+import { type App, ButtonComponent, Modal, Notice, TextComponent } from 'obsidian';
 import { compareJa } from '../calc/compare';
 import { dayOfWeek, localToday, monthDayText, WEEKDAYS } from '../calc/dates';
 import { cellHoursText, hoursText, missingLabel } from '../calc/format';
@@ -30,8 +30,6 @@ import {
 	monthsOf,
 	periodDates,
 	periodStartOf,
-	shiftPeriod,
-	UNIT_LABEL,
 	type GridHours,
 	type GridLine,
 	type GridMode,
@@ -41,9 +39,12 @@ import type { Epic, IsoDate, Member, NoteId, Project, Task, Worklog, YearMonth }
 import type { ProjectDisplayName } from '../settings';
 import { confirm } from './confirmModal';
 import { ChooseModal } from './chooseModal';
-import { epicOptions, errorBox, projectOptions } from './formParts';
+import { errorBox } from './formParts';
 import { notifyError } from './notify';
-import { toggleMark, checkbox } from './controls';
+import { SaveGuard } from './saveGuard';
+import { toggleMark } from './controls';
+import { pinColumns } from './pinColumns';
+import { worklogGridBar, type GridBarState } from './worklogGridBar';
 
 /** 1か月分の保存の結果（知らせること） */
 export interface WorklogSaveResult {
@@ -122,7 +123,7 @@ export class WorklogGridModal extends Modal {
 	/** たたんだプロジェクト・エピックの行のキー（初めはすべて開く） */
 	private readonly collapsed = new Set<string>();
 	private errors: string[] = [];
-	private saving = false;
+	private readonly guard = new SaveGuard();
 	private discard = false;
 	private unsubscribe: (() => void) | null = null;
 	/** 固定した列の位置を、表の幅が変わるたびに合わせ直す */
@@ -260,7 +261,8 @@ export class WorklogGridModal extends Modal {
 		const { contentEl } = this;
 		contentEl.empty();
 		errorBox(contentEl, this.errors);
-		this.bar(contentEl);
+		const { member, unit, start, mode, project, epic, status, showFinished } = this;
+		worklogGridBar(contentEl, this.options, { member, unit, start, mode, project, epic, status, showFinished }, (patch) => this.changeBar(patch));
 		const daily = this.memberOf(this.member)?.dailyHours;
 		contentEl.createDiv({
 			cls: 'pm-note',
@@ -279,87 +281,32 @@ export class WorklogGridModal extends Modal {
 		this.footer(contentEl);
 	}
 
-	/** メンバー・週・予定と実績の切り替え */
-	private bar(el: HTMLElement): void {
-		const bar = el.createDiv({ cls: 'pm-worklog-grid-bar' });
-		const d = new DropdownComponent(bar);
-		d.addOption('', 'メンバーを選ぶ');
-		for (const m of this.options.members.filter((m) => m.active).sort((a, b) => compareJa(a.title, b.title))) d.addOption(m.id, m.title);
-		d.selectEl.setAttr('aria-label', 'メンバー');
-		d.setValue(this.member).onChange((v) => {
-			this.member = v;
-			this.options.onMemberChange(v);
-			this.render();
-		});
-
-		const week = bar.createDiv({ cls: 'pm-worklog-grid-week' });
-		const label = UNIT_LABEL[this.unit];
-		const move = (start: IsoDate) => {
-			this.start = start;
-			this.render();
-		};
-		const unit = new DropdownComponent(week);
-		for (const u of ['week', 'month'] as const) unit.addOption(u, UNIT_LABEL[u].name);
-		unit.selectEl.setAttr('aria-label', '表示の期間');
-		unit.setValue(this.unit).onChange((v) => {
-			this.unit = v === 'month' ? 'month' : 'week';
-			this.options.onUnitChange(this.unit);
-			// 今の期間の最初の日を含む期間にする
-			move(periodStartOf(this.start, this.unit));
-		});
-		new ButtonComponent(week).setIcon('chevron-left').setTooltip(label.prev).onClick(() => move(shiftPeriod(this.start, this.unit, -1)));
-		const date = new TextComponent(week).setValue(this.start);
-		date.inputEl.type = 'date';
-		date.inputEl.setAttr('aria-label', `日付を選んでその${this.unit === 'week' ? '週' : '月'}へ`);
-		date.inputEl.addEventListener('change', () => {
-			if (date.getValue()) move(periodStartOf(date.getValue(), this.unit));
-		});
-		new ButtonComponent(week).setIcon('chevron-right').setTooltip(label.next).onClick(() => move(shiftPeriod(this.start, this.unit, 1)));
-		new ButtonComponent(week).setButtonText(label.now).onClick(() => move(periodStartOf(localToday(), this.unit)));
-
-		const modes = bar.createDiv({ cls: 'pm-worklog-grid-mode' });
-		for (const mode of ['planned', 'actual'] as const) {
-			const b = new ButtonComponent(modes).setButtonText(MODE_LABEL[mode]).onClick(() => {
-				this.mode = mode;
-				this.render();
-				// 最後に入っていたマスに、スクロールさせずに戻る
-				const { row, col } = this.lastPos;
-				window.setTimeout(() => this.grid[row]?.[col]?.focus({ preventScroll: true }), 0);
-			});
-			if (mode === this.mode) b.setCta();
+	/** 上の欄で変えた値を入れて描き直す */
+	private changeBar(patch: Partial<GridBarState>): void {
+		const { member, unit, start, mode, project, epic, status, showFinished } = patch;
+		if (member !== undefined) {
+			this.member = member;
+			this.options.onMemberChange(member);
 		}
-
-		const filter = bar.createDiv({ cls: 'pm-worklog-grid-filter' });
-		const p = new DropdownComponent(filter);
-		projectOptions(p, this.options.projects, this.options.displayName, this.project, 'すべてのプロジェクト');
-		p.selectEl.setAttr('aria-label', 'プロジェクトで絞る');
-		p.onChange((v) => {
-			this.project = v;
-			this.epic = '';
-			this.render();
-		});
-		if (this.project) {
-			const e = new DropdownComponent(filter);
-			epicOptions(e, this.options.epics, this.project, this.epic, 'すべてのエピック');
-			e.selectEl.setAttr('aria-label', 'エピックで絞る');
-			e.onChange((v) => {
-				this.epic = v;
-				this.render();
-			});
+		if (unit !== undefined) {
+			this.unit = unit;
+			this.options.onUnitChange(unit);
 		}
-		const s = new DropdownComponent(filter);
-		s.addOption('', 'すべてのステータス');
-		for (const name of this.options.statuses) s.addOption(name, name);
-		s.selectEl.setAttr('aria-label', 'ステータスで絞る');
-		s.setValue(this.status).onChange((v) => {
-			this.status = v;
-			this.render();
-		});
-		checkbox(filter, '完了・停止した担当タスクも表示', this.showFinished, (show) => {
-			this.showFinished = show;
-			this.options.onShowFinishedChange(show);
-			this.render();
-		});
+		if (showFinished !== undefined) {
+			this.showFinished = showFinished;
+			this.options.onShowFinishedChange(showFinished);
+		}
+		if (start !== undefined) this.start = start;
+		if (mode !== undefined) this.mode = mode;
+		if (project !== undefined) this.project = project;
+		if (epic !== undefined) this.epic = epic;
+		if (status !== undefined) this.status = status;
+		this.render();
+		if (mode !== undefined) {
+			// 最後に入っていたマスに、スクロールさせずに戻る
+			const { row, col } = this.lastPos;
+			window.setTimeout(() => this.grid[row]?.[col]?.focus({ preventScroll: true }), 0);
+		}
 	}
 
 	private get filtered(): boolean {
@@ -414,7 +361,9 @@ export class WorklogGridModal extends Modal {
 		}
 		this.addTaskRow(body);
 		this.totalRow(body);
-		this.pinColumns(table);
+		// タスク名の右の見積・月の合計の列を、横に流しても左に固定する
+		this.pinObserver?.disconnect();
+		this.pinObserver = pinColumns(table, 'pm-worklog-grid-pin');
 		// 合計は footer で描く（保存していないマスの数の欄ができてから）
 	}
 
@@ -498,41 +447,6 @@ export class WorklogGridModal extends Modal {
 			this.focusTask = null;
 			window.setTimeout(() => this.focusRow(row), 0);
 		}
-	}
-
-	/**
-	 * タスク名の右の見積・月の合計の列を、横に流しても左に固定する。
-	 * 左からの位置は、左にある見出しのマスの幅の合計（列の幅が中身で変わるため）。
-	 * offsetLeft は固定したマスでは表ではなく画面の枠からの位置になるので使わない
-	 */
-	private pinColumns(table: HTMLTableElement): void {
-		const pin = () => {
-			const head = table.tHead?.rows[0];
-			if (!head) return;
-			const cells = Array.from(head.cells);
-			const pinned = cells.filter((c) => c.hasClass('pm-worklog-grid-pin'));
-			const last = pinned[pinned.length - 1];
-			// 開くときの拡大・縮小の動きの途中でも、元の大きさで測る
-			const rect = table.getBoundingClientRect().width;
-			const scale = rect > 0 ? table.offsetWidth / rect : 1;
-			const lefts: number[] = [];
-			cells.reduce((left, th) => {
-				lefts.push(left);
-				return left + th.getBoundingClientRect().width * scale;
-			}, 0);
-			for (const row of Array.from(table.rows)) {
-				if (row.cells.length !== cells.length) continue;
-				cells.forEach((th, i) => {
-					const cell = row.cells[i];
-					if (!cell || !th.hasClass('pm-worklog-grid-pin')) return;
-					cell.setCssProps({ '--pm-pin-left': `${lefts[i] ?? 0}px` });
-					cell.toggleClass('is-pin-last', th === last);
-				});
-			}
-		};
-		this.pinObserver?.disconnect();
-		this.pinObserver = new ResizeObserver(pin);
-		this.pinObserver.observe(table);
 	}
 
 	/** 月ごとの合計のマス（月をまたぐ週は2つ） */
@@ -720,8 +634,7 @@ export class WorklogGridModal extends Modal {
 
 	/** 変えたマスを、メンバー・月ごとの作業ログに書き込む */
 	private async save(close: boolean): Promise<void> {
-		// 保存中の2回目は受け付けない（設計書 4.6）
-		if (this.saving) return;
+		if (this.guard.busy) return;
 		const all = this.draft.changes().filter((c) => c.changes.length > 0);
 		const name = (id: NoteId) => this.memberOf(id)?.title ?? id;
 		this.errors = all.flatMap(({ member, changes }) =>
@@ -738,26 +651,25 @@ export class WorklogGridModal extends Modal {
 			else new Notice('変えたマスはありません');
 			return;
 		}
-		this.saving = true;
 		let count = 0;
 		let merged = 0;
 		let droppedMemos = 0;
 		try {
-			for (const { member, changes } of all) {
-				for (const { month, changes: part } of changesByMonth(changes)) {
-					const result = await this.options.save(member, month, part);
-					merged += result.merged;
-					droppedMemos += result.droppedMemos;
-					count += part.length;
-					this.draft.markSaved(member, part);
+			await this.guard.run(async () => {
+				for (const { member, changes } of all) {
+					for (const { month, changes: part } of changesByMonth(changes)) {
+						const result = await this.options.save(member, month, part);
+						merged += result.merged;
+						droppedMemos += result.droppedMemos;
+						count += part.length;
+						this.draft.markSaved(member, part);
+					}
 				}
-			}
+			});
 		} catch (e) {
 			notifyError(e, '保存できませんでした');
 			this.render();
 			return;
-		} finally {
-			this.saving = false;
 		}
 		const notes = worklogSavedNotice(count, merged, droppedMemos);
 		new Notice(notes.join('\n'), notes.length > 1 ? 8000 : undefined);

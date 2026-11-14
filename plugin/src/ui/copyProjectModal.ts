@@ -4,6 +4,7 @@ import type { NoteId, Project } from '../model';
 import type { ProjectDisplayName } from '../settings';
 import { projectOptions } from './formParts';
 import { notifyError } from './notify';
+import { SaveGuard } from './saveGuard';
 
 export interface CopyProjectModalOptions {
 	/** 元にできるプロジェクト（アーカイブ内も含む） */
@@ -27,7 +28,7 @@ export class CopyProjectModal extends Modal {
 	private start = '';
 	private countEl: HTMLElement | null = null;
 	private startSetting: Setting | null = null;
-	private saving = false;
+	private readonly guard = new SaveGuard();
 
 	constructor(
 		app: App,
@@ -108,21 +109,18 @@ export class CopyProjectModal extends Modal {
 	}
 
 	private async submit(): Promise<void> {
-		// 作成中の2回目（Enter の連打など）は受け付けない（設計書 4.6）
-		if (this.saving) return;
+		if (this.guard.busy) return;
 		if (!this.source) {
 			notifyError(new Error('元のプロジェクトを選んでください'));
 			return;
 		}
 		const dates: CopyDates = this.dateMode === 'shift' ? { mode: 'shift', start: this.start } : { mode: 'clear' };
-		this.saving = true;
+		const source = this.source;
 		try {
-			await this.options.onSubmit(this.source, { title: this.title, caseId: this.caseId, officialName: this.officialName, dates });
+			await this.guard.run(() => this.options.onSubmit(source, { title: this.title, caseId: this.caseId, officialName: this.officialName, dates }));
 			this.close();
 		} catch (e) {
 			notifyError(e);
-		} finally {
-			this.saving = false;
 		}
 	}
 }

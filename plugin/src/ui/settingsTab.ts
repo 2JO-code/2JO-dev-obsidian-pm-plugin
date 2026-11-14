@@ -1,14 +1,12 @@
-import { type App, debounce, Notice, PluginSettingTab, Setting } from 'obsidian';
+import { type App, debounce, PluginSettingTab, Setting } from 'obsidian';
 import type ProjectManagerPlugin from '../main';
 import { applyKindColors } from './kindColors';
 import { SettingGroups } from './settingGroups';
-import { COLOR_SAVE_DELAY, onCommit, SharedConfigSettings } from './sharedConfigSettings';
+import { COLOR_SAVE_DELAY, SharedConfigSettings } from './sharedConfigSettings';
 import {
 	cleanColor,
-	cleanFolderPath,
 	DEFAULT_PERSONAL,
 	DEFAULT_SETTINGS,
-	type FolderSettings,
 	type KindColors,
 	moveSection,
 	PROJECT_DISPLAY_NAMES,
@@ -27,16 +25,6 @@ const SECTION_LABELS: Record<ProjectSection, string> = {
 };
 
 const KIND_LABELS: Record<keyof KindColors, string> = { project: 'プロジェクト', epic: 'エピック', task: 'タスク' };
-
-const FOLDER_LABELS: Record<keyof FolderSettings, string> = {
-	projects: 'プロジェクト',
-	epics: 'エピック',
-	tasks: 'タスク',
-	members: 'メンバー',
-	logs: '作業ログ',
-	archive: 'アーカイブ',
-	config: '共有設定（statuses.json, calendar.json）',
-};
 
 const DISPLAY_NAME_LABELS: Record<ProjectDisplayName, string> = {
 	title: '簡易プロジェクト名',
@@ -75,12 +63,11 @@ export class ProjectManagerSettingTab extends PluginSettingTab {
 			containerEl,
 			'shared',
 			'全員共通の設定',
-			'全員の画面と集計に影響します。ステータスと会社カレンダーは Vault の共有設定ファイルに、色とフォルダはプラグインの設定ファイルに保存します。',
+			'全員の画面と集計に影響します。ステータスと会社カレンダーは Vault の共有設定ファイルに、色はプラグインの設定ファイルに保存します。',
 		);
 		this.shared.renderStatuses(shared);
 		this.shared.renderCalendar(shared);
 		this.renderColors(groups.add(shared, 'shared.colors', '種類ごとの色', 'ガントの棒と、各画面のタイトルの前の印の色。'));
-		this.renderFolders(groups.add(shared, 'shared.folders', 'フォルダ', 'Vaultのルートからのパス。全員で同じにしてください。'));
 	}
 
 	/** 種類ごとの色（全員共通。設計書 6章） */
@@ -196,37 +183,5 @@ export class ProjectManagerSettingTab extends PluginSettingTab {
 					this.plugin.savePersonal();
 				});
 			});
-	}
-
-	private renderFolders(el: HTMLElement): void {
-		for (const key of Object.keys(FOLDER_LABELS) as (keyof FolderSettings)[]) {
-			new Setting(el).setName(FOLDER_LABELS[key]).addText((text) => {
-				text.setPlaceholder(DEFAULT_SETTINGS.folders[key]).setValue(this.plugin.settings.folders[key]);
-				onCommit(text.inputEl, (value) => {
-					const path = cleanFolderPath(value);
-					if (!path) {
-						new Notice('フォルダのパスが正しくありません');
-						text.setValue(this.plugin.settings.folders[key]);
-						return;
-					}
-					text.setValue(path);
-					void this.updateFolders({ ...this.plugin.settings.folders, [key]: path });
-				});
-			});
-		}
-	}
-
-	/** フォルダを保存し、共有設定・索引への影響を反映する */
-	private async updateFolders(folders: FolderSettings): Promise<void> {
-		const { plugin } = this;
-		const before = plugin.settings.folders;
-		plugin.settings.folders = folders;
-		await plugin.saveSettings();
-		if (folders.config !== before.config) {
-			plugin.config.setDir(folders.config);
-			await plugin.config.load();
-		}
-		// アーカイブの判定が変わるため作り直す
-		if (folders.archive !== before.archive) await plugin.store.rebuild();
 	}
 }

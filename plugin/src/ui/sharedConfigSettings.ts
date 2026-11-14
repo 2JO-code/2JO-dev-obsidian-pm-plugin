@@ -35,7 +35,7 @@ const moved = (before: StatusDef[], after: StatusDef[]): StatusChange => ({
 });
 
 /** 入力の確定時（フォーカスが外れた・Enter）に処理する（設計書 9章） */
-export function onCommit(input: HTMLInputElement, handler: (value: string) => void): void {
+function onCommit(input: HTMLInputElement, handler: (value: string) => void): void {
 	input.addEventListener('change', () => handler(input.value));
 }
 

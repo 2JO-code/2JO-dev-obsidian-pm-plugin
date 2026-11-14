@@ -2,7 +2,7 @@ import { type App, type CachedMetadata, debounce, type EventRef, Events, TFile }
 import { isStrayPath } from '../health/strayFiles';
 import { parseNoteId } from '../id';
 import type { SubtaskCount } from '../model';
-import type { PluginSettings } from '../settings';
+import { FOLDERS } from '../settings';
 import { buildNote, type NoteRecord } from './buildNote';
 import { VaultIndex } from './vaultIndex';
 
@@ -29,10 +29,7 @@ export class VaultStore extends Events {
 	/** 描き直しを止めている間の、上限のタイマー */
 	private holdTimer: number | undefined;
 
-	constructor(
-		private readonly app: App,
-		private readonly getSettings: () => PluginSettings,
-	) {
+	constructor(private readonly app: App) {
 		super();
 	}
 
@@ -185,12 +182,11 @@ export class VaultStore extends Events {
 	}
 
 	private isArchived(path: string): boolean {
-		const archive = this.getSettings().folders.archive;
-		return path.startsWith(`${archive}/`);
+		return path.startsWith(`${FOLDERS.archive}/`);
 	}
 
 	private isStray(path: string): boolean {
-		return isStrayPath(path, this.getSettings().folders);
+		return isStrayPath(path, FOLDERS);
 	}
 }
 

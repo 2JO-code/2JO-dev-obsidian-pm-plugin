@@ -3,10 +3,10 @@ import { defaultStatusSets } from '../config/defaults';
 import { WorkCalendar } from '../calc/workdays';
 import { epic, PJT, PJT2, project, task, USER } from '../calc/testData';
 import { parseMilestones } from '../parse/bodyTables';
-import { DEFAULT_SETTINGS } from '../settings';
+import { FOLDERS } from '../settings';
 import { copyBody, planProjectCopy, type ProjectCopyInput, type ProjectCopySource } from './projectCopy';
 
-const folders = DEFAULT_SETTINGS.folders;
+const folders = FOLDERS;
 const statuses = defaultStatusSets();
 const calendar = new WorkCalendar({ weekendsOff: true, holidays: [] });
 const none = () => false;

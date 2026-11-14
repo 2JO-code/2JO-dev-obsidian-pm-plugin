@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_SETTINGS } from '../settings';
+import { FOLDERS } from '../settings';
 import { findStrayFiles, isStrayPath } from './strayFiles';
 
 const U = '0192f3a0-1234-7abc-8def-000000000001';
-const folders = DEFAULT_SETTINGS.folders;
+const folders = FOLDERS;
 
 describe('isStrayPath', () => {
 	it('管理フォルダの ID の形でない Markdown は対象', () => {

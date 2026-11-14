@@ -431,8 +431,8 @@ sequenceDiagram
 
 	O->>P: onload()
 	P->>P: 設定を読む（loadData・mergeSettings・mergePersonal）
-	P->>C: new SharedConfig(app, 設定フォルダ)
-	P->>S: new VaultStore(app, getSettings)
+	P->>C: new SharedConfig(app, FOLDERS.config)
+	P->>S: new VaultStore(app)
 	P->>P: register…（コマンド・ビュー・メニュー・設定画面）
 	O-->>P: onLayoutReady
 	P->>C: load()

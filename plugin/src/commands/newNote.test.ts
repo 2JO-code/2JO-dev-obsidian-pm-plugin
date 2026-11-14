@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { defaultStatusSets } from '../config/defaults';
 import { parseAllocations, parseMilestones, parsePersonalHolidays } from '../parse/bodyTables';
-import { DEFAULT_SETTINGS } from '../settings';
+import { FOLDERS } from '../settings';
 import { planNewNote } from './newNote';
 
-const folders = DEFAULT_SETTINGS.folders;
+const folders = FOLDERS;
 const statuses = defaultStatusSets();
 const none = () => false;
 const fixedId = (kind: string) => `${kind.toUpperCase()}-ID`;

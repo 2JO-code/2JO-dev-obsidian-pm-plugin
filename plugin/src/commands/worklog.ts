@@ -12,7 +12,7 @@ import { worklogId } from '../id';
 import type ProjectManagerPlugin from '../main';
 import type { IsoDate, NoteId, Task, YearMonth } from '../model';
 import { TABLE_SPEC } from '../parse/bodyTables';
-import { projectLabel } from '../settings';
+import { FOLDERS, projectLabel } from '../settings';
 import { WorklogGridModal, type WorklogSaveResult } from '../ui/worklogGridModal';
 import { toLink } from '../write/frontmatter';
 import { createNoteFile } from '../write/frontmatterFile';
@@ -103,7 +103,7 @@ export function openWorklogModal(plugin: ProjectManagerPlugin, task?: Task, at?:
 
 /** メンバー・月の作業ログに、変えたマスを書き込む。ファイルが無ければ作る（設計書 4.3） */
 async function saveWorklogMonth(plugin: ProjectManagerPlugin, member: NoteId, month: YearMonth, changes: GridChange[]): Promise<WorklogSaveResult> {
-	const { app, settings, store } = plugin;
+	const { app, store } = plugin;
 	const title = (id: string) => store.index.title(id);
 	const id = worklogId(member, month);
 	let result: WorklogSaveResult = { merged: 0, droppedMemos: 0 };
@@ -116,7 +116,7 @@ async function saveWorklogMonth(plugin: ProjectManagerPlugin, member: NoteId, mo
 		return applyTableEdits(content, TABLE_SPEC.worklog, 'date', table.snapshot, edits.edits);
 	};
 
-	const path = normalizePath(`${settings.folders.logs}/${id}.md`);
+	const path = normalizePath(`${FOLDERS.logs}/${id}.md`);
 	// 作業ログのフォルダの外（アーカイブなど）にあってもそれを使う。作ったばかりで索引に無いものはパスで探す（設計書 4.3）
 	const existing = app.vault.getFileByPath(store.index.pathOf(id) ?? path);
 	if (existing instanceof TFile) {

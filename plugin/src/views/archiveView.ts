@@ -13,7 +13,7 @@ import { moveNotes } from '../commands/archiveMove';
 import type ProjectManagerPlugin from '../main';
 import type { NoteId, Project } from '../model';
 import { oneOf, field } from '../parse/values';
-import { projectLabel } from '../settings';
+import { FOLDERS, projectLabel } from '../settings';
 import { confirm } from '../ui/confirmModal';
 import { notifyError } from '../ui/notify';
 import { tableHeader } from '../ui/table';
@@ -95,7 +95,7 @@ export class ArchiveView extends PmView {
 		const mode = this.mode;
 		const text = TEXT[mode];
 		const display = this.plugin.personal.projectDisplayName;
-		const archive = this.plugin.settings.folders.archive;
+		const archive = FOLDERS.archive;
 		const { summary, filters, actions, notes, body } = this.shell(el, { grid: true });
 
 		singleSelect(
@@ -149,7 +149,7 @@ export class ArchiveView extends PmView {
 		if (this.moving) return;
 		const text = TEXT[this.mode];
 		const items = plan.items.filter((i) => !i.clash);
-		const archive = this.plugin.settings.folders.archive;
+		const archive = FOLDERS.archive;
 		const name = projectLabel(project, this.plugin.personal.projectDisplayName);
 		const clashes = plan.items.length - items.length;
 		const ok = await confirm(this.app, {

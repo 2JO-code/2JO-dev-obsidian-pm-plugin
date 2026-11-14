@@ -2,6 +2,7 @@ import { Notice } from 'obsidian';
 import { checkHealth } from '../health/check';
 import { findStrayFiles } from '../health/strayFiles';
 import type ProjectManagerPlugin from '../main';
+import { FOLDERS } from '../settings';
 import type { NoteProblem } from '../store/buildNote';
 
 /** 再読み込みのコマンドとリボンのボタンを登録する */
@@ -26,6 +27,6 @@ export function healthProblems(plugin: ProjectManagerPlugin): NoteProblem[] {
 	return [
 		...plugin.config.problems,
 		...checkHealth(plugin.store.index, plugin.config.statuses),
-		...findStrayFiles(paths, plugin.settings.folders),
+		...findStrayFiles(paths, FOLDERS),
 	];
 }

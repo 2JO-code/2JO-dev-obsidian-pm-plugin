@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
 	cleanColor,
-	cleanFolderPath,
 	cleanProjectSections,
 	DEFAULT_PERSONAL,
 	DEFAULT_SETTINGS,
+	FOLDERS,
 	mergePersonal,
 	mergeSettings,
 	mergeSettingsChanges,
@@ -23,18 +23,16 @@ describe('mergeSettingsChanges', () => {
 		mine.colors.task = '#aaaaaa';
 		const disk = base();
 		disk.colors.epic = '#bbbbbb';
-		disk.folders.archive = 'Old';
 		const result = mergeSettingsChanges(base(), mine, disk);
 		expect(result.colors).toEqual({ ...DEFAULT_SETTINGS.colors, task: '#aaaaaa', epic: '#bbbbbb' });
-		expect(result.folders.archive).toBe('Old');
 	});
 
 	it('同じ項目を両方で変えたら自分の値にする', () => {
 		const mine = base();
-		mine.folders.tasks = 'Mine';
+		mine.colors.task = '#aaaaaa';
 		const disk = base();
-		disk.folders.tasks = 'Theirs';
-		expect(mergeSettingsChanges(base(), mine, disk).folders.tasks).toBe('Mine');
+		disk.colors.task = '#bbbbbb';
+		expect(mergeSettingsChanges(base(), mine, disk).colors.task).toBe('#aaaaaa');
 	});
 
 	it('ステータスの色は名前ごとに重ね、自分が消した名前は消す', () => {
@@ -71,34 +69,13 @@ describe('projectLabel', () => {
 	});
 });
 
-describe('cleanFolderPath', () => {
-	it('区切りを / にそろえ、前後の空白と / を取り除く', () => {
-		expect(cleanFolderPath(' /Members\\Logs/ ')).toBe('Members/Logs');
-		expect(cleanFolderPath('a//b/./c')).toBe('a/b/c');
-	});
-
-	it('空や Vault の外を指すパスは null', () => {
-		expect(cleanFolderPath('  ')).toBeNull();
-		expect(cleanFolderPath('/')).toBeNull();
-		expect(cleanFolderPath('../outside')).toBeNull();
-	});
-});
-
 describe('mergeSettings', () => {
 	it('保存データが無ければ既定値', () => {
 		expect(mergeSettings(null)).toEqual(DEFAULT_SETTINGS);
 	});
 
-	it('保存されている値を使い、足りない項目は既定値で補う', () => {
-		const result = mergeSettings({ folders: { tasks: 'Work/Tasks/' } });
-		expect(result.folders.tasks).toBe('Work/Tasks');
-		expect(result.folders.projects).toBe('Projects');
-	});
-
-	it('不正な値は既定値に置き換える', () => {
-		const result = mergeSettings({ folders: { tasks: '', logs: 3 } });
-		expect(result.folders.tasks).toBe('Tasks');
-		expect(result.folders.logs).toBe('Members/Logs');
+	it('以前保存したフォルダの値は読まず、捨てる', () => {
+		expect(mergeSettings({ folders: { tasks: 'Work/Tasks' } })).toEqual(DEFAULT_SETTINGS);
 	});
 
 	it('個人の設定（以前は data.json に入れていた項目）は持たない', () => {
@@ -118,8 +95,23 @@ describe('mergeSettings', () => {
 	});
 
 	it('既定値のオブジェクトを書き換えない', () => {
-		mergeSettings({ folders: { tasks: 'X' } });
-		expect(DEFAULT_SETTINGS.folders.tasks).toBe('Tasks');
+		mergeSettings({ colors: { task: '#000000' } }).colors.task = '#111111';
+		expect(DEFAULT_SETTINGS.colors.task).toBe('#8a6be0');
+	});
+});
+
+describe('FOLDERS', () => {
+	it('要件3.3のフォルダ構成で固定', () => {
+		expect(FOLDERS).toEqual({
+			projects: 'Projects',
+			epics: 'Epics',
+			tasks: 'Tasks',
+			members: 'Members',
+			logs: 'Members/Logs',
+			archive: 'Archive',
+			config: '_pm',
+		});
+		expect(Object.isFrozen(FOLDERS)).toBe(true);
 	});
 });
 

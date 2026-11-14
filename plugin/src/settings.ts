@@ -36,7 +36,6 @@ export interface StatusColors {
 
 /** 全員共通の設定。data.json に保存する */
 export interface PluginSettings {
-	folders: FolderSettings;
 	colors: KindColors;
 	statusColors: StatusColors;
 }
@@ -61,17 +60,18 @@ export interface ProjectSectionSetting {
 	visible: boolean;
 }
 
-/** 要件3.3のフォルダ構成 */
+/** 要件3.3のフォルダ構成。固定で、設定では変えない */
+export const FOLDERS: Readonly<FolderSettings> = Object.freeze({
+	projects: 'Projects',
+	epics: 'Epics',
+	tasks: 'Tasks',
+	members: 'Members',
+	logs: 'Members/Logs',
+	archive: 'Archive',
+	config: '_pm',
+});
+
 export const DEFAULT_SETTINGS: PluginSettings = {
-	folders: {
-		projects: 'Projects',
-		epics: 'Epics',
-		tasks: 'Tasks',
-		members: 'Members',
-		logs: 'Members/Logs',
-		archive: 'Archive',
-		config: '_pm',
-	},
 	colors: {
 		project: '#3b6fd8',
 		epic: '#2a9d8f',
@@ -118,34 +118,15 @@ export function moveSection<T>(sections: readonly T[], index: number, delta: -1 
 	return list;
 }
 
-/** フォルダパスを整える。使えないパスは null（設計書 6章） */
-export function cleanFolderPath(value: string): string | null {
-	const path = value
-		.trim()
-		.replace(/\\/g, '/')
-		.split('/')
-		.map((part) => part.trim())
-		.filter((part) => part !== '' && part !== '.')
-		.join('/');
-	if (path === '' || path.split('/').includes('..')) return null;
-	return path;
-}
-
 /** `loadData()` の結果を既定値と合わせる。不正な値は既定値にする */
 export function mergeSettings(raw: unknown): PluginSettings {
 	const data = isRecord(raw) ? raw : {};
-	const rawFolders = isRecord(data.folders) ? data.folders : {};
-	const folders = { ...DEFAULT_SETTINGS.folders };
-	for (const key of Object.keys(folders) as (keyof FolderSettings)[]) {
-		const value = rawFolders[key];
-		if (typeof value === 'string') folders[key] = cleanFolderPath(value) ?? folders[key];
-	}
 	const rawColors = isRecord(data.colors) ? data.colors : {};
 	const colors = { ...DEFAULT_SETTINGS.colors };
 	for (const key of Object.keys(colors) as (keyof KindColors)[]) colors[key] = cleanColor(rawColors[key]) ?? colors[key];
 	const rawStatus = isRecord(data.statusColors) ? data.statusColors : {};
 	const statusColors: StatusColors = { task: cleanColorMap(rawStatus.task), project: cleanColorMap(rawStatus.project) };
-	return { folders, colors, statusColors };
+	return { colors, statusColors };
 }
 
 /**
@@ -156,7 +137,6 @@ export function mergeSettings(raw: unknown): PluginSettings {
  */
 export function mergeSettingsChanges(base: PluginSettings, mine: PluginSettings, disk: PluginSettings): PluginSettings {
 	return {
-		folders: mergeFlat(base.folders, mine.folders, disk.folders),
 		colors: mergeFlat(base.colors, mine.colors, disk.colors),
 		statusColors: {
 			task: mergeColorMap(base.statusColors.task, mine.statusColors.task, disk.statusColors.task),

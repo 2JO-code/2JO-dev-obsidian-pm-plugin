@@ -29,7 +29,7 @@ export class SharedConfig {
 
 	constructor(
 		private readonly app: App,
-		private dir: string = DEFAULT_CONFIG_DIR,
+		private readonly dir: string = DEFAULT_CONFIG_DIR,
 	) {}
 
 	get statusesPath(): string {
@@ -38,11 +38,6 @@ export class SharedConfig {
 
 	get calendarPath(): string {
 		return normalizePath(`${this.dir}/${CALENDAR_FILE}`);
-	}
-
-	/** 設定フォルダを変える。呼び出し側で load() し直す */
-	setDir(dir: string): void {
-		this.dir = dir;
 	}
 
 	isConfigPath(path: string): boolean {

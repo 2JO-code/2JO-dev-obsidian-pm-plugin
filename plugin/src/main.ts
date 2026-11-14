@@ -14,6 +14,7 @@ import { registerWorklog } from './commands/worklog';
 import { NO_USAGE, type UsageCounter } from './config/impact';
 import { SharedConfig } from './config/sharedConfig';
 import {
+	FOLDERS,
 	mergePersonal,
 	mergeSettings,
 	mergeSettingsChanges,
@@ -56,8 +57,8 @@ export default class ProjectManagerPlugin extends Plugin {
 		this.settings = mergeSettings(data);
 		this.savedSettings = structuredClone(this.settings);
 		this.personal = mergePersonal(this.app.loadLocalStorage(PERSONAL_KEY), data);
-		this.config = new SharedConfig(this.app, this.settings.folders.config);
-		this.store = new VaultStore(this.app, () => this.settings);
+		this.config = new SharedConfig(this.app, FOLDERS.config);
+		this.store = new VaultStore(this.app);
 
 		this.addSettingTab(new ProjectManagerSettingTab(this.app, this));
 		registerKindColors(this);
@@ -101,7 +102,7 @@ export default class ProjectManagerPlugin extends Plugin {
 		const next = mergeSettingsChanges(this.savedSettings, this.settings, disk);
 		await this.saveData(next);
 		this.savedSettings = structuredClone(next);
-		await this.applySettings(next);
+		this.applySettings(next);
 	}
 
 	/** ほかの人が data.json を変えたら読み直す（設計書 6章） */
@@ -109,27 +110,19 @@ export default class ProjectManagerPlugin extends Plugin {
 		const disk = mergeSettings(await this.loadData());
 		const next = mergeSettingsChanges(this.savedSettings, this.settings, disk);
 		this.savedSettings = disk;
-		await this.applySettings(next);
+		this.applySettings(next);
 	}
 
-	/** ほかの人の変更を今の設定に入れ、画面と索引に反映する（設計書 6章） */
-	private async applySettings(next: PluginSettings): Promise<void> {
+	/** ほかの人の変更を今の設定に入れ、画面に反映する（設計書 6章） */
+	private applySettings(next: PluginSettings): void {
 		const before = structuredClone(this.settings);
 		if (sameSettings(before, next)) return;
 		// 設定画面が中の表を持っているので、入れ物はそのままで中身を入れ替える
-		Object.assign(this.settings.folders, next.folders);
 		Object.assign(this.settings.colors, next.colors);
 		this.settings.statusColors.task = next.statusColors.task;
 		this.settings.statusColors.project = next.statusColors.project;
 		applyKindColors(this);
 		redrawViews(this.app);
-		const ready = this.app.workspace.layoutReady;
-		if (next.folders.config !== before.folders.config) {
-			this.config.setDir(next.folders.config);
-			if (ready) await this.config.load();
-		}
-		// アーカイブの判定が変わるため作り直す
-		if (ready && next.folders.archive !== before.folders.archive) await this.store.rebuild();
 	}
 
 	savePersonal(): void {

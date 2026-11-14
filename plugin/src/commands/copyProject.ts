@@ -2,6 +2,7 @@ import { Notice, normalizePath } from 'obsidian';
 import { WorkCalendar } from '../calc/workdays';
 import type ProjectManagerPlugin from '../main';
 import type { NoteId } from '../model';
+import { FOLDERS } from '../settings';
 import { CopyProjectModal } from '../ui/copyProjectModal';
 import { notifyError } from '../ui/notify';
 import { createNoteFile } from '../write/frontmatterFile';
@@ -37,7 +38,7 @@ export function openCopyProjectModal(plugin: ProjectManagerPlugin, initial?: Not
 
 /** 元のプロジェクトを読み、新しいノートの一式を作る。ノートは開かない（設計書 4.4） */
 async function copyProject(plugin: ProjectManagerPlugin, sourceId: NoteId, input: ProjectCopyInput): Promise<void> {
-	const { app, settings, store, config } = plugin;
+	const { app, store, config } = plugin;
 	const all = { includeArchived: true };
 	const project = store.index.projects(all).find((p) => p.id === sourceId);
 	if (!project) throw new Error('元のプロジェクトが見つかりません');
@@ -51,7 +52,7 @@ async function copyProject(plugin: ProjectManagerPlugin, sourceId: NoteId, input
 		if (file) bodies.set(note.id, await app.vault.cachedRead(file));
 	}
 
-	const notes = planProjectCopy(input, { project, epics, tasks, bodies }, config.statuses, settings.folders, new WorkCalendar(config.calendar), (id) => store.index.hasId(id));
+	const notes = planProjectCopy(input, { project, epics, tasks, bodies }, config.statuses, FOLDERS, new WorkCalendar(config.calendar), (id) => store.index.hasId(id));
 
 	let created = 0;
 	const unwritten: string[] = [];

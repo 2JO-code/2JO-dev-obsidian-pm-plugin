@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { defaultStatusSets } from '../config/defaults';
-import { archivableProjects, archivePlan, svnMoveCommands } from './archive';
+import { archivableProjects, archivePlan, restorableProjects, restorePlan } from './archive';
 import { epic, EPIC, indexOf, PJT, PJT2, project, task } from './testData';
 
 const statuses = defaultStatusSets();
@@ -38,7 +38,7 @@ describe('archivePlan', () => {
 			['task', 'Tasks/T3.md', 'Archive/Tasks/T3.md'],
 			['task', 'Tasks/T5.md', 'Archive/Tasks/T5.md'],
 		]);
-		expect(plan.alreadyArchived).toBe(1);
+		expect(plan.alreadyDone).toBe(1);
 	});
 
 	it('完了系・停止系でないもの、移動先に同じ名前があるものに注意を付ける', () => {
@@ -46,15 +46,8 @@ describe('archivePlan', () => {
 		expect(notes.get('T1')).toEqual([]);
 		expect(notes.get('T2')?.[0]).toContain('「進行中」');
 		expect(notes.get('T3')).toEqual([]);
-		expect(notes.get('T5')).toEqual(['移動先に同じ名前のファイルがあります']);
-	});
-
-	it('移動元のフォルダごとにまとめる', () => {
-		expect(plan.groups.map((g) => [g.fromFolder, g.toFolder, g.items.length])).toEqual([
-			['Projects', 'Archive/Projects', 1],
-			['Epics', 'Archive/Epics', 1],
-			['Tasks', 'Archive/Tasks', 4],
-		]);
+		expect(notes.get('T5')).toEqual(['移動先に同じ名前のファイルがあるので動かしません']);
+		expect(plan.items.filter((i) => i.clash).map((i) => i.id)).toEqual(['T5']);
 	});
 });
 
@@ -64,8 +57,23 @@ describe('archivableProjects', () => {
 	});
 });
 
-describe('svnMoveCommands', () => {
-	it('Windows の区切りで、移動先のフォルダも作る', () => {
-		expect(svnMoveCommands(plan.items.slice(0, 1))).toBe('svn move --parents "Projects\\PJT-1.md" "Archive\\Projects\\PJT-1.md"');
+describe('restorePlan', () => {
+	it('アーカイブ内のファイルを、アーカイブの部分を取った場所へ戻す', () => {
+		const back = restorePlan(index, closed, 'Archive');
+		expect(back.items.map((i) => [i.from, i.to, i.clash])).toEqual([['Archive/Tasks/T4.md', 'Tasks/T4.md', false]]);
+		expect(back.alreadyDone).toBe(6);
+	});
+
+	it('戻す先に同じ名前のファイルがあれば動かさない', () => {
+		const pjt3 = index.projects({ includeArchived: true }).find((p) => p.id === 'PJT-3');
+		if (!pjt3) throw new Error('PJT-3 が無い');
+		const back = restorePlan(index, pjt3, 'Archive');
+		expect(back.items.map((i) => [i.from, i.to, i.clash])).toEqual([['Archive/Tasks/T5.md', 'Tasks/T5.md', true]]);
+	});
+});
+
+describe('restorableProjects', () => {
+	it('アーカイブの中にファイルがあるもの', () => {
+		expect(restorableProjects(index, 'Archive').map((p) => p.id)).toEqual([PJT, 'PJT-3', PJT2]);
 	});
 });

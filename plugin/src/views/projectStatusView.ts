@@ -119,7 +119,7 @@ export class ProjectStatusView extends PmView {
 					void openView(this.app, TASK_LIST_VIEW_TYPE, { filter });
 				},
 			},
-			...(closed ? [{ text: 'アーカイブ対象を見る', onClick: () => void openView(this.app, ARCHIVE_VIEW_TYPE, { project: project.id }) }] : []),
+			...(closed ? [{ text: 'アーカイブの画面へ', onClick: () => void openView(this.app, ARCHIVE_VIEW_TYPE, { project: project.id }) }] : []),
 		]);
 		actionButtons(actions, [
 			{ text: '新しいプロジェクト', onClick: () => openNewNoteModal(this.plugin, 'project') },

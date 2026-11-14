@@ -39,7 +39,7 @@ function showMainMenu(plugin: ProjectManagerPlugin, evt: MouseEvent): void {
 	add('警告一覧', 'alert-triangle', () => void openView(plugin.app, HEALTH_VIEW_TYPE));
 	menu.addSeparator();
 	add('HTMLレポートを書き出す', 'file-output', () => void exportHtmlReport(plugin));
-	add('アーカイブ対象の一覧', 'archive', () => void openView(plugin.app, ARCHIVE_VIEW_TYPE));
+	add('アーカイブ', 'archive', () => void openView(plugin.app, ARCHIVE_VIEW_TYPE));
 	menu.addSeparator();
 	add('使い方（README）', 'help-circle', () => void openReadme(plugin));
 	add('データを再読み込み', 'refresh-cw', () => void reloadData(plugin));

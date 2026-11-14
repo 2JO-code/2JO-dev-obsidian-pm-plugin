@@ -1,4 +1,3 @@
-import type { ViewStateResult } from 'obsidian';
 import type { CalcContext } from '../calc/context';
 import { addMonths, monthOfDate } from '../calc/dates';
 import { parseMemberDashboardOptions, pickMember, type MemberDashboardOptions } from '../calc/memberDashboard';
@@ -52,14 +51,13 @@ export class MemberDashboardView extends PmView {
 		return { ...super.getState(), memberDashboard: this.options };
 	}
 
-	async setState(state: unknown, result: ViewStateResult): Promise<void> {
+	protected readState(state: unknown): void {
 		this.options = parseMemberDashboardOptions(field(state, 'memberDashboard'));
-		await super.setState(state, result);
 	}
 
 	private setOptions(options: MemberDashboardOptions): void {
 		this.options = options;
-		this.app.workspace.requestSaveLayout();
+		this.saveState();
 		this.redraw();
 	}
 

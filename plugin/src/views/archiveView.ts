@@ -1,4 +1,4 @@
-import { Notice, type ViewStateResult } from 'obsidian';
+import { Notice } from 'obsidian';
 import { ARCHIVE_KIND_LABELS, archivableProjects, archivePlan, svnMoveCommands, type ArchiveGroup } from '../calc/archive';
 import { compareNumeric } from '../calc/compare';
 import type { CalcContext } from '../calc/context';
@@ -62,10 +62,9 @@ export class ArchiveView extends PmView {
 		return { ...super.getState(), ...(this.projectId ? { project: this.projectId } : {}) };
 	}
 
-	async setState(state: unknown, result: ViewStateResult): Promise<void> {
+	protected readState(state: unknown): void {
 		const raw = field(state, 'project');
 		this.projectId = typeof raw === 'string' ? raw : undefined;
-		await super.setState(state, result);
 	}
 
 	protected draw(el: HTMLElement, ctx: CalcContext): void {
@@ -94,7 +93,7 @@ export class ArchiveView extends PmView {
 			projects.map((p) => ({ value: p.id, label: projectLabel(p, mode) })),
 			(id) => {
 				this.projectId = id;
-				this.app.workspace.requestSaveLayout();
+				this.saveState();
 				this.redraw();
 			},
 		);

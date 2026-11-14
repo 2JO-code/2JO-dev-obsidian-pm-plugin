@@ -307,6 +307,9 @@ classDiagram
 		#gridLines: boolean
 		#draw(el, ctx)*
 		+redraw()
+		+setState(state, result)
+		#readState(state)
+		#saveState()
 		#shell(el, options) Shell
 		#setFilter(filter)
 		#panelHost() PanelHost

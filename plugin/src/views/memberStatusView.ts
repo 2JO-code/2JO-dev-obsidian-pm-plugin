@@ -1,4 +1,3 @@
-import type { ViewStateResult } from 'obsidian';
 import type { CalcContext } from '../calc/context';
 import { openNewNoteModal } from '../commands/createNote';
 import { chooseMemberForHolidays } from '../commands/editHolidays';
@@ -78,16 +77,15 @@ export class MemberStatusView extends PmView {
 		return { ...super.getState(), memberStatus: this.options };
 	}
 
-	async setState(state: unknown, result: ViewStateResult): Promise<void> {
+	protected readState(state: unknown): void {
 		this.options = parseMemberStatusOptions(
 			field(state, 'memberStatus'),
 		);
-		await super.setState(state, result);
 	}
 
 	private setOptions(options: MemberStatusOptions): void {
 		this.options = options;
-		this.app.workspace.requestSaveLayout();
+		this.saveState();
 		this.redraw();
 	}
 

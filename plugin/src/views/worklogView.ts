@@ -1,4 +1,3 @@
-import type { ViewStateResult } from 'obsidian';
 import type { CalcContext } from '../calc/context';
 import type ProjectManagerPlugin from '../main';
 import { PmView } from './baseView';
@@ -40,9 +39,8 @@ export class WorklogView extends PmView {
 		return { ...super.getState(), ...this.panel.getState() };
 	}
 
-	async setState(state: unknown, result: ViewStateResult): Promise<void> {
+	protected readState(state: unknown): void {
 		this.panel.setState(state);
-		await super.setState(state, result);
 	}
 
 	protected draw(el: HTMLElement, ctx: CalcContext): void {

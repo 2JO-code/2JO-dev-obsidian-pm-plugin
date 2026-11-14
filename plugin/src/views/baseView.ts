@@ -9,6 +9,7 @@ import { pluginStatusBadge, pluginStatusCell, pluginTaskCellEnv, shellParts, typ
 import type { TaskCellEnv } from './taskColumns';
 import { field } from '../parse/values';
 import { checkbox } from '../ui/controls';
+import { resolveViewState, viewMemoryKey } from './viewMemory';
 
 /** 開いているビューで共有する計算用のデータ（設計書 11章） */
 const contextCache = new ContextCache();
@@ -62,17 +63,38 @@ export abstract class PmView extends ItemView {
 		return { ...super.getState(), filter: this.filter, gridLines: this.gridLines };
 	}
 
-	async setState(state: unknown, result: ViewStateResult): Promise<void> {
+	/**
+	 * 状態を当てはめる。Obsidian が戻す状態より、このPCに覚えた状態を優先する（設計書 9.1）。
+	 * ビューごとの項目は readState で読む
+	 */
+	async setState(incoming: unknown, result: ViewStateResult): Promise<void> {
+		const stored: unknown = this.app.loadLocalStorage(viewMemoryKey(this.getViewType()));
+		const { state, remember } = resolveViewState(incoming, stored);
 		this.filter = parseFilter(field(state, 'filter'));
 		this.gridLines = field(state, 'gridLines') !== false;
+		this.readState(state);
 		await super.setState(state, result);
+		if (remember) this.rememberState();
 		this.redraw();
 	}
 
-	/** 絞り込みを変えて描き直す。状態の保存も Obsidian に知らせる */
+	/** ビューごとの状態の項目を読む */
+	protected readState(_state: unknown): void {}
+
+	/** 状態が変わったことを Obsidian に知らせ、このPCにも覚える（設計書 9.1） */
+	protected saveState(): void {
+		this.app.workspace.requestSaveLayout();
+		this.rememberState();
+	}
+
+	private rememberState(): void {
+		this.app.saveLocalStorage(viewMemoryKey(this.getViewType()), this.getState());
+	}
+
+	/** 絞り込みを変えて描き直す。状態も保存する */
 	protected setFilter(filter: ViewFilter): void {
 		this.filter = filter;
-		this.app.workspace.requestSaveLayout();
+		this.saveState();
 		this.redraw();
 	}
 
@@ -98,10 +120,10 @@ export abstract class PmView extends ItemView {
 			plugin: this.plugin,
 			gridLines: () => this.gridLines,
 			changed: () => {
-				this.app.workspace.requestSaveLayout();
+				this.saveState();
 				this.redraw();
 			},
-			save: () => this.app.workspace.requestSaveLayout(),
+			save: () => this.saveState(),
 			redraw: () => this.redraw(),
 		};
 	}
@@ -129,7 +151,7 @@ export abstract class PmView extends ItemView {
 		if (options.grid) {
 			checkbox(common, '罫線を表示', this.gridLines, (on) => {
 				this.gridLines = on;
-				this.app.workspace.requestSaveLayout();
+				this.saveState();
 				this.redraw();
 			});
 		}

@@ -1,5 +1,4 @@
 import { isLoadMode, isLoadScale, LOAD_MODE_LABEL, LOAD_MODES, LOAD_SCALES, type LoadMode, type LoadScale } from '../calc/load';
-import type { ViewStateResult } from 'obsidian';
 import { compareNumeric } from '../calc/compare';
 import type { CalcContext } from '../calc/context';
 import type { WorkCalendar } from '../calc/workdays';
@@ -58,7 +57,7 @@ export class DashboardView extends PmView {
 		};
 	}
 
-	async setState(state: unknown, result: ViewStateResult): Promise<void> {
+	protected readState(state: unknown): void {
 		const loadSort = field(state, 'loadSort');
 		const loadPeriod = field(state, 'loadPeriod');
 		this.loadSort = isLoadChartSort(loadSort) ? loadSort : 'name';
@@ -67,7 +66,6 @@ export class DashboardView extends PmView {
 		this.loadMode = isLoadMode(loadMode) ? loadMode : 'allocated';
 		const loadScale = field(state, 'loadScale');
 		this.loadScale = isLoadScale(loadScale) ? loadScale : 'rate';
-		await super.setState(state, result);
 	}
 
 	getViewType(): string {
@@ -173,22 +171,22 @@ export class DashboardView extends PmView {
 		head.createEl('h4', { text: `メンバーの負荷率（${range}、${chart.rows.length} 人）` });
 		singleSelect(head, '値', this.loadMode, LOAD_MODES.map((value) => ({ value, label: LOAD_MODE_LABEL[value] })), (m) => {
 			this.loadMode = m;
-			this.app.workspace.requestSaveLayout();
+			this.saveState();
 			this.redraw();
 		});
 		singleSelect(head, '数値', this.loadScale, [...LOAD_SCALES], (scale) => {
 			this.loadScale = scale;
-			this.app.workspace.requestSaveLayout();
+			this.saveState();
 			this.redraw();
 		});
 		singleSelect(head, '期間', this.loadPeriod, [...LOAD_CHART_PERIODS], (key) => {
 			this.loadPeriod = key;
-			this.app.workspace.requestSaveLayout();
+			this.saveState();
 			this.redraw();
 		});
 		singleSelect(head, '並び順', this.loadSort, [...LOAD_CHART_SORTS], (sort) => {
 			this.loadSort = sort;
-			this.app.workspace.requestSaveLayout();
+			this.saveState();
 			this.redraw();
 		});
 		if (chart.rows.length === 0) {

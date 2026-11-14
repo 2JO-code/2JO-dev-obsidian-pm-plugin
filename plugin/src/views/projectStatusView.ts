@@ -1,4 +1,3 @@
-import type { ViewStateResult } from 'obsidian';
 import { compareJa } from '../calc/compare';
 import type { CalcContext } from '../calc/context';
 import { openNewNoteModal } from '../commands/createNote';
@@ -76,17 +75,16 @@ export class ProjectStatusView extends PmView {
 		return { ...super.getState(), ...(this.projectId ? { project: this.projectId } : {}), charts: this.charts };
 	}
 
-	async setState(state: unknown, result: ViewStateResult): Promise<void> {
+	protected readState(state: unknown): void {
 		const raw = field(state, 'project');
 		const charts = field(state, 'charts');
 		this.projectId = typeof raw === 'string' ? raw : undefined;
 		this.charts = { burnup: field(charts, 'burnup') !== false, progress: field(charts, 'progress') !== false };
-		await super.setState(state, result);
 	}
 
 	private setCharts(charts: { burnup: boolean; progress: boolean }): void {
 		this.charts = charts;
-		this.app.workspace.requestSaveLayout();
+		this.saveState();
 		this.redraw();
 	}
 
@@ -108,7 +106,7 @@ export class ProjectStatusView extends PmView {
 		singleSelect(filters, 'プロジェクト', selected.value, choices, (id) => {
 			this.projectId = id;
 			this.tree.clear();
-			this.app.workspace.requestSaveLayout();
+			this.saveState();
 			this.redraw();
 		});
 		const closed = findStatus(ctx.statuses.project, project.status)?.category === 'done';

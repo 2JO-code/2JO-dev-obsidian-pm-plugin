@@ -52,7 +52,7 @@ export async function writeNoteItems(
 	const update: FrontmatterUpdate = {};
 	for (const [key, value] of Object.entries(edited)) if (key !== DESCRIPTION_KEY) update[key] = toFrontmatterValue(value);
 	const frames = frameItems(form, checked);
-	// 変える項目も足す枠も無ければ書かない（SVN の差分を出さないため）
+	// 変える項目も足す枠も無ければ書かない（設計書 4.15）
 	if (Object.keys(update).length === 0 && Object.keys(frames).length === 0) return;
 	await app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
 		if (!sameAsChecked(fm, checked, keys)) throw new NoteChangedError();

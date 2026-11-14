@@ -72,7 +72,7 @@ export function buildNote(src: NoteSource): NoteRecord | null {
 	const reportTable = (problems: TableProblem[], fix?: ProblemFix) => problems.forEach((p) => report(p.message, fix, p.line));
 
 	if (!src.frontmatter) {
-		report('frontmatter（プロパティ）が読めません。SVNのコンフリクトの印（<<<<<<< など）や、書式の誤りがないか確認してください');
+		report('frontmatter（プロパティ）が読めません。書式の誤り（先頭と終わりの --- の行、「:」のあとの空白など）がないか確認してください');
 		return record;
 	}
 

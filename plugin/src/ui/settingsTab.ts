@@ -125,7 +125,7 @@ export class ProjectManagerSettingTab extends PluginSettingTab {
 		if (problems.length === 0) return;
 		const box = el.createDiv({ cls: 'pm-settings-warning' });
 		box.createEl('p', {
-			text: '共有設定ファイルに読み取れない部分があります。読み取れない部分は初期値で表示しています。ここで保存するとファイルが上書きされるので、先にコンフリクトなどを解消してください。',
+			text: '共有設定ファイルに読み取れない部分があります。読み取れない部分は初期値で表示しています。ここで保存するとファイルが上書きされるので、先にファイルの誤りを直してください。',
 		});
 		const list = box.createEl('ul');
 		for (const p of problems) list.createEl('li', { text: `${p.path}: ${p.message}` });
@@ -185,7 +185,7 @@ export class ProjectManagerSettingTab extends PluginSettingTab {
 		new Setting(el)
 			.setName('出力先')
 			.setDesc(
-				'レポートを書き出すフォルダ（例：\\\\server\\share\\pm-report）。上司など閲覧する人が開ける共有フォルダにします。保管庫（このノートの入ったフォルダ）の中には置かないでください（コミットのたびに差分が出てぶつかるため）',
+				'レポートを書き出すフォルダ（例：\\\\server\\share\\pm-report）。レポートを見る人が開けるフォルダにします。保管庫（このノートの入ったフォルダ）の中には置かないでください（書き出すたびに、全員の Obsidian がファイルの変化を読み込むため）',
 			)
 			.addText((text) => {
 				text.setPlaceholder('\\\\server\\share\\pm-report').setValue(personal.reportFolder);

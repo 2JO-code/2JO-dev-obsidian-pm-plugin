@@ -34,7 +34,7 @@ export type CalendarChange =
 	| { kind: 'removeHoliday'; date: IsoDate }
 	| { kind: 'weekends'; weekendsOff: boolean };
 
-const SHARED_NOTE = 'この設定は全員で共有されます。SVNでコミットすると、他のメンバーの集計にも反映されます。';
+const SHARED_NOTE = 'この設定は全員で共有されます。保存すると、他のメンバーの画面と集計にもすぐに反映されます。';
 
 const SET_LABEL: Record<keyof StatusSets, string> = {
 	task: 'タスク・エピック',

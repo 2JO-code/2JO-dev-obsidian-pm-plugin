@@ -7,10 +7,60 @@ import {
 	DEFAULT_SETTINGS,
 	mergePersonal,
 	mergeSettings,
+	mergeSettingsChanges,
 	moveSection,
 	projectLabel,
 	reportFolderProblem,
+	sameSettings,
+	type PluginSettings,
 } from './settings';
+
+describe('mergeSettingsChanges', () => {
+	const base = (): PluginSettings => mergeSettings({ statusColors: { task: { 未着手: '#111111', 作業中: '#222222' } } });
+
+	it('自分が変えた項目だけをファイルの値に重ねる', () => {
+		const mine = base();
+		mine.colors.task = '#aaaaaa';
+		const disk = base();
+		disk.colors.epic = '#bbbbbb';
+		disk.folders.archive = 'Old';
+		const result = mergeSettingsChanges(base(), mine, disk);
+		expect(result.colors).toEqual({ ...DEFAULT_SETTINGS.colors, task: '#aaaaaa', epic: '#bbbbbb' });
+		expect(result.folders.archive).toBe('Old');
+	});
+
+	it('同じ項目を両方で変えたら自分の値にする', () => {
+		const mine = base();
+		mine.folders.tasks = 'Mine';
+		const disk = base();
+		disk.folders.tasks = 'Theirs';
+		expect(mergeSettingsChanges(base(), mine, disk).folders.tasks).toBe('Mine');
+	});
+
+	it('ステータスの色は名前ごとに重ね、自分が消した名前は消す', () => {
+		const mine = base();
+		mine.statusColors.task = { 作業中: '#222222', 完了: '#333333' };
+		const disk = base();
+		disk.statusColors.task = { 未着手: '#111111', 作業中: '#999999', 保留: '#444444' };
+		expect(mergeSettingsChanges(base(), mine, disk).statusColors.task).toEqual({
+			作業中: '#999999',
+			保留: '#444444',
+			完了: '#333333',
+		});
+	});
+
+	it('ほかの人が消した名前は、自分が変えていなければ消す', () => {
+		const disk = base();
+		disk.statusColors.task = {};
+		expect(mergeSettingsChanges(base(), base(), disk).statusColors.task).toEqual({});
+	});
+
+	it('何も変えていなければファイルの値そのもの', () => {
+		const disk = base();
+		disk.colors.project = '#cccccc';
+		expect(sameSettings(mergeSettingsChanges(base(), base(), disk), disk)).toBe(true);
+	});
+});
 
 describe('projectLabel', () => {
 	const p = { title: '新製品CG', caseId: '0123', officialName: '' };

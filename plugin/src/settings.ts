@@ -148,6 +148,50 @@ export function mergeSettings(raw: unknown): PluginSettings {
 	return { folders, colors, statusColors };
 }
 
+/**
+ * 前回読んだ値から自分が変えた項目だけを、今のファイルの値に重ねる（設計書 6章）
+ * @param base 前回ファイルから読んだ値
+ * @param mine この PC の今の値
+ * @param disk 今のファイルの値
+ */
+export function mergeSettingsChanges(base: PluginSettings, mine: PluginSettings, disk: PluginSettings): PluginSettings {
+	return {
+		folders: mergeFlat(base.folders, mine.folders, disk.folders),
+		colors: mergeFlat(base.colors, mine.colors, disk.colors),
+		statusColors: {
+			task: mergeColorMap(base.statusColors.task, mine.statusColors.task, disk.statusColors.task),
+			project: mergeColorMap(base.statusColors.project, mine.statusColors.project, disk.statusColors.project),
+		},
+	};
+}
+
+/** キーが決まった表を、キーごとに重ねる */
+function mergeFlat<T extends object>(base: T, mine: T, disk: T): T {
+	const result = { ...disk };
+	for (const key of Object.keys(disk) as (keyof T)[]) if (mine[key] !== base[key]) result[key] = mine[key];
+	return result;
+}
+
+/** ステータス名 → 色 の表を、名前ごとに重ねる。自分が消した名前は消す */
+function mergeColorMap(
+	base: Record<string, string>,
+	mine: Record<string, string>,
+	disk: Record<string, string>,
+): Record<string, string> {
+	const result: Record<string, string> = {};
+	const names = new Set([...Object.keys(disk), ...Object.keys(mine), ...Object.keys(base)]);
+	for (const name of names) {
+		const value = mine[name] !== base[name] ? mine[name] : disk[name];
+		if (value !== undefined) result[name] = value;
+	}
+	return result;
+}
+
+/** 全員共通の設定が同じか */
+export function sameSettings(a: PluginSettings, b: PluginSettings): boolean {
+	return JSON.stringify(a) === JSON.stringify(b);
+}
+
 /** ステータス名 → 色 の表から、使えない色を除く */
 function cleanColorMap(raw: unknown): Record<string, string> {
 	const map: Record<string, string> = {};

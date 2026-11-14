@@ -14,6 +14,7 @@ export function registerAliasSync(plugin: ProjectManagerPlugin): void {
 
 	plugin.registerEvent(
 		plugin.store.onTitleChanged((file) => {
+			if (!editingHere(plugin, file)) return;
 			window.clearTimeout(pending.get(file.path));
 			const timer = window.setTimeout(() => {
 				pending.delete(file.path);
@@ -23,6 +24,11 @@ export function registerAliasSync(plugin: ProjectManagerPlugin): void {
 		}),
 	);
 	plugin.register(() => pending.forEach((timer) => window.clearTimeout(timer)));
+}
+
+/** この PC で編集中のノートか（前面のウィンドウで開いているノート。設計書 4.2） */
+function editingHere(plugin: ProjectManagerPlugin, file: TFile): boolean {
+	return plugin.app.workspace.getActiveFile()?.path === file.path && activeDocument.hasFocus();
 }
 
 async function apply(plugin: ProjectManagerPlugin, file: TFile): Promise<void> {

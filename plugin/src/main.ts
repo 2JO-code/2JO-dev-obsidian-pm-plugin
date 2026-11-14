@@ -12,12 +12,20 @@ import { registerReload } from './commands/reload';
 import { registerWorklog } from './commands/worklog';
 import { NO_USAGE, type UsageCounter } from './config/impact';
 import { SharedConfig } from './config/sharedConfig';
-import { mergePersonal, mergeSettings, type PersonalSettings, type PluginSettings } from './settings';
+import {
+	mergePersonal,
+	mergeSettings,
+	mergeSettingsChanges,
+	sameSettings,
+	type PersonalSettings,
+	type PluginSettings,
+} from './settings';
 import { VaultStore } from './store/vaultStore';
-import { registerKindColors } from './ui/kindColors';
+import { applyKindColors, registerKindColors } from './ui/kindColors';
 import { registerMainMenu } from './ui/mainMenu';
 import { ProjectManagerSettingTab } from './ui/settingsTab';
 import { registerArchiveView } from './views/archiveView';
+import { redrawViews } from './views/baseView';
 import { registerDashboardView } from './views/dashboardView';
 import { registerGanttView } from './views/ganttView';
 import { registerHealthView } from './views/healthView';
@@ -34,6 +42,8 @@ const PERSONAL_KEY = 'project-manager:personal';
 
 export default class ProjectManagerPlugin extends Plugin {
 	settings!: PluginSettings;
+	/** 前回 data.json から読んだ値。保存のときに自分が変えた項目を見分ける（設計書 6章） */
+	private savedSettings!: PluginSettings;
 	personal!: PersonalSettings;
 	config!: SharedConfig;
 	store!: VaultStore;
@@ -43,6 +53,7 @@ export default class ProjectManagerPlugin extends Plugin {
 	async onload() {
 		const data: unknown = await this.loadData();
 		this.settings = mergeSettings(data);
+		this.savedSettings = structuredClone(this.settings);
 		this.personal = mergePersonal(this.app.loadLocalStorage(PERSONAL_KEY), data);
 		this.config = new SharedConfig(this.app, this.settings.folders.config);
 		this.store = new VaultStore(this.app, () => this.settings);
@@ -82,8 +93,41 @@ export default class ProjectManagerPlugin extends Plugin {
 		});
 	}
 
+	/** 保存の直前に読み直し、自分が変えた項目だけを書く（設計書 6章） */
 	async saveSettings(): Promise<void> {
-		await this.saveData(this.settings);
+		const disk = mergeSettings(await this.loadData());
+		const next = mergeSettingsChanges(this.savedSettings, this.settings, disk);
+		await this.saveData(next);
+		this.savedSettings = structuredClone(next);
+		await this.applySettings(next);
+	}
+
+	/** ほかの人が data.json を変えたら読み直す（設計書 6章） */
+	async onExternalSettingsChange(): Promise<void> {
+		const disk = mergeSettings(await this.loadData());
+		const next = mergeSettingsChanges(this.savedSettings, this.settings, disk);
+		this.savedSettings = disk;
+		await this.applySettings(next);
+	}
+
+	/** ほかの人の変更を今の設定に入れ、画面と索引に反映する（設計書 6章） */
+	private async applySettings(next: PluginSettings): Promise<void> {
+		const before = structuredClone(this.settings);
+		if (sameSettings(before, next)) return;
+		// 設定画面が中の表を持っているので、入れ物はそのままで中身を入れ替える
+		Object.assign(this.settings.folders, next.folders);
+		Object.assign(this.settings.colors, next.colors);
+		this.settings.statusColors.task = next.statusColors.task;
+		this.settings.statusColors.project = next.statusColors.project;
+		applyKindColors(this);
+		redrawViews(this.app);
+		const ready = this.app.workspace.layoutReady;
+		if (next.folders.config !== before.folders.config) {
+			this.config.setDir(next.folders.config);
+			if (ready) await this.config.load();
+		}
+		// アーカイブの判定が変わるため作り直す
+		if (ready && next.folders.archive !== before.folders.archive) await this.store.rebuild();
 	}
 
 	savePersonal(): void {

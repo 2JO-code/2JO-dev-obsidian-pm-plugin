@@ -33,6 +33,7 @@ classDiagram
 		+usage: UsageCounter
 		+onload()
 		+saveSettings()
+		+onExternalSettingsChange()
 		+savePersonal()
 	}
 	class SharedConfig {

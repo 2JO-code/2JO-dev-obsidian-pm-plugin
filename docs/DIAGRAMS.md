@@ -549,3 +549,31 @@ sequenceDiagram
 		end
 	end
 ```
+
+### 2.4 タスクの削除（設計書 4.17）
+
+```mermaid
+sequenceDiagram
+	actor U as 利用者
+	participant M as TaskFormModal
+	participant E as editTask.ts
+	participant B as taskDelete.ts（純粋）
+	participant K as confirmModal.ts
+	participant O as Obsidian（fileManager）
+
+	U->>M: 「タスクを削除」
+	M->>E: deleteTask()
+	E->>B: taskDeleteBlockers(id, 全タスク, 作業ログ)
+	B-->>E: 消せない理由
+	alt 理由がある
+		E-->>U: お知らせ（理由と「停止にする」案内）。フォームは開いたまま
+	else 理由が無い
+		E->>K: confirm(削除の確認)
+		K-->>E: 削除／キャンセル
+		opt 削除
+			E->>O: trashFile(file)
+			E-->>U: お知らせ「削除しました」
+			E-->>M: true（画面を閉じる）
+		end
+	end
+```

@@ -1,5 +1,5 @@
 import { missingLabel } from '../calc/format';
-import { type App, ButtonComponent, DropdownComponent, TextAreaComponent, TextComponent } from 'obsidian';
+import { type App, ButtonComponent, DropdownComponent, Setting, TextAreaComponent, TextComponent } from 'obsidian';
 import { compareJa } from '../calc/compare';
 import type { WorkCalendar } from '../calc/workdays';
 import { nextTaskWbsIn } from '../calc/wbsOrder';
@@ -35,6 +35,8 @@ export interface TaskFormModalOptions {
 	editChecklist: (onSaved: (rows: ChecklistRow[]) => void) => void;
 	/** 開いたときの本文の説明（設計書 4.11） */
 	description: string;
+	/** タスクを確かめてから消す。消したら true */
+	deleteTask: () => Promise<boolean>;
 }
 
 const byTitle = (a: { title: string }, b: { title: string }) => compareJa(a.title, b.title);
@@ -125,7 +127,19 @@ export class TaskFormModal extends FormModal {
 			.setValue(form.estimate)
 			.onChange((v) => (form.estimate = v));
 
-		this.footer(() => void this.save());
+		const buttons = new Setting(contentEl);
+		buttons.addButton((b) =>
+			b
+				.setButtonText('タスクを削除')
+				.setWarning()
+				.onClick(() => void this.remove()),
+		);
+		this.footer(() => void this.save(), buttons);
+	}
+
+	/** 確かめてから消し、消したら閉じる */
+	private async remove(): Promise<void> {
+		if (await this.options.deleteTask()) this.close();
 	}
 
 	/** チェックリストの項目を表示だけする。変えるのは別の画面（設計書 4.10, 4.12） */

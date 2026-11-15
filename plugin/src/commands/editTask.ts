@@ -6,8 +6,10 @@ import { epicFormFromFrontmatter } from '../forms/epicForm';
 import { memberFormFromFrontmatter } from '../forms/memberForm';
 import { DESCRIPTION_KEY, formatItemValue, type NoteItems } from '../forms/noteChanges';
 import { projectFormFromFrontmatter } from '../forms/projectForm';
+import { taskDeleteBlockers } from '../forms/taskDelete';
 import { taskFormFromFrontmatter } from '../forms/taskForm';
 import type ProjectManagerPlugin from '../main';
+import { confirm } from '../ui/confirmModal';
 import { EpicFormModal } from '../ui/epicFormModal';
 import type { FormNote } from '../ui/formModal';
 import { MemberFormModal } from '../ui/memberFormModal';
@@ -175,7 +177,40 @@ export function openTaskForm(plugin: ProjectManagerPlugin, target: TFile | strin
 				today: localToday(),
 				checklist: checklistRows(content).rows,
 				editChecklist: (onSaved) => void openChecklistEditor(plugin, file.path, (saved) => onSaved(checklistRows(saved).rows)),
+				deleteTask: () => deleteTask(plugin, file),
 			}).open();
 		}),
 	);
+}
+
+/** 作業ログの記録や先行タスクの参照が無ければ、確認してからタスクを Obsidian のごみ箱へ送る。消したら true */
+async function deleteTask(plugin: ProjectManagerPlugin, file: TFile): Promise<boolean> {
+	const { app } = plugin;
+	const { index } = plugin.store;
+	const id = file.basename;
+	const title = index.title(id) || id;
+	const blockers = taskDeleteBlockers(id, index.tasks({ includeArchived: true }), index.worklogs(), (m) => index.title(m));
+	if (blockers.length > 0) {
+		new Notice([`「${title}」は削除できません`, ...blockers, '使わないタスクは、ステータスを停止にしてください'].join('\n'), 10000);
+		return false;
+	}
+	const ok = await confirm(app, {
+		title: 'タスクを削除',
+		details: [
+			`「${title}」を削除します。説明・チェックリストも消えます`,
+			'フォームで保存していない変更も消えます',
+			'ファイルは Obsidian の設定「削除したファイル」の場所に移ります。戻すときは管理者に頼んでください',
+		],
+		confirmText: '削除',
+		danger: true,
+	});
+	if (!ok) return false;
+	try {
+		await app.fileManager.trashFile(file);
+	} catch (e) {
+		notifyError(e, '削除できませんでした');
+		return false;
+	}
+	new Notice(`「${title}」を削除しました`);
+	return true;
 }

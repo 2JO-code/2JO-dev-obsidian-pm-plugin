@@ -396,7 +396,7 @@ classDiagram
 	ProjectStatusView *-- ChildRows
 
 	Modal <|-- FormModal
-	FormModal <|-- TaskFormModal
+	FormModal <|-- TaskFormModal : 編集と作成（target.mode）
 	FormModal <|-- EpicFormModal
 	FormModal <|-- ProjectFormModal
 	FormModal <|-- MemberFormModal

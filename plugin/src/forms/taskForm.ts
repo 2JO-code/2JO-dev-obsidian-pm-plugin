@@ -45,6 +45,25 @@ export function taskFormFromFrontmatter(fm: Record<string, unknown>): TaskForm {
 	};
 }
 
+/** 新しいタスクのフォームの初期値。ステータスは先頭のもの（設計書 4.4） */
+export function emptyTaskForm(statuses: readonly StatusDef[], project: NoteId, epic: NoteId, wbs: string): TaskForm {
+	return {
+		title: '',
+		project,
+		epic,
+		wbs,
+		status: statuses[0]?.name ?? '',
+		assignees: [],
+		estimate: '',
+		dependsOn: [],
+		start: '',
+		due: '',
+		end: '',
+		planStart: '',
+		planEnd: '',
+	};
+}
+
 export interface TaskFormResult {
 	/** 入力の誤り。空なら保存できる */
 	errors: string[];

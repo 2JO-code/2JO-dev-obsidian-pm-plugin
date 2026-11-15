@@ -3,7 +3,7 @@ import { task } from '../calc/testData';
 import { WorkCalendar } from '../calc/workdays';
 import { defaultStatusSets } from '../config/defaults';
 import type { TaskForm } from './taskForm';
-import { previewTaskSchedule } from './taskSchedulePreview';
+import { NEW_TASK, previewTaskSchedule } from './taskSchedulePreview';
 
 const statuses = defaultStatusSets().task;
 // 土日と 11/3(火) が休日
@@ -76,5 +76,12 @@ describe('previewTaskSchedule', () => {
 
 	it('読めない日付は空欄として扱う', () => {
 		expect(run(form({ start: '2026-11-02', due: 'abc' })).text).toBe('11/2(月)');
+	});
+});
+
+describe('previewTaskSchedule（作成中のタスク）', () => {
+	it('ノートが無くてもフォームの日程で計算する', () => {
+		const preview = previewTaskSchedule(form({ start: '2026-11-02', due: '2026-11-04' }), NEW_TASK, statuses, calendar, TODAY);
+		expect(preview.kind).toBe('ok');
 	});
 });

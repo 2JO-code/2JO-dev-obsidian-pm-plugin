@@ -1,4 +1,5 @@
 import { nameErrors } from '../forms/memberForm';
+import { normalizeDescription } from '../forms/taskDescription';
 import { newNoteId, type IdKind } from '../id';
 import { emptyValue, FRONTMATTER_KEYS, MEMBER_DEFAULTS, type NoteId, type StatusSets } from '../model';
 import type { FolderSettings } from '../settings';
@@ -97,4 +98,23 @@ export function planNewNote(
 
 	const id = generateId(input.kind, exists);
 	return { id, path: `${folders[FOLDER[input.kind]]}/${id}.md`, frontmatter, body };
+}
+
+/**
+ * タスクのフォームで確かめた値から、作るノートの中身を決める（設計書 4.4, 4.5）
+ * @param update taskFormToUpdate で誤りが無かった frontmatter
+ * @param description 説明（本文の先頭に書く）
+ */
+export function planNewTaskFromForm(
+	update: FrontmatterUpdate,
+	description: string,
+	folders: FolderSettings,
+	exists: (id: NoteId) => boolean,
+	generateId: (kind: IdKind, exists: (id: NoteId) => boolean) => NoteId = newNoteId,
+): NewNotePlan {
+	const frontmatter: FrontmatterUpdate = { ...update };
+	for (const key of FRONTMATTER_KEYS.task) if (!(key in frontmatter)) frontmatter[key] = emptyValue(key);
+	const text = normalizeDescription(description);
+	const id = generateId('task', exists);
+	return { id, path: `${folders.tasks}/${id}.md`, frontmatter, body: text === '' ? '' : `${text}\n` };
 }

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { defaultStatusSets } from '../config/defaults';
 import { parseAllocations, parseMilestones, parsePersonalHolidays } from '../parse/bodyTables';
 import { FOLDERS } from '../settings';
-import { planNewNote } from './newNote';
+import { planNewNote, planNewTaskFromForm } from './newNote';
 
 const folders = FOLDERS;
 const statuses = defaultStatusSets();
@@ -101,5 +101,20 @@ describe('planNewNote', () => {
 	it('既存のIDと重ならないIDを作る', () => {
 		const plan = planNewNote({ kind: 'user', title: 'A B', familyName: 'A', givenName: 'B' }, statuses, folders, none);
 		expect(plan.id).toMatch(/^USER-[0-9a-f-]{36}$/);
+	});
+});
+
+describe('planNewTaskFromForm', () => {
+	const update = { type: 'task', title: 'T', aliases: ['T'], project: '[[PJT-1]]', status: '未着手', start: '2026-11-02', assignees: ['[[USER-1]]'] };
+
+	it('フォームの値に、入れていないプロパティの空の枠を足す', () => {
+		const plan = planNewTaskFromForm(update, '', folders, none, fixedId);
+		expect(plan.path).toBe('Tasks/TASK-ID.md');
+		expect(plan.frontmatter).toMatchObject({ ...update, lag_days: null, duration_days: null, depends_on: [] });
+		expect(plan.body).toBe('');
+	});
+
+	it('説明は前後の空行を除いて本文に書く', () => {
+		expect(planNewTaskFromForm(update, '\n作業の内容\n\n', folders, none, fixedId).body).toBe('作業の内容\n');
 	});
 });

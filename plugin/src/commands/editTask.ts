@@ -162,9 +162,15 @@ export function openTaskForm(plugin: ProjectManagerPlugin, target: TFile | strin
 			const { index } = plugin.store;
 			const description = fm[DESCRIPTION_KEY];
 			new TaskFormModal(plugin.app, {
-				note,
-				description: typeof description === 'string' ? description : '',
-				taskId: file.basename,
+				target: {
+					mode: 'edit',
+					note,
+					description: typeof description === 'string' ? description : '',
+					taskId: file.basename,
+					checklist: checklistRows(content).rows,
+					editChecklist: (onSaved) => void openChecklistEditor(plugin, file.path, (saved) => onSaved(checklistRows(saved).rows)),
+					deleteTask: () => deleteTask(plugin, file),
+				},
 				form: taskFormFromFrontmatter(fm),
 				projects: index.projects(),
 				epics: index.epics(),
@@ -175,9 +181,6 @@ export function openTaskForm(plugin: ProjectManagerPlugin, target: TFile | strin
 				displayName: plugin.personal.projectDisplayName,
 				calendar: new WorkCalendar(plugin.config.calendar),
 				today: localToday(),
-				checklist: checklistRows(content).rows,
-				editChecklist: (onSaved) => void openChecklistEditor(plugin, file.path, (saved) => onSaved(checklistRows(saved).rows)),
-				deleteTask: () => deleteTask(plugin, file),
 			}).open();
 		}),
 	);

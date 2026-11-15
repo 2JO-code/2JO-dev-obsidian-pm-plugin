@@ -1,26 +1,27 @@
 import { type App, Modal, Setting } from 'obsidian';
 import type { IdKind } from '../id';
-import type { Epic, NoteId, Project } from '../model';
+import type { NoteId, Project } from '../model';
 import type { NewNoteInput } from '../commands/newNote';
 import type { ProjectDisplayName } from '../settings';
-import { epicOptions, projectOptions } from './formParts';
+import { projectOptions } from './formParts';
 import { notifyError } from './notify';
 import { SaveGuard } from './saveGuard';
 
-const TITLES: Record<IdKind, string> = {
+/** この画面で作る種類。タスクはタスクのフォームで作る（設計書 4.4） */
+type NewNoteKind = Exclude<IdKind, 'task'>;
+
+const TITLES: Record<NewNoteKind, string> = {
 	project: '新しいプロジェクト',
 	epic: '新しいエピック',
-	task: '新しいタスク',
 	user: '新しいメンバー',
 };
 
 export interface NewNoteModalOptions {
-	kind: IdKind;
+	kind: NewNoteKind;
 	projects: readonly Project[];
-	epics: readonly Epic[];
 	displayName: ProjectDisplayName;
-	/** 最初から選んでおくプロジェクト・エピック（ビューから作るとき） */
-	initial?: { project?: NoteId; epic?: NoteId };
+	/** 最初から選んでおくプロジェクト（ビューから作るとき） */
+	initialProject?: NoteId;
 	/** 入力に誤りがあればエラーを投げる（画面は閉じない） */
 	onSubmit: (input: NewNoteInput) => Promise<void>;
 }
@@ -35,8 +36,6 @@ export class NewNoteModal extends Modal {
 	private officialName = '';
 	private wbs = '';
 	private project: NoteId = '';
-	private epic: NoteId = '';
-	private epicSetting: Setting | null = null;
 	private readonly guard = new SaveGuard();
 
 	constructor(
@@ -45,10 +44,8 @@ export class NewNoteModal extends Modal {
 	) {
 		super(app);
 		// 選択肢に無いもの（アーカイブ内など）は選ばない
-		const project = options.initial?.project;
-		const epic = options.initial?.epic;
+		const project = options.initialProject;
 		this.project = project && options.projects.some((p) => p.id === project) ? project : '';
-		this.epic = epic && options.epics.some((e) => e.id === epic && e.project === this.project) ? epic : '';
 	}
 
 	onOpen(): void {
@@ -73,27 +70,15 @@ export class NewNoteModal extends Modal {
 			new Setting(contentEl).setName('正式案件名').addText((text) => text.onChange((v) => (this.officialName = v)));
 		}
 
-		if (options.kind === 'epic' || options.kind === 'task') {
+		if (options.kind === 'epic') {
 			new Setting(contentEl).setName('プロジェクト').addDropdown((dropdown) => {
 				projectOptions(dropdown, options.projects, options.displayName, this.project);
-				dropdown.onChange((v) => {
-					this.project = v;
-					this.epic = '';
-					this.renderEpicChoices();
-				});
+				dropdown.onChange((v) => (this.project = v));
 			});
-		}
-
-		if (options.kind === 'epic') {
 			new Setting(contentEl)
 				.setName('WBS番号')
 				.setDesc('任意。例：1.2')
 				.addText((text) => text.onChange((v) => (this.wbs = v)));
-		}
-
-		if (options.kind === 'task') {
-			this.epicSetting = new Setting(contentEl).setName('エピック').setDesc('任意');
-			this.renderEpicChoices();
 		}
 
 		new Setting(contentEl).addButton((button) =>
@@ -111,17 +96,6 @@ export class NewNoteModal extends Modal {
 		this.contentEl.empty();
 	}
 
-	/** 選んだプロジェクトのエピックを WBS 番号順に出す */
-	private renderEpicChoices(): void {
-		const setting = this.epicSetting;
-		if (!setting) return;
-		setting.controlEl.empty();
-		setting.addDropdown((dropdown) => {
-			epicOptions(dropdown, this.options.epics, this.project, this.epic, this.project ? 'なし' : '先にプロジェクトを選んでください');
-			dropdown.setDisabled(!this.project).onChange((v) => (this.epic = v));
-		});
-	}
-
 	private async submit(): Promise<void> {
 		if (this.guard.busy) return;
 		const { kind } = this.options;
@@ -130,9 +104,7 @@ export class NewNoteModal extends Modal {
 				? { kind, title: this.title, caseId: this.caseId, officialName: this.officialName }
 				: kind === 'epic'
 					? { kind, title: this.title, project: this.project, wbs: this.wbs }
-					: kind === 'task'
-						? { kind, title: this.title, project: this.project, ...(this.epic ? { epic: this.epic } : {}) }
-						: { kind, title: this.title, familyName: this.familyName, givenName: this.givenName };
+					: { kind, title: this.title, familyName: this.familyName, givenName: this.givenName };
 		try {
 			await this.guard.run(() => this.options.onSubmit(input));
 			this.close();

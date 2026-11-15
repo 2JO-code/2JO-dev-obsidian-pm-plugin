@@ -39,13 +39,13 @@ export abstract class FormModal extends Modal {
 	/** 中身を描き直す */
 	protected abstract render(): void;
 
-	/** 「キャンセル」「保存」のボタン。setting を渡せば、その行に並べる */
-	protected footer(onSave: () => void, setting: Setting = new Setting(this.contentEl)): void {
+	/** 「キャンセル」「保存」のボタン。setting を渡せば、その行に並べる。label で「保存」の文字を変える */
+	protected footer(onSave: () => void, setting: Setting = new Setting(this.contentEl), label = '保存'): void {
 		setting
 			.addButton((b) => b.setButtonText('キャンセル').onClick(() => this.close()))
 			.addButton((b) =>
 				b
-					.setButtonText('保存')
+					.setButtonText(label)
 					.setCta()
 					.onClick(onSave),
 			);

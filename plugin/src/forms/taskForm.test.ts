@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { defaultStatusSets } from '../config/defaults';
 import { applyFrontmatter } from '../write/frontmatter';
-import { taskFormFromFrontmatter, taskFormToUpdate, type TaskForm } from './taskForm';
+import { emptyTaskForm, taskFormFromFrontmatter, taskFormToUpdate, type TaskForm } from './taskForm';
 
 const U = (n: number) => `0192f3a0-1234-7abc-8def-${String(n).padStart(12, '0')}`;
 const PJT = `PJT-${U(1)}`;
@@ -201,5 +201,13 @@ describe('taskFormToUpdate', () => {
 			'担当者の読めない値（[[佐藤]]）はそのまま残しました。直すか、外してください',
 			`先行タスクの読めない値（[[${PJT}]]）はそのまま残しました。直すか、外してください`,
 		]);
+	});
+});
+
+describe('emptyTaskForm', () => {
+	it('所属と番号を入れ、ステータスは先頭、ほかは空', () => {
+		const statuses = defaultStatusSets().task;
+		const form = emptyTaskForm(statuses, 'PJT-1', 'EPIC-1', '3');
+		expect(form).toMatchObject({ title: '', project: 'PJT-1', epic: 'EPIC-1', wbs: '3', status: statuses[0]?.name, assignees: [], dependsOn: [], due: '' });
 	});
 });

@@ -16,7 +16,21 @@ export interface SchedulePreview {
 	plan?: { delay: number; text: string };
 }
 
-const dateOf = (value: string): IsoDate | undefined => (isIsoDate(value) ? value : undefined);
+/** まだノートの無いタスク（作成中）。見込みの日程の計算に self として渡す */
+export const NEW_TASK: Task = {
+	type: 'task',
+	id: '',
+	path: '',
+	title: '',
+	aliases: [],
+	project: '',
+	status: '',
+	assignees: [],
+	dependsOn: [],
+	subtasks: { done: 0, total: 0 },
+};
+
+const dateOf =(value: string): IsoDate | undefined => (isIsoDate(value) ? value : undefined);
 
 /** 例：11/13(金) */
 const shortDate = (date: IsoDate) => `${monthDayText(date)}(${WEEKDAYS[dayOfWeek(date)] ?? ''})`;

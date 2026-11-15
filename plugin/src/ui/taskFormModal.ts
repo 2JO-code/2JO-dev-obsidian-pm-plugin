@@ -8,16 +8,38 @@ import { endChangeForStatus } from '../forms/taskEnd';
 import { taskFormToUpdate, type TaskForm } from '../forms/taskForm';
 import { DESCRIPTION_KEY } from '../forms/noteChanges';
 import { descriptionErrors, normalizeDescription } from '../forms/taskDescription';
-import { previewTaskSchedule, type SchedulePreview } from '../forms/taskSchedulePreview';
+import { NEW_TASK, previewTaskSchedule, type SchedulePreview } from '../forms/taskSchedulePreview';
 import type { Epic, IsoDate, Member, NoteId, NoteType, Project, StatusDef, Task } from '../model';
 import type { ProjectDisplayName } from '../settings';
+import type { FrontmatterUpdate } from '../write/frontmatter';
 import { FormModal, type FormNote } from './formModal';
 import { resolveTaskEnd } from './taskEndConfirm';
 import { dateInput, epicOptions, errorBox, formColumns, formField, formSection, hoursInput, memberOptions, numberInput, projectOptions, statusOptions } from './formParts';
 
-export interface TaskFormModalOptions {
+/** 今あるタスクを編集するとき */
+export interface TaskFormEdit {
+	mode: 'edit';
 	note: FormNote;
 	taskId: NoteId;
+	/** 開いたときの本文のチェックリスト（表示だけ。設計書 4.12） */
+	checklist: ChecklistRow[];
+	/** チェックリストの編集画面を開く。保存したら新しい項目を渡す */
+	editChecklist: (onSaved: (rows: ChecklistRow[]) => void) => void;
+	/** 開いたときの本文の説明（設計書 4.11） */
+	description: string;
+	/** タスクを確かめてから消す。消したら true */
+	deleteTask: () => Promise<boolean>;
+}
+
+/** 新しいタスクを作るとき。「作成」で初めてノートを作る（設計書 4.4） */
+export interface TaskFormCreate {
+	mode: 'create';
+	/** 確かめた frontmatter と説明でノートを作る */
+	create: (update: FrontmatterUpdate, description: string) => Promise<void>;
+}
+
+export interface TaskFormModalOptions {
+	target: TaskFormEdit | TaskFormCreate;
 	form: TaskForm;
 	projects: readonly Project[];
 	epics: readonly Epic[];
@@ -29,14 +51,6 @@ export interface TaskFormModalOptions {
 	displayName: ProjectDisplayName;
 	calendar: WorkCalendar;
 	today: IsoDate;
-	/** 開いたときの本文のチェックリスト（表示だけ。設計書 4.12） */
-	checklist: ChecklistRow[];
-	/** チェックリストの編集画面を開く。保存したら新しい項目を渡す */
-	editChecklist: (onSaved: (rows: ChecklistRow[]) => void) => void;
-	/** 開いたときの本文の説明（設計書 4.11） */
-	description: string;
-	/** タスクを確かめてから消す。消したら true */
-	deleteTask: () => Promise<boolean>;
 }
 
 const byTitle = (a: { title: string }, b: { title: string }) => compareJa(a.title, b.title);
@@ -48,6 +62,8 @@ export class TaskFormModal extends FormModal {
 	private previewEl: HTMLElement | null = null;
 	private planEl: HTMLElement | null = null;
 	private checklist: ChecklistRow[];
+	/** タイトルの欄に一度だけ入力位置を置く */
+	private focused = false;
 	/** 開いたときに2人目以降だった担当者。保存すると外れる */
 	private readonly droppedAssignees: NoteId[];
 
@@ -60,12 +76,19 @@ export class TaskFormModal extends FormModal {
 		const [first, ...rest] = [...new Set(options.form.assignees)];
 		this.form = { ...options.form, assignees: first ? [first] : [], dependsOn: [...options.form.dependsOn] };
 		this.droppedAssignees = rest;
-		this.description = options.description;
-		this.checklist = options.checklist;
+		const { target } = options;
+		this.description = target.mode === 'edit' ? target.description : '';
+		this.checklist = target.mode === 'edit' ? target.checklist : [];
+	}
+
+	/** 編集中のタスクの ID。作成中は空 */
+	private get taskId(): NoteId {
+		const { target } = this.options;
+		return target.mode === 'edit' ? target.taskId : '';
 	}
 
 	onOpen(): void {
-		this.setTitle('タスクを編集');
+		this.setTitle(this.options.target.mode === 'edit' ? 'タスクを編集' : '新しいタスク');
 		this.modalEl.addClass('pm-form-modal');
 		this.render();
 	}
@@ -101,7 +124,12 @@ export class TaskFormModal extends FormModal {
 		numberInput(formField(belong, 'WBS番号', { hint: 'エピック内の連番' }), form.wbs, (v) => (form.wbs = v), 1);
 
 		const title = formSection(left, '', 1);
-		new TextComponent(formField(title, 'タイトル')).setValue(form.title).onChange((v) => (form.title = v));
+		const titleInput = new TextComponent(formField(title, 'タイトル')).setValue(form.title).onChange((v) => (form.title = v));
+		// 作るときは最初にタイトルを入れる
+		if (options.target.mode === 'create' && !this.focused) {
+			this.focused = true;
+			window.setTimeout(() => titleInput.inputEl.focus(), 0);
+		}
 
 		const state = formSection(left, '担当と状態', 2);
 		const dropped = this.droppedAssignees.length > 0 ? { hint: `保存すると ${this.memberNames(this.droppedAssignees)} は外れます（1人まで）` } : {};
@@ -127,23 +155,34 @@ export class TaskFormModal extends FormModal {
 			.setValue(form.estimate)
 			.onChange((v) => (form.estimate = v));
 
+		const { target } = options;
+		if (target.mode === 'create') {
+			this.footer(() => void this.create(target), undefined, '作成');
+			return;
+		}
 		const buttons = new Setting(contentEl);
 		buttons.addButton((b) =>
 			b
 				.setButtonText('タスクを削除')
 				.setWarning()
-				.onClick(() => void this.remove()),
+				.onClick(() => void this.remove(target)),
 		);
-		this.footer(() => void this.save(), buttons);
+		this.footer(() => void this.save(target), buttons);
 	}
 
 	/** 確かめてから消し、消したら閉じる */
-	private async remove(): Promise<void> {
-		if (await this.options.deleteTask()) this.close();
+	private async remove(target: TaskFormEdit): Promise<void> {
+		if (await target.deleteTask()) this.close();
 	}
 
 	/** チェックリストの項目を表示だけする。変えるのは別の画面（設計書 4.10, 4.12） */
 	private renderChecklist(grid: HTMLElement): void {
+		const { target } = this.options;
+		// チェックリストは本文にあるので、ノートができてから編集する
+		if (target.mode === 'create') {
+			formField(grid, 'チェックリスト').createDiv({ cls: 'pm-form-hint', text: '作成したあと、タスクを開き直すと編集できます' });
+			return;
+		}
 		const rows = this.checklist;
 		const done = rows.filter((r) => r.done).length;
 		const control = formField(grid, rows.length > 0 ? `チェックリスト（完了 ${done}/${rows.length}）` : 'チェックリスト');
@@ -160,7 +199,7 @@ export class TaskFormModal extends FormModal {
 		const footer = control.createDiv({ cls: 'pm-form-inline' });
 		footer.createSpan({ cls: 'pm-form-hint', text: '別の画面で編集します（このフォームの入力はそのまま）' });
 		new ButtonComponent(footer).setButtonText('チェックリストを編集').onClick(() =>
-			this.options.editChecklist((saved) => {
+			target.editChecklist((saved) => {
 				this.checklist = saved;
 				this.render();
 			}),
@@ -177,7 +216,7 @@ export class TaskFormModal extends FormModal {
 			form.dependsOn,
 			// 追加できるのは同じプロジェクトのタスクだけ
 			[...options.tasks]
-				.filter((t) => t.id !== options.taskId)
+				.filter((t) => t.id !== this.taskId)
 				.sort(byTitle)
 				.map((t) => ({ id: t.id, label: t.title, selectable: t.project === form.project, note: '' })),
 		);
@@ -206,7 +245,7 @@ export class TaskFormModal extends FormModal {
 	private updatePreview(): void {
 		const { form, options, previewEl, planEl } = this;
 		if (!previewEl) return;
-		const self = options.allTasks.find((t) => t.id === options.taskId);
+		const self = options.target.mode === 'create' ? NEW_TASK : options.allTasks.find((t) => t.id === this.taskId);
 		const preview: SchedulePreview = self
 			? previewTaskSchedule(form, self, options.statuses, options.calendar, options.today)
 			: { kind: 'none', text: '計算できません' };
@@ -278,15 +317,26 @@ export class TaskFormModal extends FormModal {
 	/** 移った先のプロジェクト・エピックの続きの番号にする（設計書 11.17） */
 	private renumber(): void {
 		const { form, options } = this;
-		form.wbs = nextTaskWbsIn(options.allTasks, form.project, form.epic, options.taskId);
+		form.wbs = nextTaskWbsIn(options.allTasks, form.project, form.epic, this.taskId);
 	}
 
-	private async save(): Promise<void> {
+	/** 確かめてからノートを作り、閉じる */
+	private async create(target: TaskFormCreate): Promise<void> {
+		await this.submit(
+			() => {
+				const result = taskFormToUpdate(this.form, this.options.statuses, '');
+				return { ...result, errors: [...result.errors, ...descriptionErrors(this.description)] };
+			},
+			(result) => target.create(result.update, this.description),
+		);
+	}
+
+	private async save(target: TaskFormEdit): Promise<void> {
 		const { options } = this;
 		await this.submitNote(
-			options.note,
+			target.note,
 			() => {
-				const result = taskFormToUpdate(this.form, options.statuses, options.taskId);
+				const result = taskFormToUpdate(this.form, options.statuses, target.taskId);
 				const dropped = this.droppedAssignees.length > 0 ? [`担当者は1人までのため、${this.memberNames(this.droppedAssignees)} を外しました`] : [];
 				return { ...result, errors: [...result.errors, ...descriptionErrors(this.description)], warnings: [...result.warnings, ...dropped] };
 			},

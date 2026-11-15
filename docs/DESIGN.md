@@ -317,6 +317,14 @@ Obsidian 1.14.5 の `processFrontMatter` の実装を読み、`yaml` 2.9.1 で�
   - 空の値（`model/frontmatter.ts` の `emptyValue`）：リストのキー（`LIST_KEYS`）は `[]`、ほかは `null`
   - `null` は 4.1 の設定で `start:` のように値なしで書かれる
   - 読み取り（3.4）は `null`・`[]` を「無い」と同じに扱うので、警告や計算は変わらない
+- タスクは `NewNoteModal` でなく、`TaskFormModal` の作成モード（`target.mode: 'create'`）で作る
+  - 作るときに担当・日程・工数・説明まで入れられるようにするため
+  - 初期値は `emptyTaskForm`。確かめは編集と同じ `taskFormToUpdate`
+  - 「作成」で `planNewTaskFromForm` が空の枠を足し、説明を本文にしてノートを作る
+  - 押すまでノートは作らない。キャンセルで作りかけのノートを残さないため
+  - チェックリストは本文にあり `openChecklistEditor` がファイルを要るので、作成後に編集する
+  - 見込みの日程は、ノートの無いタスク（`NEW_TASK`）を self にして計算する
+  - 削除ボタンは出さない。WBS番号はビューで選んだエピックの続きの番号から始める
 
 ### 4.5 入力補助フォーム（`forms/taskForm.ts`, `epicForm.ts`, `projectForm.ts`, `memberForm.ts`）
 
@@ -988,7 +996,7 @@ ID の形でないファイル（`strayFiles.ts`）：
 作成・編集の呼び出し（要件 4.2）：
 
 - 各ビューのシェルの操作の欄に作成のボタン（`views/actions.ts`）を置く
-- 1つに絞り込んでいるプロジェクト・エピックは、作成画面で最初から選んでおく（`NewNoteModal` の `initial`）
+- 1つに絞り込んでいるプロジェクト・エピックは、作成画面で最初から選んでおく（`openNewNoteModal` の `initial`）
   - 選択肢に無いアーカイブ内のものは選ばない
 - 編集は入力補助フォームなどの画面。ビューからはノートを開かない（4.9）
 - 警告一覧は直すための画面なので、作成のボタンは置かない

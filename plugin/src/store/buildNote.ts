@@ -142,6 +142,7 @@ export function buildNote(src: NoteSource): NoteRecord | null {
 					estimate: c.number('estimate', { step: 0.25 }),
 					start: c.date('start'),
 					due: c.date('due'),
+					end: c.date('end'),
 					planStart: c.date('plan_start'),
 					planEnd: c.date('plan_end'),
 				}),

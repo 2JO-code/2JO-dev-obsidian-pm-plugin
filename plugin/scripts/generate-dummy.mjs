@@ -361,6 +361,8 @@ for (const pd of projectsData) {
 					depends_on: t.dependsOn.map((d) => link(d.id)),
 					start: t.schedStart,
 					due: t.due,
+					// 完了したタスクは期限日に終わったことにする
+					...(t.status === '完了' ? { end: t.due } : {}),
 				})}\nダミーデータです。\n\n${checklist.join('\n')}`,
 			);
 		}

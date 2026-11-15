@@ -86,8 +86,15 @@ function scheduleOf(task: Task, statuses: readonly StatusDef[], calendar: WorkCa
 	} else if (task.due) {
 		// 開始日が無ければ期限日の1日だけ（休日なら前の稼働日）
 		start = calendar.workdayOnOrAfter(task.due, true);
+	} else if (category === 'done' && task.end) {
+		start = task.end;
 	} else {
 		return null;
+	}
+
+	// 完了系で終了日があれば、実際の日を見込み終了日にする
+	if (category === 'done' && task.end) {
+		return { start: task.end < start ? task.end : start, end: task.end, startDelayed: false, endDelayed: false };
 	}
 
 	if (category === 'not_started' && start < today) {
@@ -107,3 +114,4 @@ function scheduleOf(task: Task, statuses: readonly StatusDef[], calendar: WorkCa
 	}
 	return { start, end, startDelayed, endDelayed };
 }
+

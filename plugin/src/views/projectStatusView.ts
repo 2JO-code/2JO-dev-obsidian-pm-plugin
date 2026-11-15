@@ -4,6 +4,7 @@ import { openNewNoteModal } from '../commands/createNote';
 import { openAllocationEditor, openMilestoneEditor } from '../commands/editProjectTables';
 import { openEpicForm, openProjectForm, openTaskForm } from '../commands/editTask';
 import { openWorklogModal } from '../commands/worklog';
+import { hasActiveAssignee } from '../forms/worklogGrid';
 import { findStatus } from '../config/status';
 import { EMPTY_FILTER, type ViewFilter } from '../calc/filter';
 import { cellKey, projectStatus, type ProjectStatus } from '../calc/projectStatus';
@@ -322,7 +323,11 @@ export class ProjectStatusView extends PmView {
 				label: '',
 				cell: (tr, row) => {
 					const td = tr.createEl('td');
-					rowButton(td, '＋工数', () => openWorklogModal(this.plugin, row.task));
+					const button = rowButton(td, '＋工数', () => openWorklogModal(this.plugin, row.task));
+					if (!hasActiveAssignee(row.task, this.plugin.store.index.members())) {
+						button.disabled = true;
+						button.title = '担当者がいないため、作業ログを入力できません';
+					}
 					return td;
 				},
 			},

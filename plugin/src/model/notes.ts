@@ -64,6 +64,8 @@ export interface Task extends TitledNote {
 	start?: IsoDate;
 	/** 期限日（固定値） */
 	due?: IsoDate;
+	/** 終了日（実際に終わった日）。完了系のときだけ日程に使う */
+	end?: IsoDate;
 	/** 当初開始日（最初の計画。固定値） */
 	planStart?: IsoDate;
 	/** 当初終了日（最初の計画。固定値）。見込み終了日と比べて遅れを出す */

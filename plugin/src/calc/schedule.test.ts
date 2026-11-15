@@ -97,3 +97,20 @@ describe('期限超過見込み', () => {
 		expect(kinds({ ...late, due: '2026-11-09' }, BEFORE)).toEqual([]);
 	});
 });
+
+describe('終了日（end）', () => {
+	it('完了系で終了日があれば、見込み終了日は終了日。期限日より後でも遅れの印は付けない', () => {
+		const s = run([t('A', { status: '完了', start: '2026-11-02', due: '2026-11-05', end: '2026-11-09' })], '2026-11-20').schedules.get('A');
+		expect(s).toEqual({ start: '2026-11-02', end: '2026-11-09', startDelayed: false, endDelayed: false });
+	});
+
+	it('終了日が開始日より前なら、終了日の1日だけ。開始日も期限日も無くても出す', () => {
+		expect(dates([t('A', { status: '完了', start: '2026-11-10', end: '2026-11-06' })], 'A')).toEqual(['2026-11-06', '2026-11-06']);
+		expect(dates([t('A', { status: '完了', end: '2026-11-06' })], 'A')).toEqual(['2026-11-06', '2026-11-06']);
+	});
+
+	it('完了系でなければ終了日は使わない', () => {
+		expect(dates([t('A', { start: '2026-11-02', due: '2026-11-05', end: '2026-11-04' })], 'A')).toEqual(['2026-11-02', '2026-11-05']);
+		expect(dates([t('A', { end: '2026-11-04' })], 'A')).toBeUndefined();
+	});
+});

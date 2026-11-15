@@ -19,6 +19,7 @@ export const FRONTMATTER_KEYS = {
 		'start',
 		'duration_days',
 		'due',
+		'end',
 		'plan_start',
 		'plan_end',
 	],

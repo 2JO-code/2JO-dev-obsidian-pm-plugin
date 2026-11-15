@@ -377,21 +377,20 @@ footer{margin-top:56px;color:var(--muted);font-size:13px}
         <tbody>
           <tr class="pj"><td>▼ 新製品プロモーションCG</td><td>40</td><td>18.5</td><td>3</td><td>4</td><td>3</td><td>3</td><td>1</td></tr>
           <tr class="ep"><td>▼ モデリング</td><td>24</td><td>12</td><td>3</td><td>4</td><td>3</td><td>2</td><td>—</td></tr>
-          <tr class="tk"><td>★ 主要キャラのモデリング</td><td>16</td><td>9.5</td>
+          <tr class="tk"><td>主要キャラのモデリング</td><td>16</td><td>9.5</td>
             <td class="cell st ori">2<sub>1.5</sub><span class="pin p-abs">3</span></td>
             <td class="cell ori">3<sub>3</sub></td>
             <td class="cell ch ori">3<sub>2</sub><span class="pin p-abs">4</span></td>
             <td class="cell du">2<sub>2</sub><span class="pin p-abs">5</span></td>
             <td class="cell"></td></tr>
-          <tr class="tk"><td>★ 背景のモデリング</td><td>8</td><td>2.5</td>
+          <tr class="tk"><td>背景のモデリング</td><td>8</td><td>2.5</td>
             <td class="cell"></td><td class="cell">1</td><td class="cell"></td><td class="cell"></td><td class="cell"></td></tr>
           <tr class="ep"><td>▶ コンテ <span class="small">（たたんだ状態）</span></td><td>16</td><td>6.5</td><td></td><td></td><td></td><td>1</td><td>1</td></tr>
-          <tr><td colspan="8" style="text-align:left;color:var(--accent)">＋タスクを追加 <span class="pin">6</span></td></tr>
           <tr class="sum"><td>日の合計</td><td></td><td></td><td>3</td><td>4</td><td>3</td><td>3</td><td>1</td></tr>
         </tbody>
       </table>
       </div>
-      <div class="foot"><span class="ctl" style="color:var(--accent)">11月の記録を一覧で編集 <span class="pin">7</span></span><span class="btn">保存</span><span class="btn pri">保存して閉じる</span></div>
+      <div class="foot"><span class="ctl" style="color:var(--accent)">11月の記録を一覧で編集 <span class="pin">6</span></span><span class="btn">保存</span><span class="btn pri">保存して閉じる</span></div>
     </div>
     <ul class="keys">
       <li><span class="pin">1</span><span>人・期間（1週間／1か月）を選ぶ。◀ ▶ で移動しても入力は残る</span></li>
@@ -399,17 +398,17 @@ footer{margin-top:56px;color:var(--muted);font-size:13px}
       <li><span class="pin">3</span><span>マスに時間を入れる（<strong>0.25 刻み</strong>、空で削除）。右下の小さな数字はもう片方の値</span></li>
       <li><span class="pin">4</span><span><span class="sw" style="background:var(--c-yellow);border:1px solid var(--line)"></span> 黄色＝まだ保存していないマス</span></li>
       <li><span class="pin">5</span><span><span class="vl" style="background:var(--c-blue)"></span> 開始日　<span class="vl" style="background:var(--c-red)"></span> 期限日　<span class="sw" style="background:var(--accent-soft)"></span> 当初期間</span></li>
-      <li><span class="pin">6</span><span>担当でないタスクを名前で探して足す（★は担当）</span></li>
-      <li><span class="pin">7</span><span>メモを書く・まとめて直すときの表（その月の中だけ）</span></li>
+      <li><span class="pin">6</span><span>メモを書く・まとめて直すときの表（その月の中だけ）</span></li>
     </ul>
   </figure>
 
   <ul>
     <li>並ぶのは、自分が担当する終わっていないタスクと、その期間に記録のあるタスク。上の欄でプロジェクト・エピック・ステータスを絞れます</li>
+    <li>担当でないタスクには入れられません。手伝ったときは、自分が担当のタスクを作って入れます</li>
     <li>「完了・停止した担当タスクも表示」で、終わった担当タスクも並びます</li>
     <li>矢印キー・<kbd>Enter</kbd> で隣のマスへ。月の合計は表に出ていない日も含めた値です</li>
     <li>保存すると、その月の作業ログのノートが無ければ自動で作られます。保存せずに閉じると確認が出ます</li>
-    <li><strong>タスクから入れる</strong>：プロジェクト状況のタスクの行の「<strong>＋工数</strong>」→ そのタスクの今日のマスで開きます</li>
+    <li><strong>タスクから入れる</strong>：プロジェクト状況のタスクの行の「<strong>＋工数</strong>」→ 担当者の、そのタスクの今日のマスで開きます。担当者がいないタスクでは押せません</li>
   </ul>
 
   <div class="callout note">
@@ -424,6 +423,13 @@ footer{margin-top:56px;color:var(--muted);font-size:13px}
   <ul>
     <li><strong>ステータス</strong>：カンバンでカードを別の列へドラッグ（いちばん簡単）か、タスクの行・カードのクリックで開くフォームで</li>
     <li><strong>説明</strong>（作業の内容や注意）：タスクのフォームの「説明」の欄</li>
+    <li><strong>終了日</strong>（実際に終わった日）：完了にするとき「終了日を今日にしますか？」と聞かれます
+      <ul>
+        <li>「今日にする」で今日の日付が入ります。「変えない」なら今の値のままです</li>
+        <li>別の日に終わったときは、タスクのフォームの「終了日」の欄で直します</li>
+        <li>完了から別のステータスに戻しても、終了日は消えません</li>
+      </ul>
+    </li>
   </ul>
 
   <h4>見込みの日程の見え方</h4>
@@ -464,6 +470,7 @@ footer{margin-top:56px;color:var(--muted);font-size:13px}
     <li>先行タスクを選んでも日程は自動ではずれません。先行の終わりに合わせて開始日を入れてください</li>
     <li>期限日が休日なら、橙で注意が出ます（そのまま保存も可。エピック・プロジェクトも同じ）</li>
     <li>「当初開始日」「当初終了日」は最初の計画。計画を変えたときだけ書き換えます（日程の計算には使いません）</li>
+    <li>完了したタスクに終了日があれば、開始日〜終了日が実際の日程として出ます（「（終了）」と付きます）。ガントの棒や当初との差も、その日で出ます</li>
   </ul>
 
   <h4>チェックリスト</h4>
@@ -613,7 +620,7 @@ footer{margin-top:56px;color:var(--muted);font-size:13px}
   <h3 id="v-list">タスク一覧・カンバン</h3>
   <ul>
     <li>タスク一覧：行のクリックでフォーム。「当初差」の列で当初終了日からの遅れ（「3日遅れ」など）が分かります</li>
-    <li>カンバン：カードを列へドラッグでステータスを変える。「列の幅」のつまみで列の幅を変えられます</li>
+    <li>カンバン：カードを列へドラッグでステータスを変える。完了の列へ動かすと、終了日を今日にするか聞かれます。「列の幅」のつまみで列の幅を変えられます</li>
   </ul>
 
   <h3 id="v-gantt">WBS・ガントチャート</h3>
@@ -678,9 +685,9 @@ footer{margin-top:56px;color:var(--muted);font-size:13px}
   <p>ガントチャートと同じ並びで、日ごとの予定・実績の時間を<strong>見る</strong>画面です（ここでは直せません）。</p>
   <ul>
     <li>「表示する値」で予定と実績・実績のみ・予定のみ。予定と実績のときは「予」（薄い文字）と「実」の2列</li>
-    <li>2人以上が記録したタスクだけ、下に人ごとの行が出ます。「日の合計」は画面の下に残ります</li>
+    <li>担当者以外も記録したタスクは、下に人ごとの行が出ます。「日の合計」は画面の下に残ります</li>
     <li>「記録の無い担当タスクも表示」「完了・停止したタスクも含める」で並ぶタスクを増やせます</li>
-    <li>タスクの名前や日の欄を押すと、その条件で「作業ログを入力」が開きます</li>
+    <li>タスクの名前や日の欄を押すと、その条件で「作業ログを入力」が開きます。人ごとの行があるタスクは、人の行を押します</li>
   </ul>
 
   <h3 id="v-member">メンバー状況</h3>

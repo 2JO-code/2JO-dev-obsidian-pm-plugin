@@ -4,6 +4,8 @@ export interface ConfirmOptions {
 	title: string;
 	details: string[];
 	confirmText: string;
+	/** 取りやめのボタンの文字。既定は「キャンセル」 */
+	cancelText?: string;
 	/** true ならボタンを警告色にする */
 	danger?: boolean;
 }
@@ -31,7 +33,7 @@ class ConfirmModal extends Modal {
 		for (const line of options.details) list.createEl('li', { text: line });
 
 		new Setting(contentEl)
-			.addButton((button) => button.setButtonText('キャンセル').onClick(() => this.answer(false)))
+			.addButton((button) => button.setButtonText(options.cancelText ?? 'キャンセル').onClick(() => this.answer(false)))
 			.addButton((button) => {
 				button.setButtonText(options.confirmText).onClick(() => this.answer(true));
 				if (options.danger) button.setWarning();

@@ -1,3 +1,4 @@
+import { findStatus } from '../config/status';
 import { dayOfWeek, monthDayText, WEEKDAYS } from '../calc/dates';
 import { planDelayDays, planDelayText } from '../calc/planDelay';
 import { computeSchedules } from '../calc/schedule';
@@ -33,23 +34,27 @@ export function previewTaskSchedule(
 ): SchedulePreview {
 	const start = dateOf(form.start);
 	const due = dateOf(form.due);
+	const end = dateOf(form.end);
 	const edited: Task = {
 		...self,
 		status: form.status,
 		start,
 		due,
+		end,
 	};
 	// 空欄の項目はキーを消す（規約 4章）
-	for (const key of ['start', 'due'] as const) if (edited[key] === undefined) delete edited[key];
+	for (const key of ['start', 'due', 'end'] as const) if (edited[key] === undefined) delete edited[key];
 
 	const s = computeSchedules([edited], statuses, calendar, today).schedules.get(self.id);
 	if (!s) return { kind: 'none', text: '開始日か期限日を入れると計算します' };
 
-	const delayed = s.startDelayed || s.endDelayed ? '（遅れを反映）' : '';
+	// 完了系で終了日があれば、見込みではなく実際の日程
+	const finished = end !== undefined && findStatus(statuses, form.status)?.category === 'done';
+	const delayed = finished ? '（終了）' : s.startDelayed || s.endDelayed ? '（遅れを反映）' : '';
 	const planEnd = dateOf(form.planEnd);
 	const plan = planEnd ? planLine(dateOf(form.planStart), planEnd, planDelayDays(s.end, planEnd, calendar)) : undefined;
 	const withPlan = plan ? { plan } : {};
-	if (due && s.end > due) return { kind: 'late', text: `${rangeText(s.start, s.end)}${delayed}。期限日 ${shortDate(due)} を過ぎます`, ...withPlan };
+	if (due && s.end > due) return { kind: 'late', text: `${rangeText(s.start, s.end)}${delayed}。期限日 ${shortDate(due)} を${finished ? '過ぎました' : '過ぎます'}`, ...withPlan };
 	return { kind: 'ok', text: `${rangeText(s.start, s.end)}${delayed}${due ? '。期限内' : ''}`, ...withPlan };
 }
 

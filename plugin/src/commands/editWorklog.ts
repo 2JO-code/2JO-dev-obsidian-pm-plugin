@@ -31,7 +31,7 @@ export async function openWorklogEditor(plugin: ProjectManagerPlugin, path: stri
 	if (!src) return;
 	const parsed = parseNoteId(src.file.basename);
 	if (parsed?.type !== 'worklog') return;
-	const { month } = parsed;
+	const { month, member } = parsed;
 	const table = worklogRows(src.content);
 	if (!usable(table)) return;
 
@@ -46,7 +46,8 @@ export async function openWorklogEditor(plugin: ProjectManagerPlugin, path: stri
 		if (value === '') return '選んでください';
 		return isReadable(value, 'task') && title(value) !== '' ? title(value) : missingLabel(value, 'task');
 	};
-	const tasks = [...index.tasks()].sort((a, b) => compareJa(taskLabel(a), taskLabel(b)));
+	// 選べるのはそのメンバーの担当タスクだけ（設計書 4.7）
+	const tasks = index.tasks().filter((t) => t.assignees.includes(member)).sort((a, b) => compareJa(taskLabel(a), taskLabel(b)));
 
 	new TableEditModal<WorklogRow>(plugin.app, {
 		title: `作業ログを編集（${labelOf(path, index).title}）`,
@@ -56,7 +57,7 @@ export async function openWorklogEditor(plugin: ProjectManagerPlugin, path: stri
 		...table,
 		blank: () => ({ date: '', task: '', planned: '', actual: '', memo: '' }),
 		toEdits: (rows, initial) => worklogEdits(rows, initial, month, title),
-		note: `${month} の記録。日付はこの月の中だけ。タスクは押して名前で探します。予定・実績は0.25刻み（どちらかは必須）。変えた行だけをノートに書き換えます`,
+		note: `${month} の記録。日付はこの月の中だけ。タスクは押して担当タスクから名前で探します。予定・実績は0.25刻み（どちらかは必須）。変えた行だけをノートに書き換えます`,
 		columns: [
 			{
 				label: '日付',
@@ -80,7 +81,7 @@ export async function openWorklogEditor(plugin: ProjectManagerPlugin, path: stri
 								row.task = t.id;
 								button.setButtonText(taskText(t.id));
 							},
-							'タスク名かプロジェクト名で探す',
+							'担当タスクをタスク名かプロジェクト名で探す',
 						).open(),
 					);
 				},

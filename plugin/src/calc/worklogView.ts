@@ -231,11 +231,13 @@ export function worklogViewTable(input: {
 /**
  * 行を並べる（ガントと同じ順。設計書 9.10）。
  * @param pairs タスクと、その下に並べるメンバー（名前順にする）
+ * @param assigneesOf タスクの担当者
  */
 export function worklogViewLines(
 	pairs: ReadonlyMap<NoteId, readonly NoteId[]>,
 	infoOf: (id: NoteId) => GridTaskInfo | undefined,
 	memberName: (id: NoteId) => string,
+	assigneesOf: (task: NoteId) => readonly NoteId[],
 ): WorklogViewLine[] {
 	const membersOf = (task: NoteId) => [...(pairs.get(task) ?? [])].sort((a, b) => compareJa(memberName(a), memberName(b)));
 	const pairsOf = (tasks: readonly NoteId[]) => tasks.flatMap((t) => membersOf(t).map((m): [NoteId, NoteId] => [t, m]));
@@ -243,9 +245,9 @@ export function worklogViewLines(
 		const line: WorklogViewLine = { ...l, member: '', pairs: pairsOf(l.tasks) };
 		if (l.kind !== 'task') return [line];
 		const shown = membersOf(l.key);
-		// 記録した人が1人なら、タスクの行をその人の行にする（担当者は1人までのため）
+		// 並べる人が担当者1人だけなら、タスクの行をその人の行にする（担当者は1人までのため）
 		const [only] = shown;
-		if (shown.length === 1 && only !== undefined) return [{ ...line, member: only }];
+		if (shown.length === 1 && only !== undefined && assigneesOf(l.key).includes(only)) return [{ ...line, member: only }];
 		const members = shown.map(
 			(m): WorklogViewLine => ({
 				kind: 'member',

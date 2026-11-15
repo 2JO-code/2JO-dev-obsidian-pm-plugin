@@ -65,6 +65,7 @@ describe('planNewNote', () => {
 			start: null,
 			duration_days: null,
 			due: null,
+			end: null,
 			plan_start: null,
 			plan_end: null,
 		});

@@ -123,6 +123,7 @@ describe('worklogViewLines', () => {
 		]),
 		(id) => info[id],
 		(id) => names[id] ?? id,
+		() => [U1],
 	);
 
 	it('プロジェクト → エピック → タスクの順。記録した人が2人以上のタスクだけ、下に人の行を名前順に置く', () => {
@@ -137,9 +138,17 @@ describe('worklogViewLines', () => {
 		]);
 	});
 
-	it('記録した人が1人のタスクの行は、その人の行になる', () => {
+	it('並べる人が担当者1人だけのタスクの行は、その人の行になる', () => {
 		expect(lines.find((l) => l.key === T2)).toMatchObject({ kind: 'task', member: U1, pairs: [[T2, U1]] });
 		expect(lines.find((l) => l.key === T1)?.member).toBe('');
+	});
+
+	it('並べる人が担当者でなければ、タスクの行は担当者のまま、下にその人の行を置く', () => {
+		const other = worklogViewLines(new Map([[T2, [U2]]]), (id) => info[id], (id) => names[id] ?? id, () => [U1]);
+		expect(other.find((l) => l.key === T2)?.member).toBe('');
+		expect(other.filter((l) => l.kind === 'member').map((l) => l.member)).toEqual([U2]);
+		const none = worklogViewLines(new Map([[T2, [U2]]]), (id) => info[id], (id) => names[id] ?? id, () => []);
+		expect(none.find((l) => l.key === T2)?.member).toBe('');
 	});
 
 	it('メンバーの行は、タスクの行の下でたためる', () => {
@@ -224,6 +233,7 @@ describe('worklogViewTable', () => {
 		]),
 		(id) => info[id],
 		(id) => (id === U1 ? '鈴木' : '佐藤'),
+		() => [U1],
 	);
 	const hours: Record<string, { planned: string; actual: string }> = {
 		[`${T1} ${U1} 2026-11-02`]: { planned: '1', actual: '2' },

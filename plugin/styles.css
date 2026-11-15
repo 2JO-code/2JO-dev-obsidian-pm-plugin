@@ -1347,19 +1347,6 @@ td .pm-progress-pct {
 	z-index: 3;
 }
 
-.pm-worklog-grid-add-row td {
-	padding: 0;
-}
-
-.pm-table-edit.pm-worklog-grid button.pm-worklog-grid-add {
-	width: 100%;
-	border-radius: 0;
-	background: transparent;
-	box-shadow: none;
-	color: var(--text-muted);
-	justify-content: flex-start;
-}
-
 .pm-worklog-grid-links {
 	display: flex;
 	flex-wrap: wrap;

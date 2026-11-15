@@ -23,6 +23,7 @@ const form = (overrides: Partial<TaskForm> = {}): TaskForm => ({
 	start: '',
 	due: '',
 	planStart: '',
+	end: '',
 	planEnd: '',
 	...overrides,
 });
@@ -40,6 +41,7 @@ describe('taskFormFromFrontmatter', () => {
 				estimate: 7.5,
 				depends_on: `[[${TASK}]]`,
 				start: '2026-11-04',
+				end: '2026-11-07',
 				plan_start: '2026-11-04',
 				plan_end: '2026-11-06',
 			}),
@@ -52,6 +54,7 @@ describe('taskFormFromFrontmatter', () => {
 				estimate: '7.5',
 				dependsOn: [TASK],
 				start: '2026-11-04',
+				end: '2026-11-07',
 				planStart: '2026-11-04',
 				planEnd: '2026-11-06',
 			}),
@@ -101,6 +104,7 @@ describe('taskFormToUpdate', () => {
 			depends_on: [],
 			start: '2026-11-04',
 			due: '2026-11-10',
+			end: null,
 			plan_start: '2026-11-04',
 			plan_end: '2026-11-09',
 		});
@@ -123,10 +127,19 @@ describe('taskFormToUpdate', () => {
 			lag_days: 2,
 			start: null,
 			due: '2026-11-10',
+			end: null,
 			plan_start: null,
 			plan_end: null,
 			memo: 'x',
 		});
+	});
+
+	it('終了日：開始日より前、完了系でないときは知らせる（保存はできる）', () => {
+		const run = (o: Partial<TaskForm>) => taskFormToUpdate(form(o), statuses, SELF);
+		expect(run({ status: '完了', start: '2026-11-04', end: '2026-11-06' })).toMatchObject({ errors: [], warnings: [], update: { end: '2026-11-06' } });
+		expect(run({ status: '完了', start: '2026-11-04', end: '2026-11-03' }).warnings).toEqual(['終了日が開始日より前になっています']);
+		expect(run({ status: '進行中', end: '2026-11-06' }).warnings).toEqual(['ステータスが完了系でないため、終了日は日程に使いません']);
+		expect(run({ end: '11/6' }).errors).toEqual(['終了日の日付が正しくありません']);
 	});
 
 	it('旧名のステータスは現在の名前で書く', () => {

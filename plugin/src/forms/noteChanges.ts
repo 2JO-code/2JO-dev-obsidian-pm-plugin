@@ -118,6 +118,7 @@ export const ITEM_LABELS: Readonly<Record<Exclude<NoteType, 'worklog'>, Readonly
 		depends_on: '先行タスク',
 		start: '開始日',
 		due: '期限日',
+		end: '終了日',
 		plan_start: '当初開始日',
 		plan_end: '当初終了日',
 		[DESCRIPTION_KEY]: '説明',

@@ -9,6 +9,7 @@ import {
 	worklogSavedNotice,
 	cellHours,
 	defaultWorklogMember,
+	hasActiveAssignee,
 	assignedTaskIds,
 	filterGridTasks,
 	gridChanges,
@@ -220,15 +221,12 @@ describe('作業ログの書き換え', () => {
 
 describe('defaultWorklogMember', () => {
 	const [A, B, C] = ['USER-a', 'USER-b', 'USER-c'];
-	it('前回の人が担当者ならその人', () => {
-		expect(defaultWorklogMember(B, [A, B], [A, B, C])).toBe(B);
-	});
-	it('前回の人が担当外で、担当者が1人ならその人', () => {
+	it('在籍の担当者がいれば、前回の人に関係なくその人', () => {
 		expect(defaultWorklogMember(C, [A], [A, B, C])).toBe(A);
 		expect(defaultWorklogMember('', [A], [A])).toBe(A);
+		expect(defaultWorklogMember(B, [A, B], [A, B, C])).toBe(A);
 	});
-	it('担当者が複数・いない・在籍していなければ前回の人', () => {
-		expect(defaultWorklogMember(C, [A, B], [A, B, C])).toBe(C);
+	it('担当者がいない・在籍していなければ前回の人', () => {
 		expect(defaultWorklogMember(C, [], [A, B, C])).toBe(C);
 		expect(defaultWorklogMember(C, [A], [B, C])).toBe(C);
 	});
@@ -285,5 +283,20 @@ describe('保存', () => {
 			'同じ日付・タスクの行 2 行を1行にまとめました',
 			'消した記録のメモ 1 件も消えました',
 		]);
+	});
+});
+
+describe('hasActiveAssignee', () => {
+	const members = [
+		{ id: 'USER-a', active: true },
+		{ id: 'USER-b', active: false },
+	];
+	it('在籍の担当者がいれば true', () => {
+		expect(hasActiveAssignee({ assignees: ['USER-a'] }, members)).toBe(true);
+	});
+	it('担当者がいない・在籍していなければ false', () => {
+		expect(hasActiveAssignee({ assignees: [] }, members)).toBe(false);
+		expect(hasActiveAssignee({ assignees: ['USER-b'] }, members)).toBe(false);
+		expect(hasActiveAssignee({ assignees: ['USER-x'] }, members)).toBe(false);
 	});
 });

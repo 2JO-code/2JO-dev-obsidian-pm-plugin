@@ -41,10 +41,11 @@ export function subtaskCell(tr: HTMLElement, progress: TaskProgress, subtasks: S
 }
 
 /** 行のクリックとは別に動く、表の中の小さなボタン */
-export function rowButton(cell: HTMLElement, text: string, onClick: () => void): void {
+export function rowButton(cell: HTMLElement, text: string, onClick: () => void): HTMLButtonElement {
 	const button = cell.createEl('button', { cls: 'pm-row-button', text });
 	button.addEventListener('click', (evt) => {
 		evt.stopPropagation();
 		onClick();
 	});
+	return button;
 }

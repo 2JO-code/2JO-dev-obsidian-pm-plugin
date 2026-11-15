@@ -172,10 +172,12 @@ export function worklogGridEdits(rows: readonly WorklogRow[], changes: readonly 
 	return { edits, merged, droppedMemos };
 }
 
-/** タスクから開くときに最初に選ぶメンバー。前回の人が担当者ならその人、担当者が1人（在籍）ならその人、ほかは前回の人（設計書 4.3） */
+/** 在籍の担当者がいるか。いなければタスクから作業ログを開かない（設計書 4.3） */
+export function hasActiveAssignee(task: Pick<Task, 'assignees'>, members: readonly { id: NoteId; active: boolean }[]): boolean {
+	return members.some((m) => m.active && task.assignees.includes(m.id));
+}
+
+/** タスクから開くときに最初に選ぶメンバー。在籍の担当者がいればその人、いなければ前回の人（設計書 4.3） */
 export function defaultWorklogMember(remembered: NoteId, assignees: readonly NoteId[], active: readonly NoteId[]): NoteId {
-	if (assignees.includes(remembered)) return remembered;
-	const [only] = assignees;
-	if (assignees.length === 1 && only !== undefined && active.includes(only)) return only;
-	return remembered;
+	return assignees.find((a) => active.includes(a)) ?? remembered;
 }

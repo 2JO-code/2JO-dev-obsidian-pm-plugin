@@ -213,6 +213,7 @@ export class WorklogPanel extends FilteredPanel {
 					},
 				),
 			(id) => ctx.members.get(id)?.title ?? missingLabel(id, 'user'),
+			(id) => taskOf(id)?.assignees ?? [],
 		);
 		return { hours, taskOf, pairs, lines };
 	}
@@ -276,14 +277,16 @@ export class WorklogPanel extends FilteredPanel {
 			if (!line.noEpic) kindMark(title, line.kind);
 		} else if (line.kind === 'task') {
 			// 番号は幅をそろえた欄に入れる（ガントと同じ。設計書 9.8）
-			const title = label.createSpan({ cls: 'pm-gantt-title pm-action-link' });
+			// 担当者1人だけならその人の行で押せる。ほかは人の行をまとめる行で、押せない（エピックの行と同じ）
+			const title = label.createSpan({ cls: `pm-gantt-title${line.member ? ' pm-action-link' : ''}` });
 			title.createSpan({ cls: 'pm-gantt-wbs', text: line.wbs });
 			title.appendText(task ? line.label : missingLabel(line.tasks[0] ?? '', 'task'));
 			kindMark(title, 'task');
-			// 記録した人が1人ならその人の行（担当者の欄はその人）、2人以上なら合計の行
 			const member = line.member ? ctx.members.get(line.member) : undefined;
-			title.setAttr('aria-label', line.member ? `${member?.title ?? ''}の作業ログを入力` : '作業ログを入力');
-			formClick(title, () => openWorklogModal(this.plugin, task, { ...this.formAt(), ...(line.member ? { member: line.member } : {}), date: start }));
+			if (line.member) {
+				title.setAttr('aria-label', `${member?.title ?? ''}の作業ログを入力`);
+				formClick(title, () => openWorklogModal(this.plugin, task, { ...this.formAt(), member: line.member, date: start }));
+			}
 			if (!line.member) assigneeCell(person, membersOf(ctx, ...(task?.assignees ?? [])));
 			else if (member) assigneeCell(person, [member]);
 			else person.setText(missingLabel(line.member, 'user'));
@@ -300,10 +303,12 @@ export class WorklogPanel extends FilteredPanel {
 		const track = row.createDiv({ cls: 'pm-gantt-track' });
 		if (task) {
 			this.rangeMarks(track, env.scale, task, ctx);
-			// 日の工数の欄を押すと、その日のマスに入った入力フォームを開く
-			this.dayLinks(track, env.dates, env.dayWidth, (date) =>
-				openWorklogModal(this.plugin, task, { ...this.formAt(), ...(line.member ? { member: line.member } : {}), date, focusDate: date }),
-			);
+			// 日の工数の欄を押すと、その人の、その日のマスに入った入力フォームを開く（人の行だけ）
+			if (line.member) {
+				this.dayLinks(track, env.dates, env.dayWidth, (date) =>
+					openWorklogModal(this.plugin, task, { ...this.formAt(), member: line.member, date, focusDate: date }),
+				);
+			}
 		}
 		this.dayCells(env, track, table.cells.get(line.key) ?? []);
 	}

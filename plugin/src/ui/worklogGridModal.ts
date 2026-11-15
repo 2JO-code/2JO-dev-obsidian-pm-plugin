@@ -1,5 +1,4 @@
 import { type App, ButtonComponent, Modal, Notice, TextComponent } from 'obsidian';
-import { compareJa } from '../calc/compare';
 import { dayOfWeek, localToday, monthDayText, WEEKDAYS } from '../calc/dates';
 import { cellHoursText, hoursText, missingLabel } from '../calc/format';
 import { inRange, rangeLabel, type TaskRanges } from '../calc/taskRange';
@@ -38,7 +37,6 @@ import {
 import type { Epic, IsoDate, Member, NoteId, Project, Task, Worklog, YearMonth } from '../model';
 import type { ProjectDisplayName } from '../settings';
 import { confirm } from './confirmModal';
-import { ChooseModal } from './chooseModal';
 import { errorBox } from './formParts';
 import { notifyError } from './notify';
 import { SaveGuard } from './saveGuard';
@@ -118,8 +116,6 @@ export class WorklogGridModal extends Modal {
 	private showFinished: boolean;
 	/** 保存前と保存済みの値 */
 	private readonly draft: WorklogGridDraft;
-	/** 画面で足したタスク */
-	private readonly extra = new Set<NoteId>();
 	/** たたんだプロジェクト・エピックの行のキー（初めはすべて開く） */
 	private readonly collapsed = new Set<string>();
 	private errors: string[] = [];
@@ -166,7 +162,6 @@ export class WorklogGridModal extends Modal {
 		this.focusDate = options.focusDate ?? null;
 		this.mode = options.defaultMode ?? 'actual';
 		if (options.task) {
-			this.extra.add(options.task.id);
 			this.focusTask = options.task.id;
 		}
 	}
@@ -338,10 +333,10 @@ export class WorklogGridModal extends Modal {
 			},
 			this.showFinished,
 		);
-		const ids = gridTaskIds([assigned, tasksWithHours(base), this.draft.editedTasks(member), [...this.extra]], (id) => id);
+		const ids = gridTaskIds([assigned, tasksWithHours(base), this.draft.editedTasks(member), this.openedTask(member)], (id) => id);
 		this.allTasks = filterGridTasks(ids, this.filterInfo, this.gridFilter);
 		this.lines = gridLines(this.allTasks, (id) => gridTaskInfo(this.options.taskOf(id), this.options.epicOf, this.options.projectName));
-		// 足したタスクがたたんだ行の中なら開く
+		// 開いたときのタスクがたたんだ行の中なら開く
 		const focus = this.lines.find((l) => l.kind === 'task' && l.key === this.focusTask);
 		for (const key of focus?.parents ?? []) this.collapsed.delete(key);
 		const visible = visibleGridLines(this.lines, this.collapsed);
@@ -359,7 +354,6 @@ export class WorklogGridModal extends Modal {
 			if (line.kind === 'task') this.taskRow(body, line, row++);
 			else this.groupRow(body, line);
 		}
-		this.addTaskRow(body);
 		this.totalRow(body);
 		// タスク名の右の見積・月の合計の列を、横に流しても左に固定する
 		this.pinObserver?.disconnect();
@@ -513,36 +507,10 @@ export class WorklogGridModal extends Modal {
 		td.querySelector('input')?.setAttr('aria-label', `${date} ${this.taskTitle(task)} の${MODE_LABEL[this.mode]}(h)${range ? `（${range}）` : ''}`);
 	}
 
-	/** 表のいちばん下の、タスクを足す行 */
-	private addTaskRow(body: HTMLElement): void {
-		const shown = new Set(this.tasks);
-		const candidates = filterGridTasks(
-			this.options.tasks.filter((t) => !shown.has(t.id)).map((t) => t.id),
-			this.filterInfo,
-			this.gridFilter,
-		).flatMap((id) => this.options.taskOf(id) ?? []);
-		const tr = body.createEl('tr', { cls: 'pm-worklog-grid-add-row' });
-		const td = tr.createEl('td', { cls: 'pm-worklog-grid-task' });
-		tr.createEl('td', { attr: { colspan: this.dates.length + this.months.length + 1 } });
-		if (candidates.length === 0) return;
-		const mine = (t: Task) => t.assignees.includes(this.member);
-		const sorted = [...candidates].sort((a, b) => Number(mine(b)) - Number(mine(a)) || compareJa(this.taskLabel(a), this.taskLabel(b)));
-		new ButtonComponent(td)
-			.setButtonText('＋タスクを追加')
-			.setClass('pm-worklog-grid-add')
-			.onClick(() =>
-				new ChooseModal(
-					this.app,
-					sorted,
-					(t) => `${mine(t) ? '★ ' : ''}${this.taskLabel(t)}`,
-					(t) => {
-						this.extra.add(t.id);
-						this.focusTask = t.id;
-						this.render();
-					},
-					'タスク名かプロジェクト名で探す（★は担当）',
-				).open(),
-			);
+	/** 開いたときのタスク。担当のときだけ行に出す（担当でないタスクには入力しない。設計書 4.3） */
+	private openedTask(member: NoteId): NoteId[] {
+		const { task } = this.options;
+		return task?.assignees.includes(member) ? [task.id] : [];
 	}
 
 	private totalRow(body: HTMLElement): void {

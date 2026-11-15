@@ -171,6 +171,7 @@ classDiagram
 		+dependsOn: NoteId[]
 		+start?: IsoDate
 		+due?: IsoDate
+		+end?: IsoDate
 		+planStart?: IsoDate
 		+planEnd?: IsoDate
 		+subtasks: SubtaskCount

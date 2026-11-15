@@ -4,6 +4,7 @@ import { compareJa } from '../calc/compare';
 import type { WorkCalendar } from '../calc/workdays';
 import { nextTaskWbsIn } from '../calc/wbsOrder';
 import type { ChecklistRow } from '../forms/checklist';
+import { endChangeForStatus } from '../forms/taskEnd';
 import { taskFormToUpdate, type TaskForm } from '../forms/taskForm';
 import { DESCRIPTION_KEY } from '../forms/noteChanges';
 import { descriptionErrors, normalizeDescription } from '../forms/taskDescription';
@@ -11,6 +12,7 @@ import { previewTaskSchedule, type SchedulePreview } from '../forms/taskSchedule
 import type { Epic, IsoDate, Member, NoteId, NoteType, Project, StatusDef, Task } from '../model';
 import type { ProjectDisplayName } from '../settings';
 import { FormModal, type FormNote } from './formModal';
+import { resolveTaskEnd } from './taskEndConfirm';
 import { dateInput, epicOptions, errorBox, formColumns, formField, formSection, hoursInput, memberOptions, numberInput, projectOptions, statusOptions } from './formParts';
 
 export interface TaskFormModalOptions {
@@ -178,6 +180,8 @@ export class TaskFormModal extends FormModal {
 		// 当初は最初の計画。見込みの日程と比べて遅れを出す（設計書 11.18）
 		dateInput(formField(grid, '当初開始日', { hint: '最初の計画。遅れを測る基準' }), form.planStart, onChange((v) => (form.planStart = v)));
 		dateInput(formField(grid, '当初終了日', { hint: '見込み終了日と比べます' }), form.planEnd, onChange((v) => (form.planEnd = v)));
+		// 終了日は完了系にするとき今日にするか聞く（設計書 4.16）
+		dateInput(formField(grid, '終了日', { hint: '実際に終わった日。完了にするとき今日にするか聞きます' }), form.end, onChange((v) => (form.end = v)));
 		const preview = formField(grid, '見込みの日程（保存しません）', { full: true });
 		this.previewEl = preview.createDiv({ cls: 'pm-schedule-preview' });
 		this.planEl = preview.createDiv({ cls: 'pm-schedule-preview is-plan' });
@@ -205,10 +209,23 @@ export class TaskFormModal extends FormModal {
 	/** ステータスのプルダウン（設計書 5.4） */
 	private statusDropdown(el: HTMLElement): void {
 		const { form, options } = this;
-		statusOptions(new DropdownComponent(el), options.statuses, form.status).onChange((v) => {
-			form.status = v;
+		statusOptions(new DropdownComponent(el), options.statuses, form.status).onChange((v) => void this.changeStatus(v));
+	}
+
+	/** ステータスを変える。完了系にするときは終了日を今日にするか聞く（要件 4.7） */
+	private async changeStatus(status: string): Promise<void> {
+		const { form, options } = this;
+		const from = form.status;
+		form.status = status;
+		const end = form.end.trim() === '' ? undefined : form.end;
+		const change = endChangeForStatus(from, status, end, options.statuses, options.today);
+		const next = await resolveTaskEnd(this.app, change, form.title.trim() || 'このタスク');
+		if (next === undefined) {
 			this.updatePreview();
-		});
+			return;
+		}
+		form.end = next;
+		this.render();
 	}
 
 	/** 複数選択。selectable が false の候補は追加できないが、選択済みなら残す */

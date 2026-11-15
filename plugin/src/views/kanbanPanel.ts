@@ -1,5 +1,6 @@
 import { Notice } from 'obsidian';
 import type { CalcContext } from '../calc/context';
+import { localToday } from '../calc/dates';
 import type { WorkCalendar } from '../calc/workdays';
 import { filterTasks } from '../calc/filter';
 import { kanbanColumns, parseDraggedCard, statusMove, UNKNOWN_COLUMN, type DraggedCard, type KanbanColumn } from '../calc/kanban';
@@ -17,6 +18,8 @@ import { openNewNoteModal } from '../commands/createNote';
 import { openTaskForm } from '../commands/editTask';
 import { openWorklogModal } from '../commands/worklog';
 import { projectLabel } from '../settings';
+import { endChangeForStatus } from '../forms/taskEnd';
+import { resolveTaskEnd } from '../ui/taskEndConfirm';
 import { writeFrontmatter } from '../write/frontmatterFile';
 import { actionButtons, formClick } from './actions';
 import { holidayMark, kindMark, warningBadges } from './badges';
@@ -213,7 +216,8 @@ export class KanbanPanel extends FilteredPanel {
 	/** カードを動かした先のステータスを書き込む。描き直しは索引の更新で行われる */
 	private async moveCard(card: DraggedCard, to: string): Promise<void> {
 		const { path, from } = card;
-		const move = statusMove(from, to, this.plugin.config.statuses.task);
+		const statuses = this.plugin.config.statuses.task;
+		const move = statusMove(from, to, statuses);
 		if (!move) return;
 		if ('error' in move) {
 			new Notice(move.error);
@@ -224,8 +228,12 @@ export class KanbanPanel extends FilteredPanel {
 			new Notice('タスクのノートが見つかりません');
 			return;
 		}
+		// 完了系にするときは終了日を今日にするか聞く（要件 4.7）
+		const note = this.plugin.store.index.getRecord(path)?.note;
+		const end = note?.type === 'task' ? note.end : undefined;
+		const next = await resolveTaskEnd(this.app, endChangeForStatus(from, move.status, end, statuses, localToday()), card.title);
 		try {
-			await writeFrontmatter(this.app, file, 'task', { status: move.status });
+			await writeFrontmatter(this.app, file, 'task', { status: move.status, ...(next === undefined ? {} : { end: next }) });
 			new Notice(`「${card.title}」を「${from || '設定に無いステータス'}」→「${move.status}」にしました`);
 		} catch (e) {
 			notifyError(e, 'ステータスを書き込めませんでした。ノートのプロパティ（YAML）が壊れていないか確かめてください');

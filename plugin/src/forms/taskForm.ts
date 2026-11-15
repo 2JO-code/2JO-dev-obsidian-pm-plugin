@@ -20,6 +20,8 @@ export interface TaskForm {
 	dependsOn: NoteId[];
 	start: string;
 	due: string;
+	/** 終了日（実際に終わった日） */
+	end: string;
 	planStart: string;
 	planEnd: string;
 }
@@ -37,6 +39,7 @@ export function taskFormFromFrontmatter(fm: Record<string, unknown>): TaskForm {
 		dependsOn: links(fm.depends_on, 'task'),
 		start: text(fm.start),
 		due: text(fm.due),
+		end: text(fm.end),
 		planStart: text(fm.plan_start),
 		planEnd: text(fm.plan_end),
 	};
@@ -78,6 +81,7 @@ export function taskFormToUpdate(form: TaskForm, statuses: readonly StatusDef[],
 	const estimate = number(form.estimate, '見積工数', 0.25, errors);
 	const start = date(form.start, '開始日', errors);
 	const due = date(form.due, '期限日', errors);
+	const end = date(form.end, '終了日', errors);
 	const planStart = date(form.planStart, '当初開始日', errors);
 	const planEnd = date(form.planEnd, '当初終了日', errors);
 	// 予定は期間として使うので、両方そろえる（要件 3.5）
@@ -85,6 +89,9 @@ export function taskFormToUpdate(form: TaskForm, statuses: readonly StatusDef[],
 	if (planStart && planEnd && planEnd < planStart) errors.push('当初終了日が当初開始日より前になっています');
 
 	if (start && due && due < start) warnings.push('期限日が開始日より前になっています');
+	if (start && end && end < start) warnings.push('終了日が開始日より前になっています');
+	// 終了日は完了系のときだけ日程に使う（要件 4.7）
+	if (end && status && status.category !== 'done') warnings.push('ステータスが完了系でないため、終了日は日程に使いません');
 
 	warnUnreadable('プロジェクト', [form.project], 'project', warnings);
 	warnUnreadable('エピック', [form.epic], 'epic', warnings);
@@ -107,6 +114,7 @@ export function taskFormToUpdate(form: TaskForm, statuses: readonly StatusDef[],
 		// lag_days・duration_days は今は使わないので書き換えない（ファイルの値はそのまま残る。要件 4.7）
 		start,
 		due,
+		end,
 		plan_start: planStart,
 		plan_end: planEnd,
 	};

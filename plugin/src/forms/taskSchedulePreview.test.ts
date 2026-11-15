@@ -25,6 +25,7 @@ const form = (o: Partial<TaskForm> = {}): TaskForm => ({
 	start: '',
 	due: '',
 	planStart: '',
+	end: '',
 	planEnd: '',
 	...o,
 });
@@ -61,6 +62,16 @@ describe('previewTaskSchedule', () => {
 
 	it('開始日も期限日も無ければ、入れると計算すると出す', () => {
 		expect(run(form())).toEqual({ kind: 'none', text: '開始日か期限日を入れると計算します' });
+	});
+
+	it('完了系で終了日があれば、終了日までの実際の日程を出し、当初との差もそれで測る', () => {
+		const f = form({ status: '完了', start: '2026-11-02', due: '2026-11-05', end: '2026-11-06', planEnd: '2026-11-05' });
+		expect(run(f)).toEqual({
+			kind: 'late',
+			text: '11/2(月)〜11/6(金)（終了）。期限日 11/5(木) を過ぎました',
+			plan: { delay: 1, text: '当初 11/5(木) より1日遅れ' },
+		});
+		expect(run(form({ start: '2026-11-02', due: '2026-11-05', end: '2026-11-04' })).text).toBe('11/2(月)〜11/5(木)。期限内');
 	});
 
 	it('読めない日付は空欄として扱う', () => {

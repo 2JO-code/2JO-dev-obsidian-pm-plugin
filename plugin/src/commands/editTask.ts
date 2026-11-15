@@ -1,5 +1,4 @@
 import { Notice, TFile } from 'obsidian';
-import { localToday } from '../calc/dates';
 import { WorkCalendar } from '../calc/workdays';
 import { checklistRows } from '../forms/checklist';
 import { epicFormFromFrontmatter } from '../forms/epicForm';
@@ -20,6 +19,7 @@ import { readNoteItems } from '../write/noteFile';
 import { openChecklistEditor } from './editChecklist';
 import { isNoteFile } from './noteFiles';
 import { storeReady } from './ready';
+import { taskFormChoices } from './taskFormOptions';
 
 type FormOpener = (plugin: ProjectManagerPlugin, target: TFile | string) => void;
 
@@ -159,7 +159,6 @@ export function openTaskForm(plugin: ProjectManagerPlugin, target: TFile | strin
 			if (!src) return;
 			const { file, fm, note } = src;
 			const content = await plugin.app.vault.read(file);
-			const { index } = plugin.store;
 			const description = fm[DESCRIPTION_KEY];
 			new TaskFormModal(plugin.app, {
 				target: {
@@ -172,15 +171,7 @@ export function openTaskForm(plugin: ProjectManagerPlugin, target: TFile | strin
 					deleteTask: () => deleteTask(plugin, file),
 				},
 				form: taskFormFromFrontmatter(fm),
-				projects: index.projects(),
-				epics: index.epics(),
-				tasks: index.tasks(),
-				allTasks: index.tasks({ includeArchived: true }),
-				members: index.members(),
-				statuses: plugin.config.statuses.task,
-				displayName: plugin.personal.projectDisplayName,
-				calendar: new WorkCalendar(plugin.config.calendar),
-				today: localToday(),
+				...taskFormChoices(plugin),
 			}).open();
 		}),
 	);

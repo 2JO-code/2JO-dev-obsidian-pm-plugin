@@ -1,7 +1,5 @@
 import { Notice, normalizePath } from 'obsidian';
-import { localToday } from '../calc/dates';
 import { nextTaskWbsIn } from '../calc/wbsOrder';
-import { WorkCalendar } from '../calc/workdays';
 import { emptyTaskForm } from '../forms/taskForm';
 import type { IdKind } from '../id';
 import type ProjectManagerPlugin from '../main';
@@ -13,6 +11,7 @@ import { createNoteFile } from '../write/frontmatterFile';
 import type { FrontmatterUpdate } from '../write/frontmatter';
 import { planNewNote, planNewTaskFromForm, type NewNoteInput, type NewNotePlan } from './newNote';
 import { storeReady } from './ready';
+import { taskFormChoices } from './taskFormOptions';
 
 const COMMANDS: { kind: IdKind; id: string; name: string }[] = [
 	{ kind: 'project', id: 'create-project', name: '新しいプロジェクトを作成' },
@@ -58,11 +57,8 @@ export function openNewNoteModal(plugin: ProjectManagerPlugin, kind: IdKind, ini
 
 /** 空のタスクのフォームを開く。選択肢に無いもの（アーカイブ内など）は選ばない */
 function openNewTaskForm(plugin: ProjectManagerPlugin, initial?: NewNoteInitial): void {
-	const { index } = plugin.store;
-	const projects = index.projects();
-	const epics = index.epics();
-	const allTasks = index.tasks({ includeArchived: true });
-	const statuses = plugin.config.statuses.task;
+	const choices = taskFormChoices(plugin);
+	const { projects, epics, allTasks, statuses } = choices;
 	const project = initial?.project && projects.some((p) => p.id === initial.project) ? initial.project : '';
 	const epic = initial?.epic && epics.some((e) => e.id === initial.epic && e.project === project) ? initial.epic : '';
 	// 同じエピックのタスクの続きの番号を付ける（設計書 11.17）
@@ -70,15 +66,7 @@ function openNewTaskForm(plugin: ProjectManagerPlugin, initial?: NewNoteInitial)
 	new TaskFormModal(plugin.app, {
 		target: { mode: 'create', create: (update, description) => createTask(plugin, update, description) },
 		form: emptyTaskForm(statuses, project, epic, wbs),
-		projects,
-		epics,
-		tasks: index.tasks(),
-		allTasks,
-		members: index.members(),
-		statuses,
-		displayName: plugin.personal.projectDisplayName,
-		calendar: new WorkCalendar(plugin.config.calendar),
-		today: localToday(),
+		...choices,
 	}).open();
 }
 

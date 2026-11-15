@@ -114,10 +114,18 @@ export function startMark(track: HTMLElement, scale: GanttScale, start: IsoDate)
 	track.createDiv({ cls: 'pm-gantt-start', attr: { 'aria-label': `開始日 ${start}` } }).setCssProps({ '--pm-x': `${x}px` });
 }
 
+/** 期限日のひし形（赤。マイルストーンの◆と同じ形） */
 export function dueMark(track: HTMLElement, scale: GanttScale, due: IsoDate): void {
 	const x = markX(scale, due);
 	if (x === undefined) return;
-	track.createDiv({ cls: 'pm-gantt-due', attr: { 'aria-label': `期限日 ${due}` } }).setCssProps({ '--pm-x': `${x}px` });
+	track.createDiv({ cls: 'pm-gantt-due', text: '◆', attr: { 'aria-label': `期限日 ${due}` } }).setCssProps({ '--pm-x': `${x}px` });
+}
+
+/** 終了日（実際に終わった日）の縦線（赤） */
+export function endMark(track: HTMLElement, scale: GanttScale, end: IsoDate): void {
+	const x = markX(scale, end);
+	if (x === undefined) return;
+	track.createDiv({ cls: 'pm-gantt-end', attr: { 'aria-label': `終了日 ${end}` } }).setCssProps({ '--pm-x': `${x}px` });
 }
 
 export function milestoneMark(track: HTMLElement, scale: GanttScale, m: MilestoneRow): void {

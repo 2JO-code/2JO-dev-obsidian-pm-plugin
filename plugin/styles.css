@@ -2116,7 +2116,7 @@ td .pm-progress-pct {
 	color: var(--text-normal);
 }
 
-/* 開始日の縦線。今日の線（緑）・期限日の線（赤）と分けて青にする */
+/* 開始日の縦線。今日の線（緑）・終了日の線（赤）と分けて青にする */
 .pm-gantt-start {
 	position: absolute;
 	left: var(--pm-x);
@@ -2127,14 +2127,15 @@ td .pm-progress-pct {
 	background: var(--color-blue);
 }
 
-/* 開始日・期限日の縦線は棒より手前に描く */
+/* 開始日・終了日の縦線と期限日の◆は棒より手前に描く。左に固定した表示名の欄（2）より下にする */
 .pm-gantt-start,
+.pm-gantt-end,
 .pm-gantt-due {
 	z-index: 1;
 }
 
 .pm-gantt-start.is-legend,
-.pm-gantt-due.is-legend {
+.pm-gantt-end.is-legend {
 	position: static;
 	display: inline-block;
 	width: auto;
@@ -2147,11 +2148,12 @@ td .pm-progress-pct {
 	border-left: 2px solid var(--color-blue);
 }
 
-.pm-gantt-due.is-legend {
+.pm-gantt-end.is-legend {
 	border-left: 2px solid var(--color-red);
 }
 
-.pm-gantt-due {
+/* 終了日（実際に終わった日）の縦線 */
+.pm-gantt-end {
 	position: absolute;
 	left: var(--pm-x);
 	top: 3px;
@@ -2159,6 +2161,30 @@ td .pm-progress-pct {
 	width: 2px;
 	transform: translateX(-1px);
 	background: var(--color-red);
+}
+
+/* 期限日のひし形。マイルストーン（アクセント色）と分けて赤にする */
+.pm-gantt-due {
+	position: absolute;
+	left: var(--pm-x);
+	top: 0;
+	line-height: var(--pm-gantt-row);
+	transform: translateX(-50%);
+	color: var(--color-red);
+}
+
+/* ◆に背景色の縁を付け、同じ色の棒（期限超過見込みの赤など）と重なっても見えるようにする */
+.pm-gantt-due,
+.pm-gantt-milestone {
+	text-shadow:
+		-1px -1px 0 var(--background-primary),
+		1px -1px 0 var(--background-primary),
+		-1px 1px 0 var(--background-primary),
+		1px 1px 0 var(--background-primary);
+}
+
+.pm-gantt-due-legend-mark {
+	color: var(--color-red);
 }
 
 .pm-gantt-milestone {

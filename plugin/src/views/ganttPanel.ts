@@ -25,6 +25,7 @@ import {
 	assigneeCell,
 	dependencyLines,
 	dueMark,
+	endMark,
 	ganttBar,
 	ganttHeader,
 	gridLine,
@@ -226,7 +227,10 @@ export class GanttPanel extends FilteredPanel {
 		legend.createSpan({ cls: 'pm-gantt-bar is-legend is-done', text: '完了・停止' });
 		legend.createSpan({ cls: 'pm-gantt-plan is-legend', text: '当初期間' });
 		legend.createSpan({ cls: 'pm-gantt-start is-legend', text: '開始日' });
-		legend.createSpan({ cls: 'pm-gantt-due is-legend', text: '期限日' });
+		legend.createSpan({ cls: 'pm-gantt-end is-legend', text: '終了日' });
+		const due = legend.createSpan({ cls: 'pm-gantt-due-legend' });
+		due.createSpan({ cls: 'pm-gantt-due-legend-mark', text: '◆' });
+		due.appendText('期限日');
 		legend.createSpan({ text: '｜ ◆マイルストーン ｜' });
 		if (this.options.showDependencies) {
 			const dep = legend.createSpan({ cls: 'pm-gantt-bar is-legend has-predecessor has-successor', text: '依存あり' });
@@ -409,6 +413,9 @@ export class GanttPanel extends FilteredPanel {
 		const plan = taskPlanPeriod(task);
 		if (plan) planBand(r.track, scale, plan.start, plan.end);
 		if (task.start) startMark(r.track, scale, task.start);
+		// 終了日は完了系のときだけ日程に使うので、そのときだけ線を出す（要件 4.7「終了日」）
+		if (task.end && row.category === 'done') endMark(r.track, scale, task.end);
+		// ◆は線と同じ重なり順なので、後に置いて線より手前に描く
 		if (task.due) dueMark(r.track, scale, task.due);
 		const s = row.schedule;
 		const days = this.hours?.get(task.id);

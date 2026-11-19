@@ -898,6 +898,40 @@ td .pm-progress-pct {
 	color: var(--text-muted);
 }
 
+/* 日程の欄の見出しの後ろの印。ガントの印と同じ色・形（設計書 4.12・9.8） */
+.pm-date-mark {
+	display: inline-block;
+	margin-left: var(--size-4-2);
+	vertical-align: middle;
+}
+
+.pm-date-mark.is-start,
+.pm-date-mark.is-end {
+	width: 2px;
+	height: 1em;
+}
+
+.pm-date-mark.is-start {
+	background: var(--color-blue);
+}
+
+.pm-date-mark.is-end {
+	background: var(--color-red);
+}
+
+.pm-date-mark.is-due {
+	color: var(--color-red);
+	line-height: 1;
+}
+
+.pm-date-mark.is-plan {
+	width: 1.2em;
+	height: 0.8em;
+	border: 1px dashed color-mix(in srgb, var(--pm-color-task, var(--interactive-accent)) 55%, transparent);
+	border-radius: var(--radius-s);
+	background: color-mix(in srgb, var(--pm-color-task, var(--interactive-accent)) 14%, transparent);
+}
+
 .pm-form-control {
 	display: flex;
 	flex-direction: column;

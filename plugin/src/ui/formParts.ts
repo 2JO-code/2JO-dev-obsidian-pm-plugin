@@ -116,7 +116,12 @@ export interface FieldOptions {
 	hint?: string;
 	/** 今の入力では使わない欄（薄く表示する） */
 	unused?: boolean;
+	/** 見出しの後ろに、ガントと同じ日程の印を付ける（設計書 4.12） */
+	mark?: DateMark;
 }
+
+/** 日程の印の種類。当初期間の帯・開始日の青い線・終了日の赤い線・期限日の赤い◆（ガントと同じ。設計書 9.8） */
+export type DateMark = 'plan' | 'start' | 'end' | 'due';
 
 /** まとまりを並べる左右の列（設計書 4.12） */
 export function formColumns(el: HTMLElement): [left: HTMLElement, right: HTMLElement] {
@@ -135,7 +140,8 @@ export function formField(grid: HTMLElement, name: string, opts: FieldOptions = 
 	const field = grid.createDiv({ cls: 'pm-form-field' });
 	field.toggleClass('is-full', opts.full === true);
 	field.toggleClass('is-unused', opts.unused === true);
-	field.createDiv({ cls: 'pm-form-label', text: name });
+	const label = field.createDiv({ cls: 'pm-form-label', text: name });
+	if (opts.mark) label.append(createSpan({ cls: `pm-date-mark is-${opts.mark}`, text: opts.mark === 'due' ? '◆' : '' }));
 	const control = field.createDiv({ cls: 'pm-form-control' });
 	if (opts.hint) field.createDiv({ cls: 'pm-form-hint', text: opts.hint });
 	return control;

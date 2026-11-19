@@ -1772,8 +1772,10 @@ td .pm-progress-pct {
 .pm-gantt {
 	--pm-gantt-label: 320px;
 	--pm-gantt-person: 96px;
-	/* 横軸より左の欄（表示名＋担当者）の幅 */
-	--pm-gantt-side: calc(var(--pm-gantt-label) + var(--pm-gantt-person));
+	/* ステータスの欄はガントだけ（has-status）。作業ログのビューでは 0 */
+	--pm-gantt-status: 0px;
+	/* 横軸より左の欄（表示名＋担当者＋ステータス）の幅 */
+	--pm-gantt-side: calc(var(--pm-gantt-label) + var(--pm-gantt-person) + var(--pm-gantt-status));
 	--pm-gantt-row: 28px;
 	--pm-gantt-cell: 22px;
 	--pm-gantt-head: calc(var(--pm-gantt-cell) * 2);
@@ -1833,8 +1835,30 @@ td .pm-progress-pct {
 	border-right: 1px solid var(--background-modifier-border);
 }
 
+/* ステータスの欄。担当者の右に置き、横にスクロールしても左に残す（設計書 9.8） */
+.pm-gantt.has-status {
+	--pm-gantt-status: 96px;
+}
+
+.pm-gantt-status {
+	position: sticky;
+	left: calc(var(--pm-gantt-label) + var(--pm-gantt-person));
+	z-index: 2;
+	flex: 0 0 var(--pm-gantt-status);
+	width: var(--pm-gantt-status);
+	height: var(--pm-gantt-row);
+	line-height: var(--pm-gantt-row);
+	padding: 0 var(--size-4-2);
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+	background: var(--background-primary);
+	border-right: 1px solid var(--background-modifier-border);
+}
+
 .pm-grid-lines .pm-gantt-label,
 .pm-grid-lines .pm-gantt-person,
+.pm-grid-lines .pm-gantt-status,
 .pm-grid-lines .pm-gantt-track {
 	border-bottom: 1px solid var(--pm-grid-color);
 }
@@ -1877,13 +1901,15 @@ td .pm-progress-pct {
 
 .pm-gantt-head .pm-gantt-label,
 .pm-gantt-head .pm-gantt-person,
+.pm-gantt-head .pm-gantt-status,
 .pm-gantt-head .pm-gantt-track {
 	height: var(--pm-gantt-head);
 	font-weight: var(--font-semibold);
 }
 
 .pm-gantt-head .pm-gantt-label,
-.pm-gantt-head .pm-gantt-person {
+.pm-gantt-head .pm-gantt-person,
+.pm-gantt-head .pm-gantt-status {
 	z-index: 4;
 	line-height: var(--pm-gantt-head);
 }
@@ -1939,7 +1965,8 @@ td .pm-progress-pct {
 	background: var(--background-secondary);
 }
 
-.pm-gantt-project .pm-gantt-person {
+.pm-gantt-project .pm-gantt-person,
+.pm-gantt-project .pm-gantt-status {
 	background: var(--background-secondary);
 }
 
@@ -2074,6 +2101,15 @@ td .pm-progress-pct {
 
 .pm-gantt-bar.is-done {
 	background: var(--background-modifier-border-hover);
+}
+
+/* エピック・タスク：期限日の翌日（--pm-late-from）から右だけ警告色。左は通常の色（設計書 9.8） */
+.pm-gantt-bar.is-late-after {
+	background: linear-gradient(
+		to right,
+		var(--pm-bar-color, var(--pm-color-task, var(--interactive-accent))) var(--pm-late-from),
+		var(--color-red) var(--pm-late-from)
+	);
 }
 
 .pm-gantt-bar.is-cut-start {

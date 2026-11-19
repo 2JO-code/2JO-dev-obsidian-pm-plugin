@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { barBox, DEFAULT_GANTT, dependencyFlags, dependencyLinks, fitRange, ganttLabelWidthOf, ganttScale, markX, parseGanttOptions, xOf } from './gantt';
+import { barBox, DEFAULT_GANTT, dependencyFlags, dependencyLinks, fitRange, ganttLabelWidthOf, ganttScale, lateFrom, markX, parseGanttOptions, xOf } from './gantt';
 import { task } from './testData';
 
 describe('ganttScale', () => {
@@ -85,5 +85,26 @@ describe('ganttLabelWidthOf', () => {
 		expect(ganttLabelWidthOf(100)).toBe(160);
 		expect(ganttLabelWidthOf(1200)).toBe(800);
 		expect(ganttLabelWidthOf(250.6)).toBe(251);
+	});
+});
+
+describe('lateFrom', () => {
+	const scale = ganttScale({ start: '2026-11-02', end: '2026-11-08' }, 'day');
+
+	it('期限日の翌日の左端から（棒の左端からの位置）', () => {
+		expect(lateFrom(scale, '2026-11-03', '2026-11-06', '2026-11-04')).toBe(56);
+	});
+
+	it('期限日の内に終わるなら無し', () => {
+		expect(lateFrom(scale, '2026-11-03', '2026-11-06', '2026-11-06')).toBeUndefined();
+	});
+
+	it('期限日が開始日より前なら棒の左端から', () => {
+		expect(lateFrom(scale, '2026-11-03', '2026-11-06', '2026-11-01')).toBe(0);
+		expect(lateFrom(scale, '2026-10-20', '2026-11-06', '2026-10-25')).toBe(0);
+	});
+
+	it('期限日より後が表示期間の外なら無し', () => {
+		expect(lateFrom(scale, '2026-11-03', '2026-11-20', '2026-11-08')).toBeUndefined();
 	});
 });

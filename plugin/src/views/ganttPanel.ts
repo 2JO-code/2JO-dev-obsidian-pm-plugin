@@ -42,7 +42,7 @@ import {
 import { openView } from './openView';
 import { WbsDrag, type WbsDragGroup } from './wbsDrag';
 import { field } from '../parse/values';
-import { FilteredPanel, type PanelScope, type Shell } from './panel';
+import { FilteredPanel, pluginStatusBadge, type PanelScope, type Shell } from './panel';
 import { PROJECT_STATUS_VIEW_TYPE } from './viewTypes';
 import { toggleMark, checkbox } from '../ui/controls';
 
@@ -249,7 +249,7 @@ export class GanttPanel extends FilteredPanel {
 	/** 表の枠・見出し・休日の帯・区切りの縦線 */
 	private drawFrame(body: HTMLElement, ctx: CalcContext, scale: GanttScale, tree: readonly WbsProject[], worklogMode: GanttWorklogMode): HTMLElement {
 		// 担当者を隠すときは列の幅を 0 にして消す（設計書 9.8）
-		const wrap = body.createDiv({ cls: this.showAssignees ? 'pm-gantt' : 'pm-gantt is-hide-person' });
+		const wrap = body.createDiv({ cls: this.showAssignees ? 'pm-gantt has-status' : 'pm-gantt has-status is-hide-person' });
 		if (worklogMode !== 'none') wrap.addClass('has-worklog');
 		if (worklogMode === 'both') wrap.addClass('is-worklog-both');
 		const wbsWidth = Math.max(0, ...tree.flatMap((p) => p.epics.flatMap((e) => e.tasks.map((t) => taskWbsLabel(e.row.epic?.wbs, t.task.wbs).length))));
@@ -258,7 +258,10 @@ export class GanttPanel extends FilteredPanel {
 			'--pm-gantt-width': `${scale.width}px`,
 			'--pm-gantt-label': `${this.labelWidth}px`,
 		});
-		this.labelResizer(wrap, ganttHeader(wrap, scale, ctx));
+		const headLabel = ganttHeader(wrap, scale, ctx);
+		// ステータスの欄は担当者の右（横軸の前）に置く
+		headLabel.parentElement?.querySelector('.pm-gantt-person')?.after(createDiv({ cls: 'pm-gantt-status', text: 'ステータス' }));
+		this.labelResizer(wrap, headLabel);
 		// 休日の縦の帯（単位が日のとき）。行より先に置き、棒の後ろに描く
 		for (const p of scale.periods) {
 			if (p.unit !== 'day' || ctx.calendar.isWorkday(p.start)) continue;
@@ -286,6 +289,7 @@ export class GanttPanel extends FilteredPanel {
 		kindMark(title, 'project');
 		title.setAttr('aria-label', 'プロジェクト状況を開く');
 		title.addEventListener('click', () => void openView(this.app, PROJECT_STATUS_VIEW_TYPE, { project: project.id }));
+		pluginStatusBadge(this.plugin, pr.status, 'project', project.status);
 		rowButton(pr.label, '＋エピック', () => openNewNoteModal(this.plugin, 'epic', { project: project.id }));
 		if (p.status.span) ganttBar(pr.track, scale, labels.project(project), { ...p.status.span, ...(project.due ? { due: project.due } : {}) }, true);
 		if (project.start) startMark(pr.track, scale, project.start);
@@ -317,10 +321,11 @@ export class GanttPanel extends FilteredPanel {
 			formClick(et, () => openEpicForm(this.plugin, epic.path));
 			this.drag.attach(er.row, epicGroup, epic.id, epic.title, er.label);
 			assigneeCell(er.person, membersOf(ctx, epic.owner));
+			pluginStatusBadge(this.plugin, er.status, 'task', epic.status);
 		}
 		rowButton(er.label, '＋タスク', () => openNewNoteModal(this.plugin, 'task', { project: projectId, ...(epic ? { epic: epic.id } : {}) }));
 		if (e.row.span) {
-			const info: BarInfo = { ...e.row.span, ...(epic?.due ? { due: epic.due } : {}), ...(e.row.category ? { category: e.row.category } : {}) };
+			const info: BarInfo = { ...e.row.span, ...(epic?.due ? { due: epic.due } : {}), ...(e.row.category ? { category: e.row.category } : {}), splitLate: true };
 			ganttBar(er.track, scale, name, info, true);
 		}
 		if (epic?.start) startMark(er.track, scale, epic.start);
@@ -371,19 +376,20 @@ export class GanttPanel extends FilteredPanel {
 		});
 	}
 
-	/** 1行。左に表示名（▶／▼ を押すと開閉）、担当者、右に棒を置く欄 */
+	/** 1行。左に表示名（▶／▼ を押すと開閉）、担当者、ステータス、右に棒を置く欄 */
 	private row(
 		wrap: HTMLElement,
 		cls: string,
 		open: boolean,
 		hasChildren: boolean,
 		onToggle?: () => void,
-	): { row: HTMLElement; label: HTMLElement; person: HTMLElement; track: HTMLElement } {
+	): { row: HTMLElement; label: HTMLElement; person: HTMLElement; status: HTMLElement; track: HTMLElement } {
 		const row = wrap.createDiv({ cls: `pm-gantt-row ${cls}` });
 		const label = row.createDiv({ cls: 'pm-gantt-label' });
 		if (onToggle) toggleMark(label, open, hasChildren, onToggle);
 		const person = row.createDiv({ cls: 'pm-gantt-person' });
-		return { row, label, person, track: row.createDiv({ cls: 'pm-gantt-track' }) };
+		const status = row.createDiv({ cls: 'pm-gantt-status' });
+		return { row, label, person, status, track: row.createDiv({ cls: 'pm-gantt-track' }) };
 	}
 
 	private taskRow(
@@ -406,6 +412,7 @@ export class GanttPanel extends FilteredPanel {
 		title.setAttr('aria-label', `入力補助フォームを開く（${row.status}${row.assignees.length > 0 ? `／${row.assignees.map((m) => m.title).join('、')}` : ''}）`);
 		formClick(title, () => openTaskForm(this.plugin, task.path));
 		assigneeCell(r.person, row.assignees);
+		pluginStatusBadge(this.plugin, r.status, 'task', row.status);
 		// 依存のあるタスクは表示名の後ろにも印を出す（棒が表示期間の外でも分かるように）
 		const depText = dep ? [dep.predecessor ? '先行タスクあり' : '', dep.successor ? '後続タスクあり' : ''].filter(Boolean).join('・') : '';
 		if (depText) r.label.createSpan({ cls: 'pm-gantt-dep-mark', text: '⇆', attr: { 'aria-label': depText } });
@@ -430,6 +437,7 @@ export class GanttPanel extends FilteredPanel {
 			...(task.due ? { due: task.due } : {}),
 			...(row.category ? { category: row.category } : {}),
 			delayed: s.startDelayed || s.endDelayed,
+			splitLate: true,
 			...(plan ? { plan: { ...plan, ...(row.planDelay !== undefined ? { delay: row.planDelay } : {}) } } : {}),
 		};
 		const extra = warningCounts(row.warnings).map(([kind]) => WARNING_LABELS[kind]).join('・');

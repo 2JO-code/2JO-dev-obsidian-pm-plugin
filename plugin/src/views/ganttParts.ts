@@ -1,6 +1,6 @@
 import type { CalcContext } from '../calc/context';
 import { dayOfWeek, monthOfDate, WEEKDAYS } from '../calc/dates';
-import { barBox, dependencyLinks, markX, xOf, type GanttScale } from '../calc/gantt';
+import { barBox, dependencyLinks, lateFrom, markX, xOf, type GanttScale } from '../calc/gantt';
 import { hoursText } from '../calc/format';
 import { worklogCellTexts, type DayHours, type GanttWorklogMode } from '../calc/ganttWorklog';
 import type { MilestoneRow } from '../calc/projectStatus';
@@ -33,6 +33,8 @@ export interface BarInfo {
 	delayed?: boolean;
 	/** 当初期間と、当初終了日からの遅れ（稼働日。設計書 11.18） */
 	plan?: { start: IsoDate; end: IsoDate; delay?: number };
+	/** 期限日より後の部分だけ警告色にする（エピック・タスク。設計書 9.8） */
+	splitLate?: boolean;
 }
 
 /**
@@ -85,8 +87,15 @@ export function ganttBar(
 	if (box.cutEnd) bar.addClass('is-cut-end');
 	const closed = isFinished(info.category);
 	const late = !closed && !!info.due && info.end > info.due;
+	const lateX = late && info.splitLate && info.due ? lateFrom(scale, info.start, info.end, info.due) : undefined;
 	if (closed) bar.addClass('is-done');
-	else if (late) bar.addClass('is-late');
+	else if (late && info.splitLate) {
+		// 期限日の翌日から右だけ警告色。期限日より後が見えていなければ通常の色
+		if (lateX !== undefined) {
+			bar.addClass('is-late-after');
+			bar.setCssProps({ '--pm-late-from': `${lateX}px` });
+		}
+	} else if (late) bar.addClass('is-late');
 	else if (info.delayed) bar.addClass('is-delayed');
 	const lines = [name, `${info.start}〜${info.end}（見込み）`];
 	if (info.plan) lines.push(`当初 ${info.plan.start}〜${info.plan.end}${info.plan.delay !== undefined ? `（${planDelayText(info.plan.delay)}）` : ''}`);

@@ -1,5 +1,5 @@
 import type { IsoDate, NoteId, Task } from '../model';
-import { daysBetween } from './dates';
+import { addDays, daysBetween } from './dates';
 import { periodsBetween, type Period, type PeriodUnit } from './workdays';
 import { isRecord } from '../parse/values';
 
@@ -82,6 +82,18 @@ export function barBox(scale: GanttScale, start: IsoDate, end: IsoDate): BarBox 
 		cutStart: start < scale.start,
 		cutEnd: end > scale.end,
 	};
+}
+
+/**
+ * 棒のうち期限日より後の部分が始まる位置（棒の左端からの px。設計書 9.8）
+ * 期限日の内に終わる・見えている部分がすべて期限日の内なら undefined
+ */
+export function lateFrom(scale: GanttScale, start: IsoDate, end: IsoDate, due: IsoDate): number | undefined {
+	const box = barBox(scale, start, end);
+	if (!box || end <= due) return undefined;
+	const from = addDays(due, 1);
+	if (from > scale.end) return undefined;
+	return Math.max(0, xOf(scale, from) - box.left);
 }
 
 /** 印（期限日・マイルストーン・今日）の位置(px)。その日の中央。範囲の外なら undefined */

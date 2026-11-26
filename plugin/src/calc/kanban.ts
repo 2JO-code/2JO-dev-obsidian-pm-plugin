@@ -33,6 +33,17 @@ export function kanbanColumns(rows: readonly TaskRow[], statuses: readonly Statu
 	return unknown.rows.length > 0 ? [...columns, unknown] : columns;
 }
 
+/** 列の幅の範囲と初期値(px)。カンバンとスプリントで同じ（設計書 9.6） */
+export const COLUMN_WIDTH = { min: 160, max: 520, step: 20, initial: 260 };
+
+/** 保存された列の幅を範囲に収める。数でなければ初期値 */
+export const columnWidthOf = (v: unknown): number =>
+	typeof v === 'number' && Number.isFinite(v) ? Math.min(COLUMN_WIDTH.max, Math.max(COLUMN_WIDTH.min, Math.round(v))) : COLUMN_WIDTH.initial;
+
+/** 初期のたたみ方と逆にした列の一覧で、id を入れ替える */
+export const toggleColumn = (toggled: readonly string[], id: string): string[] =>
+	toggled.includes(id) ? toggled.filter((n) => n !== id) : [...toggled, id];
+
 /** ドラッグ中のカードの中身 */
 export interface DraggedCard {
 	path: string;

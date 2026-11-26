@@ -58,7 +58,7 @@ export function linkPath(points: readonly Point[], shape: LinkShape): string {
 
 /** 線が先行のカードの外へ出てから曲がるまでの幅(px) */
 const LINK_OFFSET = 6;
-/** 後続のカードの手前の、まっすぐな部分の長さ(px)。折れ目の丸みと矢印のあとに間を残す（設計書 9.16） */
+/** 後続のカードの手前の、まっすぐな部分の長さ(px)。折れ目の丸みと矢印のあとに間を残す（設計書 11.24） */
 const END_RUN = 22;
 /** 縦の線をカードから離す幅(px) */
 const CARD_MARGIN = 4;
@@ -84,7 +84,7 @@ function freeFrom(cards: readonly Span[], edge: number, dir: 1 | -1): number {
 const inGap = (free: number, want: number) => Math.max(1, Math.min(want, free - CARD_MARGIN));
 
 /**
- * 依存の線の道筋（設計書 9.16）。縦横の線で、後続の手前は END_RUN だけまっすぐにする。
+ * 依存の線の道筋（設計書 11.24）。縦横の線で、後続の手前は END_RUN だけまっすぐにする。
  * 同じ段なら右のすき間へ出て戻る。間にカードが無ければすき間の中で折る。
  * あればすき間を縦に通り、通り道 laneY（行の上の余白）を横に進む（カードを通らないため）
  * @param cards 同じ行のカード

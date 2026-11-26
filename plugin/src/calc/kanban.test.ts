@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { defaultCalendar, defaultStatusSets } from '../config/defaults';
 import { buildContext } from './context';
-import { kanbanColumns, parseDraggedCard, statusMove, UNKNOWN_COLUMN } from './kanban';
+import { COLUMN_WIDTH, columnWidthOf, kanbanColumns, parseDraggedCard, statusMove, toggleColumn, UNKNOWN_COLUMN } from './kanban';
 import { taskRows } from './taskList';
 import { indexOf, project, PJT, task } from './testData';
 
@@ -69,5 +69,29 @@ describe('kanbanColumns', () => {
 
 	it('設定に無いステータスが無ければ、その列は出さない', () => {
 		expect(kanbanColumns([], renamed.task).map((c) => c.name)).not.toContain(UNKNOWN_COLUMN);
+	});
+});
+
+describe('columnWidthOf', () => {
+	it('範囲に収め、整数にする', () => {
+		expect(columnWidthOf(300.4)).toBe(300);
+		expect(columnWidthOf(10)).toBe(COLUMN_WIDTH.min);
+		expect(columnWidthOf(9999)).toBe(COLUMN_WIDTH.max);
+	});
+	it('数でなければ初期値', () => {
+		expect(columnWidthOf('300')).toBe(COLUMN_WIDTH.initial);
+		expect(columnWidthOf(Number.NaN)).toBe(COLUMN_WIDTH.initial);
+		expect(columnWidthOf(undefined)).toBe(COLUMN_WIDTH.initial);
+	});
+});
+
+describe('toggleColumn', () => {
+	it('無ければ足し、あれば外す', () => {
+		expect(toggleColumn(['a'], 'b')).toEqual(['a', 'b']);
+		expect(toggleColumn(['a', 'b'], 'a')).toEqual(['b']);
+	});
+	it('未割り当て（空文字）も扱える', () => {
+		expect(toggleColumn([], '')).toEqual(['']);
+		expect(toggleColumn([''], '')).toEqual([]);
 	});
 });

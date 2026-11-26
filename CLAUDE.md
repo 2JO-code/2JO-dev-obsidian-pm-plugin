@@ -134,7 +134,7 @@ npm run dummy:clean  # ダミーデータだけを消す
 
 ## データモデルの要点（間違えやすい点）
 
-- 1件1Markdown。ファイル名＝ID＝`接頭辞-UUIDv7`（`PJT`/`EPIC`/`TASK`/`USER`）
+- 1件1Markdown。ファイル名＝ID＝`接頭辞-UUIDv7`（`PJT`/`EPIC`/`TASK`/`USER`/`SPRINT`）
   - 作業ログだけ `USER-UUID_YYYY-MM`。作るときに Vault 内の重複を確かめる
 - フォルダ・ファイル名に意味を持たせない。所属やタイトルはプロパティで持つ
   - `title` と同じ値を `aliases` に入れ、タイトルを変えたら両方を書き換える

@@ -3,7 +3,17 @@ import type { CalcContext } from '../calc/context';
 import { localToday } from '../calc/dates';
 import type { WorkCalendar } from '../calc/workdays';
 import { filterTasks } from '../calc/filter';
-import { kanbanColumns, parseDraggedCard, statusMove, UNKNOWN_COLUMN, type DraggedCard, type KanbanColumn } from '../calc/kanban';
+import {
+	COLUMN_WIDTH,
+	columnWidthOf,
+	kanbanColumns,
+	parseDraggedCard,
+	statusMove,
+	toggleColumn,
+	UNKNOWN_COLUMN,
+	type DraggedCard,
+	type KanbanColumn,
+} from '../calc/kanban';
 import {
 	EMPTY_TASK_FILTER,
 	filterTaskRows,
@@ -22,16 +32,14 @@ import { endChangeForStatus } from '../forms/taskEnd';
 import { resolveTaskEnd } from '../ui/taskEndConfirm';
 import { writeFrontmatter } from '../write/frontmatterFile';
 import { actionButtons, formClick } from './actions';
-import { holidayMark, kindMark, warningBadges } from './badges';
+import { kindMark } from './badges';
+import { CARD_PAGE, cardDue, cardWarnings, columnHead, columnWidthControl, draggableCard } from './cardBoard';
 import { memberChoices, projectChoices, statusChoices } from './choices';
-import { rangeSlider, renderFilterBar } from './filterBar';
+import { renderFilterBar } from './filterBar';
 import { taskFilterFields, withTaskFilter } from './taskFilters';
 import { field, stringArray } from '../parse/values';
 import { FilteredPanel, type PanelScope, type Shell } from './panel';
 import { notifyError } from '../ui/notify';
-
-/** 1列に一度に出すカードの数 */
-const CARD_PAGE = 50;
 
 /** ドラッグ中のカードを渡す種類（ほかのドラッグと区別する） */
 const DRAG_TYPE = 'application/x-pm-task';
@@ -42,12 +50,6 @@ interface KanbanOptions extends TaskFilterOptions {
 	/** 列の幅(px)。すべての列で同じ（設計書 9.6） */
 	columnWidth: number;
 }
-
-/** 列の幅の範囲と初期値(px) */
-const COLUMN_WIDTH = { min: 160, max: 520, step: 20, initial: 260 };
-
-const columnWidthOf = (v: unknown): number =>
-	typeof v === 'number' && Number.isFinite(v) ? Math.min(COLUMN_WIDTH.max, Math.max(COLUMN_WIDTH.min, Math.round(v))) : COLUMN_WIDTH.initial;
 
 /** カンバンの部品（要件4.8b・4.8c、設計書 9.6・9.12）。カードを列へ動かすとステータスを書き換える */
 export class KanbanPanel extends FilteredPanel {
@@ -135,17 +137,12 @@ export class KanbanPanel extends FilteredPanel {
 		]);
 
 		const board = body.createDiv({ cls: 'pm-kanban' });
-		const applyWidth = (w: number) => board.setCssProps({ '--pm-kanban-col': `${w}px` });
-		applyWidth(options.columnWidth);
-		// 列の幅：動かしている間は見た目だけ変え、離したときに保存する（描き直さない）
-		const field = rangeSlider(settings, '列の幅', options.columnWidth, { ...COLUMN_WIDTH, unit: 'px' }, applyWidth, (w) => {
-			this.options = { ...this.options, columnWidth: columnWidthOf(w) };
-			this.host.save();
-		});
-		const reset = field.createEl('button', { cls: 'pm-row-button', text: '元に戻す' });
-		reset.addEventListener('click', (e) => {
-			e.preventDefault();
-			this.setOptions({ ...this.options, columnWidth: COLUMN_WIDTH.initial });
+		columnWidthControl(settings, board, options.columnWidth, {
+			onSave: (columnWidth) => {
+				this.options = { ...this.options, columnWidth };
+				this.host.save();
+			},
+			onReset: () => this.setOptions({ ...this.options, columnWidth: COLUMN_WIDTH.initial }),
 		});
 		// 今の画面の幅に、すべての列がちょうど収まる幅にする（範囲の外なら端の値）
 		const fit = settings.createEl('button', { text: '画面の幅に合わせる' });
@@ -161,20 +158,16 @@ export class KanbanPanel extends FilteredPanel {
 	}
 
 	private drawColumn(board: HTMLElement, column: KanbanColumn, labels: RowLabels, calendar: WorkCalendar): void {
-		const toggled = this.options.toggled.includes(column.name);
-		const collapsed = column.collapsedByDefault !== toggled;
+		const collapsed = column.collapsedByDefault !== this.options.toggled.includes(column.name);
 		const col = board.createDiv({ cls: 'pm-kanban-column' });
 		if (collapsed) col.addClass('is-collapsed');
 		this.dropTarget(col, column.name);
 
-		const head = col.createDiv({ cls: 'pm-kanban-head is-clickable' });
-		head.createSpan({ cls: 'pm-toggle', text: collapsed ? '▶' : '▼' });
-		head.createSpan({ cls: 'pm-kanban-name', text: column.name === UNKNOWN_COLUMN ? '設定に無いステータス' : column.name });
-		head.createSpan({ cls: 'pm-mark is-plain pm-kanban-count', text: String(column.rows.length) });
-		head.setAttr('aria-label', collapsed ? 'クリックで開く' : 'クリックでたたむ');
-		head.addEventListener('click', () => {
-			const next = toggled ? this.options.toggled.filter((n) => n !== column.name) : [...this.options.toggled, column.name];
-			this.setOptions({ ...this.options, toggled: next });
+		columnHead(col, {
+			name: column.name === UNKNOWN_COLUMN ? '設定に無いステータス' : column.name,
+			count: column.rows.length,
+			collapsed,
+			onToggle: () => this.setOptions({ ...this.options, toggled: toggleColumn(this.options.toggled, column.name) }),
 		});
 		if (collapsed) return;
 
@@ -244,32 +237,13 @@ export class KanbanPanel extends FilteredPanel {
 		const { task } = row;
 		const card = col.createDiv({ cls: 'pm-kanban-card is-clickable' });
 		formClick(card, () => openTaskForm(this.plugin, task.path));
-		card.draggable = true;
-		card.addEventListener('dragstart', (e) => {
-			const dragged: DraggedCard = { path: task.path, title: task.title, from: row.status };
-			e.dataTransfer?.setData(DRAG_TYPE, JSON.stringify(dragged));
-			if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
-			card.addClass('is-dragging');
-		});
-		card.addEventListener('dragend', () => card.removeClass('is-dragging'));
+		draggableCard(card, DRAG_TYPE, { path: task.path, title: task.title, from: row.status });
 		const title = card.createDiv({ cls: 'pm-kanban-title' });
 		kindMark(title.createSpan({ text: task.title }), 'task');
 		card.createDiv({ cls: 'pm-kanban-meta', text: row.project ? labels.project(row.project) : task.project });
 		const assignees = row.assignees.map((m) => m.title).join('、');
 		if (assignees) card.createDiv({ cls: 'pm-kanban-meta', text: `担当：${assignees}` });
-		if (task.due) {
-			const due = card.createDiv({ cls: 'pm-kanban-meta', text: `期限：${task.due}` });
-			holidayMark(due, calendar, task.due, row.assignees);
-			const overdue = row.warnings.find((w) => w.kind === 'overdue');
-			if (overdue) {
-				due.addClass('pm-text-error');
-				due.setAttr('aria-label', overdue.message);
-			}
-		}
-		if (row.warnings.length > 0) {
-			const warnings = card.createDiv({ cls: 'pm-kanban-meta' });
-			warningBadges(warnings, row.warnings, false);
-			warnings.setAttr('aria-label', row.warnings.map((w) => w.message).join('\n'));
-		}
+		cardDue(card, row, calendar);
+		cardWarnings(card, row);
 	}
 }

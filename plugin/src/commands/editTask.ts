@@ -139,7 +139,7 @@ export function openSprintForm(plugin: ProjectManagerPlugin, target: TFile | str
 			const form = sprintFormFromFrontmatter(fm);
 			// タスクが入っていれば、プロジェクトは変えられない
 			const id = file.basename;
-			const linked = index.tasks({ includeArchived: true }).some((t) => t.sprint === id);
+			const linked = sprintTaskCount(plugin, id) > 0;
 			new SprintFormModal(plugin.app, {
 				target: { mode: 'edit', note, sprintId: id, deleteSprint: () => deleteSprint(plugin, file) },
 				form,
@@ -152,20 +152,29 @@ export function openSprintForm(plugin: ProjectManagerPlugin, target: TFile | str
 	);
 }
 
+/** スプリントに入っているタスクの数（アーカイブ内も含む） */
+function sprintTaskCount(plugin: ProjectManagerPlugin, id: string): number {
+	return plugin.store.index.tasks({ includeArchived: true }).filter((t) => t.sprint === id).length;
+}
+
 /** タスクが入っていなければ、確かめてからスプリントを Obsidian のごみ箱へ送る。消したら true */
 async function deleteSprint(plugin: ProjectManagerPlugin, file: TFile): Promise<boolean> {
-	const { app } = plugin;
-	const { index } = plugin.store;
 	const id = file.basename;
-	const title = index.title(id) || id;
-	const count = index.tasks({ includeArchived: true }).filter((t) => t.sprint === id).length;
+	const title = plugin.store.index.title(id) || id;
+	const count = sprintTaskCount(plugin, id);
 	if (count > 0) {
 		new Notice(`「${title}」にはタスクが ${count} 件入っているため、削除できません。先に別のスプリントか未割り当てへ動かしてください`, 10000);
 		return false;
 	}
+	return trashAfterConfirm(plugin, file, title, 'スプリントを削除', [`「${title}」を削除します`]);
+}
+
+/** 確かめてからノートを Obsidian のごみ箱へ送る。消したら true */
+async function trashAfterConfirm(plugin: ProjectManagerPlugin, file: TFile, title: string, heading: string, details: string[]): Promise<boolean> {
+	const { app } = plugin;
 	const ok = await confirm(app, {
-		title: 'スプリントを削除',
-		details: [`「${title}」を削除します`, 'ファイルは Obsidian の設定「削除したファイル」の場所に移ります。戻すときは管理者に頼んでください'],
+		title: heading,
+		details: [...details, 'ファイルは Obsidian の設定「削除したファイル」の場所に移ります。戻すときは管理者に頼んでください'],
 		confirmText: '削除',
 		danger: true,
 	});
@@ -233,7 +242,6 @@ export function openTaskForm(plugin: ProjectManagerPlugin, target: TFile | strin
 
 /** 作業ログの記録や先行タスクの参照が無ければ、確認してからタスクを Obsidian のごみ箱へ送る。消したら true */
 async function deleteTask(plugin: ProjectManagerPlugin, file: TFile): Promise<boolean> {
-	const { app } = plugin;
 	const { index } = plugin.store;
 	const id = file.basename;
 	const title = index.title(id) || id;
@@ -242,23 +250,8 @@ async function deleteTask(plugin: ProjectManagerPlugin, file: TFile): Promise<bo
 		new Notice([`「${title}」は削除できません`, ...blockers, '使わないタスクは、ステータスを停止にしてください'].join('\n'), 10000);
 		return false;
 	}
-	const ok = await confirm(app, {
-		title: 'タスクを削除',
-		details: [
-			`「${title}」を削除します。説明・チェックリストも消えます`,
-			'フォームで保存していない変更も消えます',
-			'ファイルは Obsidian の設定「削除したファイル」の場所に移ります。戻すときは管理者に頼んでください',
-		],
-		confirmText: '削除',
-		danger: true,
-	});
-	if (!ok) return false;
-	try {
-		await app.fileManager.trashFile(file);
-	} catch (e) {
-		notifyError(e, '削除できませんでした');
-		return false;
-	}
-	new Notice(`「${title}」を削除しました`);
-	return true;
+	return trashAfterConfirm(plugin, file, title, 'タスクを削除', [
+		`「${title}」を削除します。説明・チェックリストも消えます`,
+		'フォームで保存していない変更も消えます',
+	]);
 }

@@ -1,8 +1,9 @@
 import { Notice } from 'obsidian';
 import type { CalcContext } from '../calc/context';
 import { filterTasks } from '../calc/filter';
+import { hoursText } from '../calc/format';
 import { LINK_SHAPE_LABELS, LINK_SHAPES, type LinkShape } from '../calc/linkPath';
-import { parseDraggedCard, type DraggedCard } from '../calc/kanban';
+import { COLUMN_WIDTH, columnWidthOf, parseDraggedCard, toggleColumn, type DraggedCard } from '../calc/kanban';
 import {
 	BACKLOG,
 	linkCounts,
@@ -26,24 +27,16 @@ import { notifyError } from '../ui/notify';
 import { toLink } from '../write/frontmatter';
 import { writeFrontmatter } from '../write/frontmatterFile';
 import { actionButtons, formClick } from './actions';
-import { holidayMark, kindMark, warningBadges } from './badges';
+import { kindMark } from './badges';
+import { CARD_PAGE, cardDue, cardWarnings, columnHead, columnWidthControl, draggableCard } from './cardBoard';
 import { memberChoices, projectChoices, statusChoices } from './choices';
-import { rangeSlider, renderFilterBar, singleSelect } from './filterBar';
+import { renderFilterBar, singleSelect } from './filterBar';
 import { FilteredPanel, pluginStatusBadge, type Shell } from './panel';
 import { drawLinks, focusLinks } from './sprintLinks';
 import { taskFilterFields, withTaskFilter } from './taskFilters';
 
-/** 1列に一度に出すカードの数 */
-const CARD_PAGE = 50;
-
 /** ドラッグ中のカードを渡す種類（カンバンのカードと区別する） */
 const DRAG_TYPE = 'application/x-pm-sprint-task';
-
-/** 列の幅の範囲と初期値(px)。カンバンと同じ（設計書 9.6） */
-const COLUMN_WIDTH = { min: 160, max: 520, step: 20, initial: 260 };
-
-const columnWidthOf = (v: unknown): number =>
-	typeof v === 'number' && Number.isFinite(v) ? Math.min(COLUMN_WIDTH.max, Math.max(COLUMN_WIDTH.min, Math.round(v))) : COLUMN_WIDTH.initial;
 
 interface SprintOptions extends TaskFilterOptions {
 	/** 初期のたたみ方と逆にした列（スプリントの ID。未割り当ては空） */
@@ -158,26 +151,13 @@ export class SprintPanel extends FilteredPanel {
 		});
 
 		const board = body.createDiv({ cls: 'pm-sprint-board' });
-		const applyWidth = (w: number) => board.setCssProps({ '--pm-kanban-col': `${w}px` });
-		applyWidth(options.columnWidth);
-		const widthField = rangeSlider(
-			settings,
-			'列の幅',
-			options.columnWidth,
-			{ ...COLUMN_WIDTH, unit: 'px' },
-			(w) => {
-				applyWidth(w);
-				redrawLinks();
-			},
-			(w) => {
-				this.options = { ...this.options, columnWidth: columnWidthOf(w) };
+		columnWidthControl(settings, board, options.columnWidth, {
+			onInput: () => redrawLinks(),
+			onSave: (columnWidth) => {
+				this.options = { ...this.options, columnWidth };
 				this.host.save();
 			},
-		);
-		const reset = widthField.createEl('button', { cls: 'pm-row-button', text: '元に戻す' });
-		reset.addEventListener('click', (e) => {
-			e.preventDefault();
-			this.setOptions({ ...this.options, columnWidth: COLUMN_WIDTH.initial });
+			onReset: () => this.setOptions({ ...this.options, columnWidth: COLUMN_WIDTH.initial }),
 		});
 
 		singleSelect(
@@ -285,16 +265,12 @@ export class SprintPanel extends FilteredPanel {
 	private drawHead(el: HTMLElement, column: SprintColumn): void {
 		const { sprint } = column;
 		const collapsed = this.isCollapsed(column);
-		const head = el.createDiv({ cls: 'pm-kanban-head is-clickable' });
-		head.createSpan({ cls: 'pm-toggle', text: collapsed ? '▶' : '▼' });
-		head.createSpan({ cls: 'pm-kanban-name', text: sprint ? sprint.title : '未割り当て' });
-		if (column.phase) head.createSpan({ cls: `pm-mark is-tinted pm-sprint-phase is-${column.phase}`, text: SPRINT_PHASE_LABELS[column.phase] });
-		head.createSpan({ cls: 'pm-mark is-plain pm-kanban-count', text: String(column.rows.length) });
-		head.setAttr('aria-label', collapsed ? 'クリックで開く' : 'クリックでたたむ');
-		head.addEventListener('click', () => {
-			const toggled = this.options.toggled.includes(column.id);
-			const next = toggled ? this.options.toggled.filter((n) => n !== column.id) : [...this.options.toggled, column.id];
-			this.setOptions({ ...this.options, toggled: next });
+		columnHead(el, {
+			name: sprint ? sprint.title : '未割り当て',
+			count: column.rows.length,
+			collapsed,
+			onToggle: () => this.setOptions({ ...this.options, toggled: toggleColumn(this.options.toggled, column.id) }),
+			...(column.phase ? { mark: { cls: `pm-sprint-phase is-${column.phase}`, text: SPRINT_PHASE_LABELS[column.phase] } } : {}),
 		});
 		if (collapsed) return;
 
@@ -309,7 +285,7 @@ export class SprintPanel extends FilteredPanel {
 		} else {
 			info.createDiv({ text: 'スプリントに入れていないタスク' });
 		}
-		info.createDiv({ text: `見積 ${round(column.estimate)}h・完了 ${column.done}/${column.counted}` });
+		info.createDiv({ text: `見積 ${hoursText(column.estimate)}h・完了 ${column.done}/${column.counted}` });
 	}
 
 	/** 列（見出しとすべての行のマス）にカードを落とせるようにする。たたんだ列にも落とせる */
@@ -367,15 +343,7 @@ export class SprintPanel extends FilteredPanel {
 		const card = col.createDiv({ cls: 'pm-kanban-card is-clickable' });
 		card.dataset.task = task.id;
 		formClick(card, () => openTaskForm(this.plugin, task.path));
-		card.draggable = true;
-		card.addEventListener('dragstart', (e) => {
-			const dragged: DraggedCard = { path: task.path, title: task.title, from };
-			e.dataTransfer?.setData(DRAG_TYPE, JSON.stringify(dragged));
-			if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
-			card.addClass('is-dragging');
-		});
-		card.addEventListener('dragend', () => {
-			card.removeClass('is-dragging');
+		draggableCard(card, DRAG_TYPE, { path: task.path, title: task.title, from }, () => {
 			for (const c of Array.from(card.closest('.pm-sprint-board')?.querySelectorAll('.is-drop-target') ?? [])) c.removeClass('is-drop-target');
 		});
 		// 指している間、そのカードの線を目立たせる
@@ -392,17 +360,8 @@ export class SprintPanel extends FilteredPanel {
 		pluginStatusBadge(this.plugin, status, 'task', row.status);
 		const assignees = row.assignees.map((m) => m.title).join('、');
 		if (assignees) card.createDiv({ cls: 'pm-kanban-meta', text: `担当：${assignees}` });
-		const facts = [task.estimate !== undefined ? `見積 ${task.estimate}h` : ''].filter((s) => s !== '');
-		if (task.due) {
-			const due = card.createDiv({ cls: 'pm-kanban-meta', text: `期限：${task.due}` });
-			holidayMark(due, ctx.calendar, task.due, row.assignees);
-			const overdue = row.warnings.find((w) => w.kind === 'overdue');
-			if (overdue) {
-				due.addClass('pm-text-error');
-				due.setAttr('aria-label', overdue.message);
-			}
-		}
-		if (facts.length > 0) card.createDiv({ cls: 'pm-kanban-meta', text: facts.join('・') });
+		cardDue(card, row, ctx.calendar);
+		if (task.estimate !== undefined) card.createDiv({ cls: 'pm-kanban-meta', text: `見積 ${task.estimate}h` });
 
 		const deps = [
 			linked && linked.pred > 0 ? `先行 ${linked.pred}` : '',
@@ -411,15 +370,7 @@ export class SprintPanel extends FilteredPanel {
 		].filter((s) => s !== '');
 		if (deps.length > 0) card.createDiv({ cls: 'pm-kanban-meta pm-sprint-deps', text: `依存：${deps.join('・')}` });
 
-		const sprintWarnings = notes?.warnings ?? [];
-		if (row.warnings.length > 0 || sprintWarnings.length > 0) {
-			const box = card.createDiv({ cls: 'pm-kanban-meta' });
-			const badges = warningBadges(box, row.warnings, false);
-			if (sprintWarnings.length > 0) badges.createSpan({ cls: 'pm-mark is-tinted pm-badge is-sprint', text: 'スプリント' });
-			box.setAttr('aria-label', [...row.warnings.map((w) => w.message), ...sprintWarnings].join('\n'));
-		}
+		cardWarnings(card, row, { cls: 'is-sprint', label: 'スプリント', messages: notes?.warnings ?? [] });
 		return card;
 	}
 }
-
-const round = (n: number) => Math.round(n * 100) / 100;

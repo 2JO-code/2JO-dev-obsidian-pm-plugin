@@ -27,6 +27,7 @@ const FOLDER: Record<IdKind, keyof FolderSettings> = {
 	epic: 'epics',
 	task: 'tasks',
 	user: 'members',
+	sprint: 'sprints',
 };
 
 /**
@@ -112,9 +113,21 @@ export function planNewTaskFromForm(
 	exists: (id: NoteId) => boolean,
 	generateId: (kind: IdKind, exists: (id: NoteId) => boolean) => NoteId = newNoteId,
 ): NewNotePlan {
-	const frontmatter: FrontmatterUpdate = { ...update };
-	for (const key of FRONTMATTER_KEYS.task) if (!(key in frontmatter)) frontmatter[key] = emptyValue(key);
 	const text = normalizeDescription(description);
-	const id = generateId('task', exists);
-	return { id, path: `${folders.tasks}/${id}.md`, frontmatter, body: text === '' ? '' : `${text}\n` };
+	return planNewNoteFromForm('task', update, text === '' ? '' : `${text}\n`, folders, exists, generateId);
+}
+
+/** フォームで確かめた値から、作るノートの中身を決める。無いキーは空の枠にする（設計書 4.4） */
+export function planNewNoteFromForm(
+	kind: IdKind,
+	update: FrontmatterUpdate,
+	body: string,
+	folders: FolderSettings,
+	exists: (id: NoteId) => boolean,
+	generateId: (kind: IdKind, exists: (id: NoteId) => boolean) => NoteId = newNoteId,
+): NewNotePlan {
+	const frontmatter: FrontmatterUpdate = { ...update };
+	for (const key of FRONTMATTER_KEYS[kind]) if (!(key in frontmatter)) frontmatter[key] = emptyValue(key);
+	const id = generateId(kind, exists);
+	return { id, path: `${folders[FOLDER[kind]]}/${id}.md`, frontmatter, body };
 }

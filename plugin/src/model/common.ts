@@ -1,5 +1,5 @@
 /** ノートの種類（frontmatter の `type`） */
-export type NoteType = 'project' | 'epic' | 'task' | 'user' | 'worklog';
+export type NoteType = 'project' | 'epic' | 'task' | 'user' | 'sprint' | 'worklog';
 
 /** IDの接頭辞。作業ログはメンバーIDに `_YYYY-MM` を付けるので接頭辞を持たない */
 export const ID_PREFIX = {
@@ -7,6 +7,7 @@ export const ID_PREFIX = {
 	epic: 'EPIC',
 	task: 'TASK',
 	user: 'USER',
+	sprint: 'SPRINT',
 } as const satisfies Record<Exclude<NoteType, 'worklog'>, string>;
 
 /** ノートのID＝拡張子を除いたファイル名（例：`TASK-0192f3a0-...`） */

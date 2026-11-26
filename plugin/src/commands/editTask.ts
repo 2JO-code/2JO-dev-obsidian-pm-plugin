@@ -5,6 +5,7 @@ import { epicFormFromFrontmatter } from '../forms/epicForm';
 import { memberFormFromFrontmatter } from '../forms/memberForm';
 import { DESCRIPTION_KEY, formatItemValue, type NoteItems } from '../forms/noteChanges';
 import { projectFormFromFrontmatter } from '../forms/projectForm';
+import { sprintFormFromFrontmatter } from '../forms/sprintForm';
 import { taskDeleteBlockers } from '../forms/taskDelete';
 import { taskFormFromFrontmatter } from '../forms/taskForm';
 import type ProjectManagerPlugin from '../main';
@@ -13,6 +14,7 @@ import { EpicFormModal } from '../ui/epicFormModal';
 import type { FormNote } from '../ui/formModal';
 import { MemberFormModal } from '../ui/memberFormModal';
 import { ProjectFormModal } from '../ui/projectFormModal';
+import { SprintFormModal } from '../ui/sprintFormModal';
 import { notifyError } from '../ui/notify';
 import { TaskFormModal } from '../ui/taskFormModal';
 import { readNoteItems } from '../write/noteFile';
@@ -27,6 +29,7 @@ type FormOpener = (plugin: ProjectManagerPlugin, target: TFile | string) => void
 const FORMS: { type: FormNote['type']; id: string; name: string; open: FormOpener }[] = [
 	{ type: 'task', id: 'edit-task', name: 'タスクを入力補助フォームで編集', open: openTaskForm },
 	{ type: 'epic', id: 'edit-epic', name: 'エピックを入力補助フォームで編集', open: openEpicForm },
+	{ type: 'sprint', id: 'edit-sprint', name: 'スプリントを入力補助フォームで編集', open: openSprintForm },
 	{ type: 'project', id: 'edit-project', name: 'プロジェクトを入力補助フォームで編集', open: openProjectForm },
 	{ type: 'user', id: 'edit-member', name: 'メンバーを入力補助フォームで編集', open: openMemberForm },
 ];
@@ -36,7 +39,7 @@ export function formOpenerOf(file: unknown): FormOpener | undefined {
 	return FORMS.find((f) => isNoteFile(file, f.type))?.open;
 }
 
-/** 入力補助フォームを開くコマンドと右クリックメニューを登録する（タスク・エピック・プロジェクト・メンバー） */
+/** 入力補助フォームを開くコマンドと右クリックメニューを登録する（タスク・エピック・スプリント・プロジェクト・メンバー） */
 export function registerEditTask(plugin: ProjectManagerPlugin): void {
 	for (const f of FORMS) {
 		plugin.addCommand({
@@ -124,6 +127,57 @@ export function openEpicForm(plugin: ProjectManagerPlugin, target: TFile | strin
 			}).open();
 		}),
 	);
+}
+
+/** スプリントの入力補助フォームを開く（ファイルかパス） */
+export function openSprintForm(plugin: ProjectManagerPlugin, target: TFile | string): void {
+	openForm(
+		formSource(plugin, target, 'sprint', openSprintForm).then((src) => {
+			if (!src) return;
+			const { file, fm, note } = src;
+			const { index } = plugin.store;
+			const form = sprintFormFromFrontmatter(fm);
+			// タスクが入っていれば、プロジェクトは変えられない
+			const id = file.basename;
+			const linked = index.tasks({ includeArchived: true }).some((t) => t.sprint === id);
+			new SprintFormModal(plugin.app, {
+				target: { mode: 'edit', note, sprintId: id, deleteSprint: () => deleteSprint(plugin, file) },
+				form,
+				projects: index.projects(),
+				sprints: index.sprints({ includeArchived: true }),
+				displayName: plugin.personal.projectDisplayName,
+				...(linked ? { fixedProject: form.project } : {}),
+			}).open();
+		}),
+	);
+}
+
+/** タスクが入っていなければ、確かめてからスプリントを Obsidian のごみ箱へ送る。消したら true */
+async function deleteSprint(plugin: ProjectManagerPlugin, file: TFile): Promise<boolean> {
+	const { app } = plugin;
+	const { index } = plugin.store;
+	const id = file.basename;
+	const title = index.title(id) || id;
+	const count = index.tasks({ includeArchived: true }).filter((t) => t.sprint === id).length;
+	if (count > 0) {
+		new Notice(`「${title}」にはタスクが ${count} 件入っているため、削除できません。先に別のスプリントか未割り当てへ動かしてください`, 10000);
+		return false;
+	}
+	const ok = await confirm(app, {
+		title: 'スプリントを削除',
+		details: [`「${title}」を削除します`, 'ファイルは Obsidian の設定「削除したファイル」の場所に移ります。戻すときは管理者に頼んでください'],
+		confirmText: '削除',
+		danger: true,
+	});
+	if (!ok) return false;
+	try {
+		await app.fileManager.trashFile(file);
+	} catch (e) {
+		notifyError(e, '削除できませんでした');
+		return false;
+	}
+	new Notice(`「${title}」を削除しました`);
+	return true;
 }
 
 /** プロジェクトの入力補助フォームを開く（ファイルかパス） */

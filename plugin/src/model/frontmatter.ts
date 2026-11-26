@@ -11,6 +11,7 @@ export const FRONTMATTER_KEYS = {
 		'project',
 		'epic',
 		'wbs',
+		'sprint',
 		'status',
 		'assignees',
 		'estimate',
@@ -24,6 +25,7 @@ export const FRONTMATTER_KEYS = {
 		'plan_end',
 	],
 	user: ['type', 'title', 'aliases', 'family_name', 'given_name', 'daily_hours', 'load_limit_pct', 'active'],
+	sprint: ['type', 'title', 'aliases', 'project', 'start', 'end', 'goal'],
 	worklog: ['type', 'member', 'month'],
 } as const satisfies Record<NoteType, readonly string[]>;
 
@@ -39,5 +41,6 @@ export const REQUIRED_KEYS = {
 	epic: ['type', 'title', 'aliases', 'project', 'status'],
 	task: ['type', 'title', 'aliases', 'project', 'status'],
 	user: ['type', 'title', 'aliases', 'family_name', 'given_name', 'daily_hours', 'load_limit_pct', 'active'],
+	sprint: ['type', 'title', 'aliases', 'project', 'start', 'end'],
 	worklog: ['type', 'member', 'month'],
 } as const satisfies Record<NoteType, readonly string[]>;

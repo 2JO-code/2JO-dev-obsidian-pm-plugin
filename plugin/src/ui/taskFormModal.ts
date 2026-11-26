@@ -9,12 +9,12 @@ import { taskFormToUpdate, type TaskForm } from '../forms/taskForm';
 import { DESCRIPTION_KEY } from '../forms/noteChanges';
 import { descriptionErrors, normalizeDescription } from '../forms/taskDescription';
 import { NEW_TASK, previewTaskSchedule, type SchedulePreview } from '../forms/taskSchedulePreview';
-import type { Epic, IsoDate, Member, NoteId, NoteType, Project, StatusDef, Task } from '../model';
+import type { Epic, IsoDate, Member, NoteId, NoteType, Project, Sprint, StatusDef, Task } from '../model';
 import type { ProjectDisplayName } from '../settings';
 import type { FrontmatterUpdate } from '../write/frontmatter';
 import { FormModal, type FormNote } from './formModal';
 import { resolveTaskEnd } from './taskEndConfirm';
-import { dateInput, epicOptions, errorBox, formColumns, formField, formSection, hoursInput, memberOptions, numberInput, projectOptions, statusOptions } from './formParts';
+import { dateInput, epicOptions, errorBox, formColumns, formField, formSection, hoursInput, memberOptions, numberInput, projectOptions, sprintOptions, statusOptions } from './formParts';
 
 /** 今あるタスクを編集するとき */
 export interface TaskFormEdit {
@@ -43,6 +43,8 @@ export interface TaskFormModalOptions {
 	form: TaskForm;
 	projects: readonly Project[];
 	epics: readonly Epic[];
+	/** スプリント（アーカイブ内を除く） */
+	sprints: readonly Sprint[];
 	tasks: readonly Task[];
 	/** アーカイブ内も含む全タスク（番号付けと日程の計算に使う） */
 	allTasks: readonly Task[];
@@ -104,13 +106,14 @@ export class TaskFormModal extends FormModal {
 		// まとまりを左右の列に分け、縦に収める（設計書 4.12）
 		const [left, right] = formColumns(contentEl);
 
-		const belong = formSection(left, '所属', 3);
+		const belong = formSection(left, '所属', 2);
 		const project = new DropdownComponent(formField(belong, 'プロジェクト'));
 		projectOptions(project, options.projects, options.displayName, form.project);
 		project.onChange((v) => {
 			form.project = v;
 			// 別プロジェクトのエピックは外す
 			if (!options.epics.some((e) => e.id === form.epic && e.project === v)) form.epic = '';
+			if (!options.sprints.some((s) => s.id === form.sprint && s.project === v)) form.sprint = '';
 			this.renumber();
 			this.render();
 		});
@@ -122,6 +125,9 @@ export class TaskFormModal extends FormModal {
 			this.render();
 		});
 		numberInput(formField(belong, 'WBS番号', { hint: 'エピック内の連番' }), form.wbs, (v) => (form.wbs = v), 1);
+		const sprint = new DropdownComponent(formField(belong, 'スプリント（任意）'));
+		sprintOptions(sprint, options.sprints, form.project, form.sprint, form.project ? '未割り当て' : '先にプロジェクトを選んでください');
+		sprint.setDisabled(!form.project).onChange((v) => (form.sprint = v));
 
 		const title = formSection(left, '', 1);
 		const titleInput = new TextComponent(formField(title, 'タイトル')).setValue(form.title).onChange((v) => (form.title = v));

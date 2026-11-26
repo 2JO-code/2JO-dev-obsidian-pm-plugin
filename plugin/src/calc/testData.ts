@@ -1,5 +1,5 @@
 // テスト用のデータを作る関数（calc/ のテストで共有する）
-import type { Epic, Member, Project, Task, Worklog, WorklogEntry } from '../model';
+import type { Epic, Member, Project, Sprint, Task, Worklog, WorklogEntry } from '../model';
 import type { AnyNote } from '../store/buildNote';
 import { VaultIndex } from '../store/vaultIndex';
 
@@ -47,6 +47,10 @@ export function project(id: string, overrides: Partial<Project> = {}): Project {
 
 export function member(id: string, overrides: Partial<Member> = {}): Member {
 	return { id, path: `Members/${id}.md`, type: 'user', title: id, aliases: [id], dailyHours: 8, loadLimitPct: 120, active: true, holidays: [], ...overrides };
+}
+
+export function sprint(id: string, overrides: Partial<Sprint> = {}): Sprint {
+	return { id, path: `Sprints/${id}.md`, type: 'sprint', title: id, aliases: [id], project: PJT, ...overrides };
 }
 
 /** ノートを入れた索引 */

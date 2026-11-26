@@ -8,7 +8,7 @@ const STRAY_MESSAGE =
 /** 管理フォルダの中にある、ファイル名が ID の形でない Markdown ファイルか（設計書 8章） */
 export function isStrayPath(path: string, folders: FolderSettings): boolean {
 	if (!path.endsWith('.md')) return false;
-	const managed = [folders.projects, folders.epics, folders.tasks, folders.members, folders.logs, folders.archive];
+	const managed = [folders.projects, folders.epics, folders.tasks, folders.members, folders.sprints, folders.logs, folders.archive];
 	if (!managed.some((folder) => path.startsWith(`${folder}/`))) return false;
 	const basename = path.split('/').pop()?.slice(0, -'.md'.length) ?? '';
 	return parseNoteId(basename) === null;

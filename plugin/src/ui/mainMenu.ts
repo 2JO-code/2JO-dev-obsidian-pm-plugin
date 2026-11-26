@@ -9,7 +9,7 @@ import type ProjectManagerPlugin from '../main';
 import { openGuide } from '../views/guideView';
 import { openView } from '../views/openView';
 import { openToolbar } from '../views/toolbarView';
-import { ARCHIVE_VIEW_TYPE, DASHBOARD_VIEW_TYPE, GANTT_VIEW_TYPE, GUIDE_VIEW_TYPE, HEALTH_VIEW_TYPE, KANBAN_VIEW_TYPE, MEMBER_DASHBOARD_VIEW_TYPE, MEMBER_STATUS_VIEW_TYPE, PROJECT_STATUS_VIEW_TYPE, TASK_LIST_VIEW_TYPE, WBS_VIEW_TYPE, WORKLOG_VIEW_TYPE } from '../views/viewTypes';
+import { ARCHIVE_VIEW_TYPE, DASHBOARD_VIEW_TYPE, GANTT_VIEW_TYPE, GUIDE_VIEW_TYPE, HEALTH_VIEW_TYPE, KANBAN_VIEW_TYPE, MEMBER_DASHBOARD_VIEW_TYPE, MEMBER_STATUS_VIEW_TYPE, PROJECT_STATUS_VIEW_TYPE, SPRINT_VIEW_TYPE, TASK_LIST_VIEW_TYPE, WBS_VIEW_TYPE, WORKLOG_VIEW_TYPE } from '../views/viewTypes';
 
 /** メニューとツールバーの1項目。viewType はビューを開く項目だけ持つ */
 export interface MenuEntry {
@@ -36,6 +36,7 @@ export function mainMenuEntries(plugin: ProjectManagerPlugin): Record<MenuGroup,
 			{ title: 'プロジェクトを複製', icon: 'copy-plus', action: () => openCopyProjectModal(plugin) },
 			{ title: '新しいエピック', icon: 'layers', action: () => openNewNoteModal(plugin, 'epic') },
 			{ title: '新しいタスク', icon: 'square-plus', action: () => openNewNoteModal(plugin, 'task') },
+			{ title: '新しいスプリント', icon: 'calendar-plus', action: () => openNewNoteModal(plugin, 'sprint') },
 			{ title: '新しいメンバー', icon: 'user-plus', action: () => openNewNoteModal(plugin, 'user') },
 		],
 		input: [{ title: '作業ログを入力', icon: 'clock', action: () => openWorklogModal(plugin) }],
@@ -43,6 +44,7 @@ export function mainMenuEntries(plugin: ProjectManagerPlugin): Record<MenuGroup,
 			view('ダッシュボード', 'layout-dashboard', DASHBOARD_VIEW_TYPE),
 			view('タスク一覧', 'list-checks', TASK_LIST_VIEW_TYPE),
 			view('カンバン', 'columns-3', KANBAN_VIEW_TYPE),
+			view('スプリント', 'timer', SPRINT_VIEW_TYPE),
 			view('WBS', 'list-tree', WBS_VIEW_TYPE),
 			view('ガントチャート', 'calendar-range', GANTT_VIEW_TYPE),
 			view('作業ログ', 'calendar-days', WORKLOG_VIEW_TYPE),

@@ -67,6 +67,31 @@ describe('checkHealth', () => {
 		]);
 	});
 
+	it('スプリント：見つからない・別プロジェクトのもの、終了日が開始日より前を報告する', () => {
+		const SPRINT = `SPRINT-${U(7)}`;
+		const MISSING_SPRINT = `SPRINT-${U(98)}`;
+		const sprint: NoteSource = {
+			path: 's.md',
+			basename: SPRINT,
+			frontmatter: { type: 'sprint', title: 'S', aliases: ['S'], project: `[[${PJT2}]]`, start: '2026-11-13', end: '2026-11-02' },
+		};
+		const taskIn = (n: number, id: string): NoteSource => ({
+			path: `t${n}.md`,
+			basename: `TASK-${U(n)}`,
+			frontmatter: { type: 'task', title: 'T', aliases: ['T'], project: `[[${PJT}]]`, status: '未着手', sprint: `[[${id}]]` },
+		});
+		const messages = checkHealth(indexOf(project(PJT), project(PJT2), sprint, taskIn(10, SPRINT), taskIn(11, MISSING_SPRINT)), defaultStatusSets()).map(
+			(p) => p.message,
+		);
+		expect(messages.sort()).toEqual(
+			[
+				'end（終了日）が start（開始日）より前です',
+				'sprint が、タスクの project とは別のプロジェクトのスプリントです',
+				`sprint のスプリント（${MISSING_SPRINT}）が見つかりません`,
+			].sort(),
+		);
+	});
+
 	it('エピックの担当者（owner）が見つからなければ報告する', () => {
 		const epic = { ...epicOfProject2, frontmatter: { ...epicOfProject2.frontmatter, owner: `[[${MISSING_USER}]]` } };
 		const messages = checkHealth(indexOf(project(PJT2), user, epic), defaultStatusSets()).map((p) => p.message);

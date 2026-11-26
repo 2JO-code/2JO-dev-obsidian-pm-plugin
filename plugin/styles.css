@@ -636,6 +636,153 @@ td .pm-progress-pct {
 	outline-offset: -2px;
 }
 
+/* スプリントのビュー（設計書 9.16）。見出しの行と依存のまとまりの行を、全部の列をまたいで並べる */
+.pm-sprint-board {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	width: max-content;
+	padding-bottom: var(--size-4-3);
+	/* 段の間は、依存の線が矢印の手前でまっすぐ進めるだけ空ける */
+	--pm-sprint-lane-gap: var(--size-4-8);
+}
+
+/* 行は縦にすき間なく並べ、列の背景を上から下までつなげる */
+.pm-sprint-row {
+	display: flex;
+	align-items: stretch;
+	gap: var(--size-4-3);
+}
+
+/* 見出しの行は、下にスクロールしても上に残す。すき間も塗って、下を流れるカードを隠す */
+.pm-sprint-row.is-head {
+	position: sticky;
+	top: 0;
+	z-index: 2;
+	background: var(--background-primary);
+}
+
+/* 段の数だけ広げる。たたんだ列は1段の幅。マスの上の余白は、依存の線の通り道 */
+.pm-sprint-cell {
+	flex: 0 0 calc(var(--pm-kanban-col, 260px) * var(--pm-sprint-lanes, 1) + var(--pm-sprint-lane-gap) * (var(--pm-sprint-lanes, 1) - 1) + var(--size-4-2) * 2);
+	box-sizing: border-box;
+	padding: var(--size-4-3) var(--size-4-2) 0;
+	background: var(--background-secondary);
+}
+
+.pm-sprint-cell.is-head {
+	padding: 0 0 var(--size-4-1);
+	border-radius: var(--radius-m) var(--radius-m) 0 0;
+}
+
+/* 依存のまとまりの区切りは、列の中の細い線だけにする */
+.pm-sprint-row:not(.is-head) + .pm-sprint-row:not(.is-more) .pm-sprint-cell:not(.is-collapsed) {
+	background-image: linear-gradient(var(--background-modifier-border), var(--background-modifier-border));
+	background-repeat: no-repeat;
+	background-position: var(--size-4-2) 0;
+	background-size: calc(100% - var(--size-4-2) * 2) 1px;
+}
+
+.pm-sprint-row.is-last .pm-sprint-cell {
+	padding-bottom: var(--size-4-2);
+	border-radius: 0 0 var(--radius-m) var(--radius-m);
+}
+
+.pm-sprint-cell.is-head.is-active {
+	box-shadow: inset 0 2px 0 var(--interactive-accent);
+}
+
+.pm-sprint-cell.is-collapsed:not(.is-head) {
+	background: transparent;
+}
+
+.pm-sprint-cell.is-drop-target {
+	outline: 2px dashed var(--interactive-accent);
+	outline-offset: -2px;
+}
+
+.pm-sprint-row.is-more .pm-sprint-cell {
+	padding-top: var(--size-4-2);
+	background: transparent;
+}
+
+.pm-sprint-phase.is-active {
+	--pm-mark-color: var(--interactive-accent);
+}
+
+.pm-sprint-phase.is-done {
+	--pm-mark-color: var(--text-faint);
+}
+
+.pm-sprint-info {
+	padding: 0 var(--size-4-2);
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+}
+
+.pm-sprint-period {
+	display: flex;
+	justify-content: space-between;
+	gap: var(--size-4-1);
+}
+
+.pm-sprint-goal {
+	color: var(--text-normal);
+}
+
+.pm-sprint-lanes {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--pm-sprint-lane-gap);
+}
+
+.pm-sprint-lane {
+	flex: 1 1 0;
+	min-width: 0;
+}
+
+.pm-badge.is-sprint {
+	--pm-mark-color: var(--color-orange);
+}
+
+/* 依存の線は常に出す。カードの文字が読めるよう細く薄くし、指したカードの線だけ濃くする */
+.pm-sprint-links {
+	position: absolute;
+	top: 0;
+	left: 0;
+	z-index: 1;
+	overflow: visible;
+	pointer-events: none;
+}
+
+.pm-sprint-link {
+	fill: none;
+	stroke: var(--text-accent);
+	stroke-width: 1.5;
+	stroke-opacity: 0.55;
+}
+
+.pm-sprint-link.is-reversed {
+	stroke: var(--color-red);
+}
+
+.pm-sprint-links.has-focus .pm-sprint-link {
+	stroke-opacity: 0.12;
+}
+
+.pm-sprint-links.has-focus .pm-sprint-link.is-focus {
+	stroke-opacity: 1;
+	stroke-width: 2;
+}
+
+.pm-sprint-arrow path {
+	fill: var(--text-accent);
+}
+
+.pm-sprint-arrow.is-reversed path {
+	fill: var(--color-red);
+}
+
 .pm-task-sub td {
 	color: var(--text-muted);
 }

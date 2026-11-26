@@ -13,6 +13,7 @@ export interface FolderSettings {
 	epics: string;
 	tasks: string;
 	members: string;
+	sprints: string;
 	/** 作業ログ */
 	logs: string;
 	archive: string;
@@ -66,6 +67,7 @@ export const FOLDERS: Readonly<FolderSettings> = Object.freeze({
 	epics: 'Epics',
 	tasks: 'Tasks',
 	members: 'Members',
+	sprints: 'Sprints',
 	logs: 'Members/Logs',
 	archive: 'Archive',
 	config: '_pm',

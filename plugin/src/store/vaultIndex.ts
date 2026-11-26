@@ -1,5 +1,5 @@
 import type { UsageCounter } from '../config/impact';
-import type { Epic, IsoDate, Member, NoteId, NoteType, Project, StatusSets, Task, Worklog } from '../model';
+import type { Epic, IsoDate, Member, NoteId, NoteType, Project, Sprint, StatusSets, Task, Worklog } from '../model';
 import type { AnyNote, NoteProblem, NoteRecord } from './buildNote';
 
 /** Vault 全体のノートの索引。パスとIDで引ける。計算結果は持たない（設計書 1.3） */
@@ -88,6 +88,10 @@ export class VaultIndex implements UsageCounter {
 
 	tasks(options?: ListOptions): readonly Task[] {
 		return this.list('task', options);
+	}
+
+	sprints(options?: ListOptions): readonly Sprint[] {
+		return this.list('sprint', options);
 	}
 
 	members(): readonly Member[] {

@@ -2,9 +2,9 @@ import { findStatus, isFinished } from '../config/status';
 import type { NoteId, Project, StatusSets } from '../model';
 import type { VaultIndex } from '../store/vaultIndex';
 
-export type ArchiveKind = 'project' | 'epic' | 'task';
+export type ArchiveKind = 'project' | 'epic' | 'sprint' | 'task';
 
-export const ARCHIVE_KIND_LABELS: Record<ArchiveKind, string> = { project: 'プロジェクト', epic: 'エピック', task: 'タスク' };
+export const ARCHIVE_KIND_LABELS: Record<ArchiveKind, string> = { project: 'プロジェクト', epic: 'エピック', sprint: 'スプリント', task: 'タスク' };
 
 /** アーカイブへ動かす・アーカイブから戻す1ファイル */
 export interface ArchiveItem {
@@ -38,9 +38,9 @@ interface Target {
 /** パスのフォルダの部分。直下なら空 */
 export const folderOf = (path: string) => (path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : '');
 const join = (folder: string, rest: string) => (rest === '' ? folder : `${folder}/${rest}`);
-const ORDER: Record<ArchiveKind, number> = { project: 0, epic: 1, task: 2 };
+const ORDER: Record<ArchiveKind, number> = { project: 0, epic: 1, sprint: 2, task: 3 };
 
-/** プロジェクトと、そのエピック・タスク（アーカイブ内も含む） */
+/** プロジェクトと、そのエピック・スプリント・タスク（アーカイブ内も含む） */
 function projectTargets(index: VaultIndex, project: Project): Target[] {
 	const all = { includeArchived: true };
 	return [
@@ -49,6 +49,10 @@ function projectTargets(index: VaultIndex, project: Project): Target[] {
 			.epics(all)
 			.filter((e) => e.project === project.id)
 			.map((e) => ({ kind: 'epic' as const, id: e.id, title: e.title, path: e.path, status: e.status })),
+		...index
+			.sprints(all)
+			.filter((s) => s.project === project.id)
+			.map((s) => ({ kind: 'sprint' as const, id: s.id, title: s.title, path: s.path })),
 		...index
 			.tasks(all)
 			.filter((t) => t.project === project.id)

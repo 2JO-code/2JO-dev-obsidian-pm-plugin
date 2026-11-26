@@ -18,6 +18,7 @@ const form = (o: Partial<TaskForm> = {}): TaskForm => ({
 	project: 'PJT-1',
 	epic: '',
 	wbs: '1',
+	sprint: '',
 	status: '進行中',
 	assignees: [],
 	estimate: '',

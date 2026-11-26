@@ -36,6 +36,7 @@ import { registerKanbanView } from './views/kanbanView';
 import { registerMemberDashboardView } from './views/memberDashboardView';
 import { registerMemberStatusView } from './views/memberStatusView';
 import { registerProjectStatusView } from './views/projectStatusView';
+import { registerSprintView } from './views/sprintView';
 import { registerTaskListView } from './views/taskListView';
 import { registerWbsView } from './views/wbsView';
 import { registerWorklogView } from './views/worklogView';
@@ -78,6 +79,7 @@ export default class ProjectManagerPlugin extends Plugin {
 		registerProjectStatusView(this);
 		registerDashboardView(this);
 		registerKanbanView(this);
+		registerSprintView(this);
 		registerWbsView(this);
 		registerGanttView(this);
 		registerWorklogView(this);

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { defaultStatusSets } from '../config/defaults';
 import { archivableProjects, archivePlan, restorableProjects, restorePlan } from './archive';
-import { epic, EPIC, indexOf, PJT, PJT2, project, task } from './testData';
+import { epic, EPIC, indexOf, PJT, PJT2, project, sprint, task } from './testData';
 
 const statuses = defaultStatusSets();
 const closed = project(PJT, { status: 'クローズ' });
@@ -10,6 +10,8 @@ const index = indexOf([
 	project(PJT2, { status: 'クローズ' }),
 	project('PJT-3', { status: '進行中' }),
 	epic(EPIC, { status: '完了' }),
+	sprint('SPRINT-1'),
+	sprint('SPRINT-9', { project: 'PJT-3' }),
 	task('T1', { status: '完了', epic: EPIC }),
 	task('T2', { status: '進行中' }),
 	task('T3', { status: '中止' }),
@@ -29,10 +31,11 @@ index.delete('Projects/PJT-2.md');
 const plan = archivePlan(index, closed, 'Archive', statuses);
 
 describe('archivePlan', () => {
-	it('プロジェクト・エピック・タスクの順に、移動先はアーカイブの下に今のパス', () => {
+	it('プロジェクト・エピック・スプリント・タスクの順に、移動先はアーカイブの下に今のパス', () => {
 		expect(plan.items.map((i) => [i.kind, i.from, i.to])).toEqual([
 			['project', 'Projects/PJT-1.md', 'Archive/Projects/PJT-1.md'],
 			['epic', 'Epics/EPIC-1.md', 'Archive/Epics/EPIC-1.md'],
+			['sprint', 'Sprints/SPRINT-1.md', 'Archive/Sprints/SPRINT-1.md'],
 			['task', 'Tasks/T1.md', 'Archive/Tasks/T1.md'],
 			['task', 'Tasks/T2.md', 'Archive/Tasks/T2.md'],
 			['task', 'Tasks/T3.md', 'Archive/Tasks/T3.md'],
@@ -61,7 +64,7 @@ describe('restorePlan', () => {
 	it('アーカイブ内のファイルを、アーカイブの部分を取った場所へ戻す', () => {
 		const back = restorePlan(index, closed, 'Archive');
 		expect(back.items.map((i) => [i.from, i.to, i.clash])).toEqual([['Archive/Tasks/T4.md', 'Tasks/T4.md', false]]);
-		expect(back.alreadyDone).toBe(6);
+		expect(back.alreadyDone).toBe(7);
 	});
 
 	it('戻す先に同じ名前のファイルがあれば動かさない', () => {

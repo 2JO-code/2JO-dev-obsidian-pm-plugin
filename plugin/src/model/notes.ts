@@ -54,6 +54,8 @@ export interface Task extends TitledNote {
 	epic?: NoteId;
 	/** エピック内の連番（例：`3`）。表示は「エピックの WBS.連番」（設計書 11.17） */
 	wbs?: string;
+	/** スプリント（同じプロジェクトのもの1つ） */
+	sprint?: NoteId;
 	status: string;
 	assignees: NoteId[];
 	/** 見積工数(h)。0.25刻み */
@@ -71,6 +73,17 @@ export interface Task extends TitledNote {
 	/** 当初終了日（最初の計画。固定値）。見込み終了日と比べて遅れを出す */
 	planEnd?: IsoDate;
 	subtasks: SubtaskCount;
+}
+
+/** スプリント。プロジェクトごとに作る。状態は期間から計算する（ファイルに持たない） */
+export interface Sprint extends TitledNote {
+	type: 'sprint';
+	project: NoteId;
+	start?: IsoDate;
+	/** 終了日（最終日を含む） */
+	end?: IsoDate;
+	/** ゴール（1行） */
+	goal?: string;
 }
 
 /** 個人休日の表の1行（印を出すだけで計算には使わない。要件3.5） */

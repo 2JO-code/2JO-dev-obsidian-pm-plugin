@@ -13,6 +13,8 @@ export interface TaskForm {
 	epic: NoteId;
 	/** エピック内の連番 */
 	wbs: string;
+	/** スプリント。空なら未割り当て */
+	sprint: NoteId;
 	status: string;
 	/** 担当者。1人まで（リストのまま持つ） */
 	assignees: NoteId[];
@@ -33,6 +35,7 @@ export function taskFormFromFrontmatter(fm: Record<string, unknown>): TaskForm {
 		project: link(fm.project, 'project'),
 		epic: link(fm.epic, 'epic'),
 		wbs: text(fm.wbs),
+		sprint: link(fm.sprint, 'sprint'),
 		status: text(fm.status),
 		assignees: links(fm.assignees, 'user'),
 		estimate: text(fm.estimate),
@@ -52,6 +55,7 @@ export function emptyTaskForm(statuses: readonly StatusDef[], project: NoteId, e
 		project,
 		epic,
 		wbs,
+		sprint: '',
 		status: statuses[0]?.name ?? '',
 		assignees: [],
 		estimate: '',
@@ -114,6 +118,7 @@ export function taskFormToUpdate(form: TaskForm, statuses: readonly StatusDef[],
 
 	warnUnreadable('プロジェクト', [form.project], 'project', warnings);
 	warnUnreadable('エピック', [form.epic], 'epic', warnings);
+	warnUnreadable('スプリント', [form.sprint], 'sprint', warnings);
 	warnUnreadable('担当者', form.assignees, 'user', warnings);
 	warnUnreadable('先行タスク', form.dependsOn, 'task', warnings);
 
@@ -126,6 +131,7 @@ export function taskFormToUpdate(form: TaskForm, statuses: readonly StatusDef[],
 		epic: form.epic ? linkValue(form.epic, 'epic') : undefined,
 		// 数に見える値も文字列で書く（設計書 4.1）
 		wbs: TASK_WBS.test(wbs) ? wbs : undefined,
+		sprint: form.sprint ? linkValue(form.sprint, 'sprint') : undefined,
 		status: status?.name ?? form.status,
 		assignees: form.assignees.length > 0 ? unique(form.assignees).map((v) => linkValue(v, 'user')) : undefined,
 		estimate,

@@ -128,7 +128,7 @@ classDiagram
 
 - 実線のひし形は、ノートの本文の表の行を持つことを表す（7章）
 - 点線の矢印は、ID（`[[接頭辞-UUID]]`）での参照を表す。矢印の文字はプロパティ名
-- 各ノートの `type` は `project`・`epic`・`task`・`user`・`worklog`
+- 各ノートの `type` は `project`・`epic`・`task`・`user`・`worklog`・`sprint`
 
 ```mermaid
 classDiagram
@@ -165,6 +165,7 @@ classDiagram
 		+project: NoteId
 		+epic?: NoteId
 		+wbs?: string
+		+sprint?: NoteId
 		+status: string
 		+assignees: NoteId[]
 		+estimate?: number
@@ -182,6 +183,12 @@ classDiagram
 		+dailyHours: number
 		+loadLimitPct: number
 		+active: boolean
+	}
+	class Sprint {
+		+project: NoteId
+		+start?: IsoDate
+		+end?: IsoDate
+		+goal?: string
 	}
 	class Worklog {
 		+member: NoteId
@@ -219,6 +226,7 @@ classDiagram
 	TitledNote <|-- Epic
 	TitledNote <|-- Task
 	TitledNote <|-- Member
+	TitledNote <|-- Sprint
 	TableRow <|-- Milestone
 	TableRow <|-- Allocation
 	TableRow <|-- PersonalHoliday
@@ -237,6 +245,8 @@ classDiagram
 	Task ..> Epic : epic
 	Task ..> Member : assignees
 	Task ..> Task : dependsOn
+	Task ..> Sprint : sprint
+	Sprint ..> Project : project
 	Worklog ..> Member : member
 	WorklogEntry ..> Task : task
 	Milestone ..> Epic : epic
@@ -284,7 +294,7 @@ classDiagram
 - 保存して閉じる入力画面は `FormModal` を継ぐ（設計書 4.5, 4.6）
   - 中身は `render()` を書き、保存は `submit(check, write)` に任せる
 - 使い方の `GuideView`・ツールバーの `ToolbarView` は索引を使わないので、`ItemView` を直接継ぐ（設計書 9.14・9.15）
-- タスク一覧・作業ログ・ガント・カンバン・WBS の中身は部品（`Panel`）。ビューは部品を1つ載せる（設計書 9.12）
+- タスク一覧・作業ログ・ガント・カンバン・WBS・スプリントの中身は部品（`Panel`）。ビューは部品を1つ載せる（設計書 9.12）
   - メンバーダッシュボードは、同じ部品を種類ごとに1つずつ作って並べる（設計書 9.11）
   - 部品は保存・描き直しを置き場所（`PanelHost`）に頼む
   - 共通の絞り込みを持つ部品は `FilteredPanel` を継ぐ（設計書 9.12）
@@ -361,6 +371,7 @@ classDiagram
 	PmView <|-- WorklogView
 	PmView <|-- HealthView
 	PmView <|-- MemberDashboardView
+	PmView <|-- SprintView
 	ItemView <|-- GuideView
 	ItemView <|-- ToolbarView
 
@@ -371,6 +382,7 @@ classDiagram
 	FilteredPanel <|-- GanttPanel
 	FilteredPanel <|-- KanbanPanel
 	FilteredPanel <|-- WbsPanel
+	FilteredPanel <|-- SprintPanel
 	Panel <|-- LoadPanel
 	Panel <|-- AssignedProjectsPanel
 	Panel <|-- MemberTaskListPanel
@@ -380,6 +392,8 @@ classDiagram
 	GanttView *-- GanttPanel
 	KanbanView *-- KanbanPanel
 	WbsView *-- WbsPanel
+	SprintView *-- SprintPanel
+	SprintPanel ..> SprintFormModal : 列の「編集」で開く
 	MemberDashboardView *-- Panel : 種類ごとに1つ（createMemberPanel）
 	MemberTaskListPanel *-- TaskListPanel : その月の担当タスクに固定
 	MonthTasksPanel *-- Panel : ガント・カンバン・WBS を包む
@@ -401,6 +415,7 @@ classDiagram
 	FormModal <|-- EpicFormModal
 	FormModal <|-- ProjectFormModal
 	FormModal <|-- MemberFormModal
+	FormModal <|-- SprintFormModal : 作成・編集・削除
 	FormModal <|-- TableEditModal
 	FormModal <|-- ChecklistModal
 	FormModal <|-- AllocationMatrixModal

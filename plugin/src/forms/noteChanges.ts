@@ -112,6 +112,7 @@ export const ITEM_LABELS: Readonly<Record<Exclude<NoteType, 'worklog'>, Readonly
 		project: 'プロジェクト',
 		epic: 'エピック',
 		wbs: 'WBS番号',
+		sprint: 'スプリント',
 		status: 'ステータス',
 		assignees: '担当者',
 		estimate: '見積工数',
@@ -142,6 +143,13 @@ export const ITEM_LABELS: Readonly<Record<Exclude<NoteType, 'worklog'>, Readonly
 		start: '開始日',
 		due: '期限日',
 		manager: '責任者',
+	},
+	sprint: {
+		title: 'スプリント名',
+		project: 'プロジェクト',
+		start: '開始日',
+		end: '終了日',
+		goal: 'ゴール',
 	},
 	user: {
 		title: '氏名',

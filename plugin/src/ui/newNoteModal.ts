@@ -7,8 +7,8 @@ import { projectOptions } from './formParts';
 import { notifyError } from './notify';
 import { SaveGuard } from './saveGuard';
 
-/** この画面で作る種類。タスクはタスクのフォームで作る（設計書 4.4） */
-type NewNoteKind = Exclude<IdKind, 'task'>;
+/** この画面で作る種類。タスク・スプリントはそれぞれのフォームで作る（設計書 4.4） */
+type NewNoteKind = Exclude<IdKind, 'task' | 'sprint'>;
 
 const TITLES: Record<NewNoteKind, string> = {
 	project: '新しいプロジェクト',

@@ -58,6 +58,7 @@ describe('planNewNote', () => {
 			status: '未着手',
 			epic: null,
 			wbs: null,
+			sprint: null,
 			assignees: [],
 			estimate: null,
 			depends_on: [],

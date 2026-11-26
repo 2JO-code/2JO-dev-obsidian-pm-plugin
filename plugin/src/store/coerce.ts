@@ -98,6 +98,7 @@ export const TYPE_LABEL: Record<NoteType, string> = {
 	epic: 'エピック',
 	task: 'タスク',
 	user: 'メンバー',
+	sprint: 'スプリント',
 	worklog: '作業ログ',
 };
 

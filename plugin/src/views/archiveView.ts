@@ -182,7 +182,9 @@ export class ArchiveView extends PmView {
 		const tbody = table.createEl('tbody');
 		for (const item of plan.items) {
 			const row = tbody.createEl('tr');
-			kindMark(row.createEl('td', { text: ARCHIVE_KIND_LABELS[item.kind] }), item.kind);
+			const kind = row.createEl('td', { text: ARCHIVE_KIND_LABELS[item.kind] });
+			// スプリントには種類の色が無い
+			if (item.kind !== 'sprint') kindMark(kind, item.kind);
 			row.createEl('td', { text: item.title });
 			row.createEl('td', { text: item.from });
 			row.createEl('td', { text: item.to });

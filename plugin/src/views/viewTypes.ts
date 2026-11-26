@@ -8,6 +8,7 @@ export const MEMBER_STATUS_VIEW_TYPE = 'pm-member-status';
 export const PROJECT_STATUS_VIEW_TYPE = 'pm-project-status';
 export const DASHBOARD_VIEW_TYPE = 'pm-dashboard';
 export const KANBAN_VIEW_TYPE = 'pm-kanban';
+export const SPRINT_VIEW_TYPE = 'pm-sprint';
 export const WBS_VIEW_TYPE = 'pm-wbs';
 export const GANTT_VIEW_TYPE = 'pm-gantt';
 export const ARCHIVE_VIEW_TYPE = 'pm-archive';

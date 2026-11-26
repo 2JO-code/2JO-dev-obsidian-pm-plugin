@@ -63,6 +63,11 @@ export function checkHealth(index: VaultIndex, statuses: StatusSets): NoteProble
 				if (epic?.type === 'epic' && epic.project !== note.project) {
 					report('epic が、タスクの project とは別のプロジェクトのエピックです', 'form');
 				}
+				ref('sprint', note.sprint, 'sprint', 'form');
+				const sprint = note.sprint ? index.get(note.sprint) : undefined;
+				if (sprint?.type === 'sprint' && sprint.project !== note.project) {
+					report('sprint が、タスクの project とは別のプロジェクトのスプリントです', 'form');
+				}
 				for (const a of note.assignees) ref('assignees', a, 'user', 'form');
 				for (const d of note.dependsOn) {
 					if (d === note.id) report('depends_on に自分自身が入っています', 'form');
@@ -75,6 +80,11 @@ export function checkHealth(index: VaultIndex, statuses: StatusSets): NoteProble
 			case 'worklog':
 				ref('member', note.member, 'user');
 				for (const e of note.entries) ref('作業ログのタスク', e.task, 'task', 'worklog', e.line);
+				break;
+
+			case 'sprint':
+				ref('project', note.project, 'project', 'form');
+				if (note.start && note.end && note.end < note.start) report('end（終了日）が start（開始日）より前です', 'form');
 				break;
 
 			case 'user':

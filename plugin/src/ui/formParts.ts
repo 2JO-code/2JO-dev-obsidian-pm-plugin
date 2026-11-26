@@ -4,7 +4,8 @@ import { findStatus } from '../config/status';
 import { missingLabel } from '../calc/format';
 import type { WorkCalendar } from '../calc/workdays';
 import { holidayDueNote } from '../forms/formValues';
-import type { Epic, Member, NoteId, Project, StatusDef } from '../model';
+import { sortSprints, sprintPeriodText } from '../calc/sprintBoard';
+import type { Epic, Member, NoteId, Project, Sprint, StatusDef } from '../model';
 import { projectLabel, type ProjectDisplayName } from '../settings';
 
 /** 入力補助フォームで共通の部品（設計書 4.5） */
@@ -105,6 +106,15 @@ export function epicOptions(d: DropdownComponent, epics: readonly Epic[], projec
 	const sorted = epics.filter((e) => e.project === project).sort((a, b) => compareNumeric(a.wbs ?? '', b.wbs ?? '') || compareJa(a.title, b.title));
 	for (const e of sorted) d.addOption(e.id, e.wbs ? `${e.wbs} ${e.title}` : e.title);
 	if (value && !sorted.some((e) => e.id === value)) d.addOption(value, missingLabel(value, 'epic'));
+	d.setValue(value);
+}
+
+/** スプリントのプルダウンに、そのプロジェクトのスプリントを開始日の順に入れる。選択肢に無い値も残す */
+export function sprintOptions(d: DropdownComponent, sprints: readonly Sprint[], project: NoteId, value: NoteId, empty = '未割り当て'): void {
+	d.addOption('', empty);
+	const sorted = sortSprints(sprints.filter((s) => s.project === project));
+	for (const s of sorted) d.addOption(s.id, `${s.title}（${sprintPeriodText(s)}）`);
+	if (value && !sorted.some((s) => s.id === value)) d.addOption(value, missingLabel(value, 'sprint'));
 	d.setValue(value);
 }
 

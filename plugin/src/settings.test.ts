@@ -107,6 +107,7 @@ describe('FOLDERS', () => {
 			epics: 'Epics',
 			tasks: 'Tasks',
 			members: 'Members',
+			sprints: 'Sprints',
 			logs: 'Members/Logs',
 			archive: 'Archive',
 			config: '_pm',

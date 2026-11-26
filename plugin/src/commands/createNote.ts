@@ -1,15 +1,18 @@
 import { Notice, normalizePath } from 'obsidian';
 import { nextTaskWbsIn } from '../calc/wbsOrder';
+import { localToday } from '../calc/dates';
+import { emptySprintForm } from '../forms/sprintForm';
 import { emptyTaskForm } from '../forms/taskForm';
 import type { IdKind } from '../id';
 import type ProjectManagerPlugin from '../main';
 import type { NoteId } from '../model';
 import { FOLDERS } from '../settings';
 import { NewNoteModal } from '../ui/newNoteModal';
+import { SprintFormModal } from '../ui/sprintFormModal';
 import { TaskFormModal } from '../ui/taskFormModal';
 import { createNoteFile } from '../write/frontmatterFile';
 import type { FrontmatterUpdate } from '../write/frontmatter';
-import { planNewNote, planNewTaskFromForm, type NewNoteInput, type NewNotePlan } from './newNote';
+import { planNewNote, planNewNoteFromForm, planNewTaskFromForm, type NewNoteInput, type NewNotePlan } from './newNote';
 import { storeReady } from './ready';
 import { taskFormChoices } from './taskFormOptions';
 
@@ -18,6 +21,7 @@ const COMMANDS: { kind: IdKind; id: string; name: string }[] = [
 	{ kind: 'epic', id: 'create-epic', name: '新しいエピックを作成' },
 	{ kind: 'task', id: 'create-task', name: '新しいタスクを作成' },
 	{ kind: 'user', id: 'create-member', name: '新しいメンバーを作成' },
+	{ kind: 'sprint', id: 'create-sprint', name: '新しいスプリントを作成' },
 ];
 
 /** ビューから作るときに最初から選んでおくプロジェクト・エピック */
@@ -26,7 +30,7 @@ export interface NewNoteInitial {
 	epic?: NoteId;
 }
 
-/** ノート作成コマンド4種を登録する */
+/** ノート作成コマンドを登録する */
 export function registerCreateCommands(plugin: ProjectManagerPlugin): void {
 	for (const { kind, id, name } of COMMANDS) {
 		plugin.addCommand({ id, name, callback: () => openNewNoteModal(plugin, kind) });
@@ -38,12 +42,16 @@ export function openNewNoteModal(plugin: ProjectManagerPlugin, kind: IdKind, ini
 	const { index } = plugin.store;
 	if (!storeReady(plugin)) return;
 	const projects = index.projects();
-	if ((kind === 'epic' || kind === 'task') && projects.length === 0) {
+	if ((kind === 'epic' || kind === 'task' || kind === 'sprint') && projects.length === 0) {
 		new Notice('先にプロジェクトを作成してください');
 		return;
 	}
 	if (kind === 'task') {
 		openNewTaskForm(plugin, initial);
+		return;
+	}
+	if (kind === 'sprint') {
+		openNewSprintForm(plugin, initial);
 		return;
 	}
 	new NewNoteModal(plugin.app, {
@@ -67,6 +75,29 @@ function openNewTaskForm(plugin: ProjectManagerPlugin, initial?: NewNoteInitial)
 		target: { mode: 'create', create: (update, description) => createTask(plugin, update, description) },
 		form: emptyTaskForm(statuses, project, epic, wbs),
 		...choices,
+	}).open();
+}
+
+/** 空のスプリントのフォームを開く。期間は最後のスプリントの続き */
+function openNewSprintForm(plugin: ProjectManagerPlugin, initial?: NewNoteInitial): void {
+	const { index } = plugin.store;
+	const projects = index.projects();
+	const project = initial?.project && projects.some((p) => p.id === initial.project) ? initial.project : '';
+	const sprints = index.sprints({ includeArchived: true });
+	const today = localToday();
+	new SprintFormModal(plugin.app, {
+		target: {
+			mode: 'create',
+			create: async (update) => {
+				const plan = planNewNoteFromForm('sprint', update, '', FOLDERS, (id) => index.hasId(id));
+				await writePlan(plugin, plan, 'sprint', typeof update.title === 'string' ? update.title : '');
+			},
+			suggest: (p) => emptySprintForm(p, sprints, today),
+		},
+		form: emptySprintForm(project, sprints, today),
+		projects,
+		sprints,
+		displayName: plugin.personal.projectDisplayName,
 	}).open();
 }
 

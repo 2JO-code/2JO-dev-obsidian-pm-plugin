@@ -9,6 +9,7 @@ export function taskFormChoices(plugin: ProjectManagerPlugin): Omit<TaskFormModa
 	return {
 		projects: index.projects(),
 		epics: index.epics(),
+		sprints: index.sprints(),
 		tasks: index.tasks(),
 		allTasks: index.tasks({ includeArchived: true }),
 		members: index.members(),

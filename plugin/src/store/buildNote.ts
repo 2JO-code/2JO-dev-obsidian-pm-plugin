@@ -7,6 +7,7 @@ import {
 	type NoteId,
 	type NoteType,
 	type Project,
+	type Sprint,
 	type SubtaskCount,
 	type Task,
 	type Worklog,
@@ -14,7 +15,7 @@ import {
 import { parseAllocations, parseMilestones, parsePersonalHolidays, parseWorklogEntries, type TableProblem } from '../parse/bodyTables';
 import { Coercer, TYPE_LABEL } from './coerce';
 
-export type AnyNote = Project | Epic | Task | Member | Worklog;
+export type AnyNote = Project | Epic | Task | Member | Sprint | Worklog;
 
 /** 問題を直せる画面（設計書 8章）。入力補助フォームか、本文の表の編集画面 */
 export type ProblemFix = 'form' | 'milestones' | 'allocations' | 'holidays' | 'worklog';
@@ -139,6 +140,7 @@ export function buildNote(src: NoteSource): NoteRecord | null {
 				...optional({
 					epic: c.link('epic', 'epic'),
 					wbs: c.string('wbs', true),
+					sprint: c.link('sprint', 'sprint'),
 					estimate: c.number('estimate', { step: 0.25 }),
 					start: c.date('start'),
 					due: c.date('due'),
@@ -166,6 +168,12 @@ export function buildNote(src: NoteSource): NoteRecord | null {
 				active: c.boolean('active') ?? MEMBER_DEFAULTS.active,
 				holidays: holidays.rows,
 			};
+			break;
+		}
+		case 'sprint': {
+			const project = c.link('project', 'project');
+			const fields = optional({ start: c.date('start'), end: c.date('end'), goal: c.string('goal') });
+			if (project) record.note = { ...titled(), type: 'sprint', project, ...fields };
 			break;
 		}
 		case 'worklog': {

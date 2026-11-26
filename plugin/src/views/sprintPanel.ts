@@ -16,7 +16,7 @@ import {
 	type SprintCardNotes,
 	type SprintColumn,
 } from '../calc/sprintBoard';
-import { EMPTY_TASK_FILTER, filterTaskRows, parseTaskListOptions, sortTaskRows, taskRows, type RowLabels, type TaskFilterOptions, type TaskRow } from '../calc/taskList';
+import { EMPTY_TASK_FILTER, epicLabel, filterTaskRows, parseTaskListOptions, sortTaskRows, taskRows, type RowLabels, type TaskFilterOptions, type TaskRow } from '../calc/taskList';
 import { openNewNoteModal } from '../commands/createNote';
 import { openSprintForm, openTaskForm } from '../commands/editTask';
 import type { NoteId } from '../model';
@@ -384,6 +384,10 @@ export class SprintPanel extends FilteredPanel {
 
 		const title = card.createDiv({ cls: 'pm-kanban-title' });
 		kindMark(title.createSpan({ text: task.title }), 'task');
+		if (task.epic) {
+			const epic = card.createDiv({ cls: 'pm-kanban-meta' });
+			kindMark(epic.createSpan({ text: row.epic ? epicLabel(row.epic) : `（見つからないエピック：${task.epic}）` }), 'epic');
+		}
 		const status = card.createDiv({ cls: 'pm-kanban-meta' });
 		pluginStatusBadge(this.plugin, status, 'task', row.status);
 		const assignees = row.assignees.map((m) => m.title).join('、');

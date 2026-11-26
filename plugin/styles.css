@@ -2599,3 +2599,32 @@ td .pm-progress-pct {
 	height: 100%;
 	border: 0;
 }
+
+/* ツールバー（設計書 9.15）。上に作成・入力のボタン、下にビューの一覧 */
+.pm-toolbar.view-content {
+	padding: 0 var(--size-4-2) var(--size-4-4);
+}
+
+.pm-toolbar .nav-buttons-container {
+	flex-wrap: wrap;
+}
+
+.pm-toolbar-heading {
+	margin: var(--size-4-3) var(--size-4-1) var(--size-2-2);
+	font-size: var(--font-ui-smaller);
+	font-weight: var(--font-semibold);
+	color: var(--text-muted);
+}
+
+.pm-toolbar-item {
+	gap: var(--size-4-2);
+}
+
+.pm-toolbar-item .tree-item-icon {
+	display: flex;
+	color: var(--icon-color);
+}
+
+.pm-toolbar-item.is-active .tree-item-icon {
+	color: var(--interactive-accent);
+}

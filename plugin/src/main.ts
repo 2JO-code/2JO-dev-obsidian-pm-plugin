@@ -30,6 +30,7 @@ import { redrawViews } from './views/baseView';
 import { registerDashboardView } from './views/dashboardView';
 import { registerGanttView } from './views/ganttView';
 import { registerGuideView } from './views/guideView';
+import { registerToolbarView } from './views/toolbarView';
 import { registerHealthView } from './views/healthView';
 import { registerKanbanView } from './views/kanbanView';
 import { registerMemberDashboardView } from './views/memberDashboardView';
@@ -84,6 +85,7 @@ export default class ProjectManagerPlugin extends Plugin {
 		registerArchiveView(this);
 		registerGuideView(this);
 		registerLayouts(this);
+		registerToolbarView(this);
 		registerMainMenu(this);
 
 		// 重い処理は起動完了後（設計書 3.2）

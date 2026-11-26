@@ -8,7 +8,64 @@ import { openWorklogModal } from '../commands/worklog';
 import type ProjectManagerPlugin from '../main';
 import { openGuide } from '../views/guideView';
 import { openView } from '../views/openView';
-import { ARCHIVE_VIEW_TYPE, DASHBOARD_VIEW_TYPE, GANTT_VIEW_TYPE, HEALTH_VIEW_TYPE, KANBAN_VIEW_TYPE, MEMBER_DASHBOARD_VIEW_TYPE, MEMBER_STATUS_VIEW_TYPE, PROJECT_STATUS_VIEW_TYPE, TASK_LIST_VIEW_TYPE, WBS_VIEW_TYPE, WORKLOG_VIEW_TYPE } from '../views/viewTypes';
+import { openToolbar } from '../views/toolbarView';
+import { ARCHIVE_VIEW_TYPE, DASHBOARD_VIEW_TYPE, GANTT_VIEW_TYPE, GUIDE_VIEW_TYPE, HEALTH_VIEW_TYPE, KANBAN_VIEW_TYPE, MEMBER_DASHBOARD_VIEW_TYPE, MEMBER_STATUS_VIEW_TYPE, PROJECT_STATUS_VIEW_TYPE, TASK_LIST_VIEW_TYPE, WBS_VIEW_TYPE, WORKLOG_VIEW_TYPE } from '../views/viewTypes';
+
+/** メニューとツールバーの1項目。viewType はビューを開く項目だけ持つ */
+export interface MenuEntry {
+	title: string;
+	icon: string;
+	action: () => void;
+	viewType?: string;
+}
+
+/** メニューの項目の組の名前 */
+export type MenuGroup = 'create' | 'input' | 'views' | 'output' | 'layout' | 'other';
+
+/** リボンのメニューとツールバーに出す項目（組ごと、出す順） */
+export function mainMenuEntries(plugin: ProjectManagerPlugin): Record<MenuGroup, MenuEntry[]> {
+	const view = (title: string, icon: string, viewType: string): MenuEntry => ({
+		title,
+		icon,
+		viewType,
+		action: () => void openView(plugin.app, viewType),
+	});
+	return {
+		create: [
+			{ title: '新しいプロジェクト', icon: 'folder-plus', action: () => openNewNoteModal(plugin, 'project') },
+			{ title: 'プロジェクトを複製', icon: 'copy-plus', action: () => openCopyProjectModal(plugin) },
+			{ title: '新しいエピック', icon: 'layers', action: () => openNewNoteModal(plugin, 'epic') },
+			{ title: '新しいタスク', icon: 'square-plus', action: () => openNewNoteModal(plugin, 'task') },
+			{ title: '新しいメンバー', icon: 'user-plus', action: () => openNewNoteModal(plugin, 'user') },
+		],
+		input: [{ title: '作業ログを入力', icon: 'clock', action: () => openWorklogModal(plugin) }],
+		views: [
+			view('ダッシュボード', 'layout-dashboard', DASHBOARD_VIEW_TYPE),
+			view('タスク一覧', 'list-checks', TASK_LIST_VIEW_TYPE),
+			view('カンバン', 'columns-3', KANBAN_VIEW_TYPE),
+			view('WBS', 'list-tree', WBS_VIEW_TYPE),
+			view('ガントチャート', 'calendar-range', GANTT_VIEW_TYPE),
+			view('作業ログ', 'calendar-days', WORKLOG_VIEW_TYPE),
+			view('メンバー状況', 'users', MEMBER_STATUS_VIEW_TYPE),
+			view('メンバーダッシュボード', 'user-round', MEMBER_DASHBOARD_VIEW_TYPE),
+			view('プロジェクト状況', 'gauge', PROJECT_STATUS_VIEW_TYPE),
+			view('警告一覧', 'alert-triangle', HEALTH_VIEW_TYPE),
+		],
+		output: [
+			{ title: 'HTMLレポートを書き出す', icon: 'file-output', action: () => void exportHtmlReport(plugin) },
+			view('アーカイブ', 'archive', ARCHIVE_VIEW_TYPE),
+		],
+		layout: [
+			{ title: 'レイアウトを切り替え', icon: 'panels-top-left', action: () => switchLayout(plugin) },
+			{ title: 'レイアウトを保存', icon: 'save', action: () => void saveLayout(plugin) },
+			{ title: 'レイアウトを削除', icon: 'trash-2', action: () => deleteLayout(plugin) },
+		],
+		other: [
+			{ title: '使い方', icon: 'help-circle', viewType: GUIDE_VIEW_TYPE, action: () => void openGuide(plugin) },
+			{ title: 'データを再読み込み', icon: 'refresh-cw', action: () => void reloadData(plugin) },
+		],
+	};
+}
 
 /** リボンのボタンと、そのメニューを登録する（設計書 9章） */
 export function registerMainMenu(plugin: ProjectManagerPlugin): void {
@@ -17,36 +74,14 @@ export function registerMainMenu(plugin: ProjectManagerPlugin): void {
 
 function showMainMenu(plugin: ProjectManagerPlugin, evt: MouseEvent): void {
 	const menu = new Menu();
-	const add = (title: string, icon: string, action: () => void) =>
-		menu.addItem((item) => item.setTitle(title).setIcon(icon).onClick(action));
-
-	add('新しいプロジェクト', 'folder-plus', () => openNewNoteModal(plugin, 'project'));
-	add('プロジェクトを複製', 'copy-plus', () => openCopyProjectModal(plugin));
-	add('新しいエピック', 'layers', () => openNewNoteModal(plugin, 'epic'));
-	add('新しいタスク', 'square-plus', () => openNewNoteModal(plugin, 'task'));
-	add('新しいメンバー', 'user-plus', () => openNewNoteModal(plugin, 'user'));
+	const groups = Object.values(mainMenuEntries(plugin));
+	groups.forEach((entries, i) => {
+		if (i > 0) menu.addSeparator();
+		for (const entry of entries) {
+			menu.addItem((item) => item.setTitle(entry.title).setIcon(entry.icon).onClick(entry.action));
+		}
+	});
 	menu.addSeparator();
-	add('作業ログを入力', 'clock', () => openWorklogModal(plugin));
-	menu.addSeparator();
-	add('ダッシュボード', 'layout-dashboard', () => void openView(plugin.app, DASHBOARD_VIEW_TYPE));
-	add('タスク一覧', 'list-checks', () => void openView(plugin.app, TASK_LIST_VIEW_TYPE));
-	add('カンバン', 'columns-3', () => void openView(plugin.app, KANBAN_VIEW_TYPE));
-	add('WBS', 'list-tree', () => void openView(plugin.app, WBS_VIEW_TYPE));
-	add('ガントチャート', 'calendar-range', () => void openView(plugin.app, GANTT_VIEW_TYPE));
-	add('作業ログ', 'calendar-days', () => void openView(plugin.app, WORKLOG_VIEW_TYPE));
-	add('メンバー状況', 'users', () => void openView(plugin.app, MEMBER_STATUS_VIEW_TYPE));
-	add('メンバーダッシュボード', 'user-round', () => void openView(plugin.app, MEMBER_DASHBOARD_VIEW_TYPE));
-	add('プロジェクト状況', 'gauge', () => void openView(plugin.app, PROJECT_STATUS_VIEW_TYPE));
-	add('警告一覧', 'alert-triangle', () => void openView(plugin.app, HEALTH_VIEW_TYPE));
-	menu.addSeparator();
-	add('HTMLレポートを書き出す', 'file-output', () => void exportHtmlReport(plugin));
-	add('アーカイブ', 'archive', () => void openView(plugin.app, ARCHIVE_VIEW_TYPE));
-	menu.addSeparator();
-	add('レイアウトを切り替え', 'panels-top-left', () => switchLayout(plugin));
-	add('レイアウトを保存', 'save', () => void saveLayout(plugin));
-	add('レイアウトを削除', 'trash-2', () => deleteLayout(plugin));
-	menu.addSeparator();
-	add('使い方', 'help-circle', () => void openGuide(plugin));
-	add('データを再読み込み', 'refresh-cw', () => void reloadData(plugin));
+	menu.addItem((item) => item.setTitle('ツールバーを開く').setIcon('panel-left').onClick(() => void openToolbar(plugin)));
 	menu.showAtMouseEvent(evt);
 }

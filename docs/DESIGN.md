@@ -39,7 +39,7 @@
 | `report/` | 純粋 | HTMLレポートの組み立て（13章） |
 | `commands/` | つなぎ | コマンドから呼ぶ処理。開く前の確かめは `ready.ts`。純粋関数は `newNote.ts`・`projectCopy.ts` |
 | `generated/` | 純粋 | ビルド前にスクリプトが作るファイル（使い方の HTML の文字列。9.14）。直接編集しない |
-| `ui/` | 画面 | 設定画面、モーダル（`formModal.ts`・`formParts.ts`・`chooseModal.ts`。4.5）、リボンのメニュー、種類の色（6章）、ビューとモーダルで使う部品（`table.ts`・`controls.ts`）、失敗の知らせ（`notify.ts`。4.13） |
+| `ui/` | 画面 | 設定画面、モーダル（`formModal.ts`・`formParts.ts`・`chooseModal.ts`。4.5）、リボンのメニュー（項目はツールバーと共有。9.15）、種類の色（6章）、ビューとモーダルで使う部品（`table.ts`・`controls.ts`）、失敗の知らせ（`notify.ts`。4.13） |
 | `views/` | 画面 | カスタムビューとその部品（9.12）、ビュー・フォーム・ノートを開く処理（9章。`paneGroups.ts`・`viewMemory.ts` だけは純粋） |
 | `settings.ts` | 純粋 | プラグイン設定・個人の設定の型と既定値（6章） |
 | `savedLayouts.ts` | 純粋 | 保存したレイアウトの型・読み取り・名前の確かめ・上書き・削除（9.13） |
@@ -942,6 +942,8 @@ ID の形でないファイル（`strayFiles.ts`）：
       - メンバー状況・メンバーダッシュボード・プロジェクト状況
     - ／HTMLレポートの書き出し・アーカイブ
     - ／レイアウトの切り替え・保存・削除（9.13）／使い方（9.14）・データの再読み込み
+    - ／ツールバーを開く（9.15）
+  - 項目は `mainMenuEntries` の1か所で決め、ツールバー（9.15）と共有する
 
 使い方：メニュー「使い方」とコマンド「使い方を開く」で、使い方のビュー（9.14）を開く。
 
@@ -1606,6 +1608,19 @@ ID の形でないファイル（`strayFiles.ts`）：
   - そのまま移ると、iframe の中に Obsidian のページが開くため（基準の URL が親のページ）
 - 目次の色付けは、スクロールのたびに今の章を選んで付け替える（`activeSectionIndex`）
 - コマンド ID は前の `open-readme` のまま（ベストプラクティス 7章）
+
+### 9.15 ツールバー（`views/toolbarView.ts`）
+
+- 左のサイドバーのタブに、リボンのメニューと同じ操作を出す（要件 4.16）
+  - 項目は `mainMenuEntries`（`ui/mainMenu.ts`）から取る。メニューと食い違わないため
+  - 上の段は作成・入力をアイコンだけで並べる（`nav-header` の `clickable-icon`）
+  - 下の段は組ごとの見出しと行（`tree-item-self`）。エクスプローラーと見た目をそろえるため
+- 索引を使わないので、`PmView` でなく `ItemView` を直接継ぐ
+- 開く場所：開いていればそのタブ、無ければ `getLeftLeaf(false)`（左の今のタブの組に足す）
+- 起動時には開かない。開くと `workspace.json` を書くため（規約 6章）
+- 印：中央で最後に使ったタブと同じ種類の行に `is-active` を付ける
+  - `getMostRecentLeaf(rootSplit)` で取り、`active-leaf-change`・`layout-change` で付け直す
+  - サイドバーを押しても中央の印が消えないように、中央のタブだけを見る
 
 ---
 

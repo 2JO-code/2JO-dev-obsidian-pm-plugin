@@ -15,3 +15,4 @@ export const HEALTH_VIEW_TYPE = 'pm-health';
 export const WORKLOG_VIEW_TYPE = 'pm-worklog';
 export const MEMBER_DASHBOARD_VIEW_TYPE = 'pm-member-dashboard';
 export const GUIDE_VIEW_TYPE = 'pm-guide';
+export const TOOLBAR_VIEW_TYPE = 'pm-toolbar';

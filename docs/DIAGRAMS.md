@@ -283,7 +283,7 @@ classDiagram
   - 中身は `draw(el, ctx)` だけを書く。描き直しのきっかけと枠（シェル）は `PmView` が受け持つ
 - 保存して閉じる入力画面は `FormModal` を継ぐ（設計書 4.5, 4.6）
   - 中身は `render()` を書き、保存は `submit(check, write)` に任せる
-- 使い方の `GuideView` は索引を使わないので、`PmView` でなく `ItemView` を直接継ぐ（設計書 9.14）
+- 使い方の `GuideView`・ツールバーの `ToolbarView` は索引を使わないので、`ItemView` を直接継ぐ（設計書 9.14・9.15）
 - タスク一覧・作業ログ・ガント・カンバン・WBS の中身は部品（`Panel`）。ビューは部品を1つ載せる（設計書 9.12）
   - メンバーダッシュボードは、同じ部品を種類ごとに1つずつ作って並べる（設計書 9.11）
   - 部品は保存・描き直しを置き場所（`PanelHost`）に頼む
@@ -362,6 +362,7 @@ classDiagram
 	PmView <|-- HealthView
 	PmView <|-- MemberDashboardView
 	ItemView <|-- GuideView
+	ItemView <|-- ToolbarView
 
 	Panel ..> PanelHost : 保存・描き直しを頼む
 	Panel <|-- FilteredPanel
